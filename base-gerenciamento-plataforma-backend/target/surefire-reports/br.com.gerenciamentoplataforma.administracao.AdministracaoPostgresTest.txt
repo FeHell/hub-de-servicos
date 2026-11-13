@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: br.com.gerenciamentoplataforma.administracao.AdministracaoPostgresTest
--------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.057 s -- in br.com.gerenciamentoplataforma.administracao.AdministracaoPostgresTest

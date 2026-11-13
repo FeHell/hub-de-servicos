@@ -1,0 +1,8 @@
+.DS_Store
+/hub-de-servicos-backend/target/
+/hub-de-servicos-backend/.metadata/
+/hub-de-servicos-backend/.env
+/hub-de-servicos-backend/.env.*
+*.pem
+*.p12
+*.jks

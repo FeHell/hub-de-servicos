@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://127.0.0.1:5432/hub_de_servicos}
+
+server:
+  address: 127.0.0.1
+
+hub:
+  autenticacao:
+    cookie-seguro: false
