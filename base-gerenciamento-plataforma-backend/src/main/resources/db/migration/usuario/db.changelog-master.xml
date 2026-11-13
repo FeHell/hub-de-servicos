@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <changeSet id="1-usuario-criacao" author="sistema">
+        <createTable tableName="usuario">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" primaryKeyName="pk_usuario" nullable="false"/>
+            </column>
+            <column name="login" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="senha_hash" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="data_criacao" type="TIMESTAMPTZ" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql>
+            ALTER TABLE usuario ADD CONSTRAINT ck_usuario_status CHECK (status IN ('ATIVO', 'BLOQUEADO', 'PENDENTE', 'INATIVO'));
+        </sql>
+        <rollback>
+            <dropTable tableName="usuario"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="2-usuario-indices" author="sistema">
+        <sql>
+            CREATE UNIQUE INDEX idx_usuario_login_lower ON usuario (lower(login));
+            CREATE UNIQUE INDEX idx_usuario_email_lower ON usuario (lower(email));
+        </sql>
+        <rollback>
+            <dropIndex tableName="usuario" indexName="idx_usuario_email_lower"/>
+            <dropIndex tableName="usuario" indexName="idx_usuario_login_lower"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <changeSet id="1-perfil-permissao-vinculo" author="sistema">
+        <createTable tableName="perfil_permissao">
+            <column name="id_aplicacao" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="id_perfil" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="id_permissao" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey tableName="perfil_permissao" columnNames="id_aplicacao, id_perfil, id_permissao" constraintName="pk_perfil_permissao"/>
+        <addForeignKeyConstraint constraintName="fk_perfil_permissao_perfil"
+                                 baseTableName="perfil_permissao" baseColumnNames="id_aplicacao, id_perfil"
+                                 referencedTableName="perfil" referencedColumnNames="id_aplicacao, id_perfil"
+                                 onDelete="RESTRICT"/>
+        <addForeignKeyConstraint constraintName="fk_perfil_permissao_aplicacao_permissao"
+                                 baseTableName="perfil_permissao" baseColumnNames="id_aplicacao, id_permissao"
+                                 referencedTableName="aplicacao_permissao" referencedColumnNames="id_aplicacao, id_permissao"
+                                 onDelete="RESTRICT"/>
+        <createIndex tableName="perfil_permissao" indexName="idx_perfil_permissao_aplicacao_permissao">
+            <column name="id_aplicacao"/>
+            <column name="id_permissao"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

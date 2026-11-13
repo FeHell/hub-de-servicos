@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: br.com.gerenciamentoplataforma.persistencia.MapeamentoPersistenciaTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.466 s -- in br.com.gerenciamentoplataforma.persistencia.MapeamentoPersistenciaTest

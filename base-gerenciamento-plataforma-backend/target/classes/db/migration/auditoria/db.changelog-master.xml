@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <changeSet id="1-auditoria-criacao" author="sistema">
+        <!-- O tipo no createTable é convertido pelo Liquibase em uma coluna IDENTITY. -->
+        <sql>
+            CREATE TABLE auditoria (
+                id BIGSERIAL CONSTRAINT pk_auditoria PRIMARY KEY,
+                id_usuario UUID,
+                id_aplicacao UUID,
+                acao VARCHAR(100) NOT NULL,
+                tabela_afetada VARCHAR(100) NOT NULL,
+                valor_antigo JSONB,
+                valor_novo JSONB,
+                ip_origem VARCHAR(45),
+                data_registro TIMESTAMPTZ NOT NULL DEFAULT now()
+            );
+        </sql>
+
+        <addForeignKeyConstraint constraintName="fk_auditoria_usuario"
+                                 baseTableName="auditoria" baseColumnNames="id_usuario"
+                                 referencedTableName="usuario" referencedColumnNames="id"
+                                 onDelete="RESTRICT"/>
+        <addForeignKeyConstraint constraintName="fk_auditoria_aplicacao"
+                                 baseTableName="auditoria" baseColumnNames="id_aplicacao"
+                                 referencedTableName="aplicacao" referencedColumnNames="id"
+                                 onDelete="RESTRICT"/>
+        <createIndex tableName="auditoria" indexName="idx_auditoria_usuario_data">
+            <column name="id_usuario"/>
+            <column name="data_registro"/>
+        </createIndex>
+        <createIndex tableName="auditoria" indexName="idx_auditoria_aplicacao_data">
+            <column name="id_aplicacao"/>
+            <column name="data_registro"/>
+        </createIndex>
+        <createIndex tableName="auditoria" indexName="idx_auditoria_acao_data">
+            <column name="acao"/>
+            <column name="data_registro"/>
+        </createIndex>
+        <createIndex tableName="auditoria" indexName="idx_auditoria_data">
+            <column name="data_registro"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="auditoria"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

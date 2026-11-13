@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <changeSet id="1-tokens-criacao" author="sistema">
+        <createTable tableName="tokens_atualizacao">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" primaryKeyName="pk_tokens_atualizacao" nullable="false"/>
+            </column>
+            <column name="id_sessao" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="id_familia" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="hash_token" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uk_token_hash"/>
+            </column>
+            <column name="id_anterior" type="UUID"/>
+            <column name="data_utilizacao" type="TIMESTAMPTZ"/>
+            <column name="data_criacao" type="TIMESTAMPTZ" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiracao_absoluta" type="TIMESTAMPTZ">
+                <constraints nullable="false"/>
+            </column>
+            <column name="data_revogacao" type="TIMESTAMPTZ"/>
+            <column name="is_revogado" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="tokens_atualizacao" columnNames="id, id_familia"
+                             constraintName="uk_token_identificacao"/>
+        <addForeignKeyConstraint constraintName="fk_token_sessao"
+                                 baseTableName="tokens_atualizacao" baseColumnNames="id_sessao, id_familia"
+                                 referencedTableName="sessoes" referencedColumnNames="id, id_familia"
+                                 onDelete="RESTRICT"/>
+        <addForeignKeyConstraint constraintName="fk_token_anterior"
+                                 baseTableName="tokens_atualizacao" baseColumnNames="id_anterior, id_familia"
+                                 referencedTableName="tokens_atualizacao" referencedColumnNames="id, id_familia"
+                                 onDelete="RESTRICT"/>
+        <createIndex tableName="tokens_atualizacao" indexName="idx_token_sessao_familia">
+            <column name="id_sessao"/>
+            <column name="id_familia"/>
+        </createIndex>
+        <sql>
+            CREATE UNIQUE INDEX uk_token_anterior_not_null
+                ON tokens_atualizacao (id_anterior) WHERE id_anterior IS NOT NULL;
+        </sql>
+        <rollback>
+            <dropTable tableName="tokens_atualizacao"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

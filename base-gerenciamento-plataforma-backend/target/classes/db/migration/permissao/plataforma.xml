@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <changeSet id="1-permissoes-diretas-plataforma" author="sistema">
+        <addColumn tableName="permissao">
+            <column name="nome_plataforma" type="VARCHAR(100)"/>
+        </addColumn>
+        <createTable tableName="usuario_permissao_plataforma">
+            <column name="id_usuario" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_upp_usuario" references="usuario(id)"/>
+            </column>
+            <column name="id_permissao" type="UUID">
+                <constraints nullable="false" foreignKeyName="fk_upp_permissao" references="permissao(id)"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="usuario_permissao_plataforma" columnNames="id_usuario,id_permissao"
+                       constraintName="pk_usuario_permissao_plataforma"/>
+        <createIndex tableName="usuario_permissao_plataforma" indexName="ix_upp_permissao">
+            <column name="id_permissao"/>
+        </createIndex>
+        <sql>
+            INSERT INTO permissao (id, codigo, nome_plataforma, descricao, status)
+            VALUES
+              ('ed197fc2-b1e2-4f5d-bc01-03c2f829632e', 'PLATAFORMA_ADMINISTRAR',
+               'Administração da Plataforma', 'Administrar os cadastros globais e as aplicações da plataforma.', 'ATIVO'),
+              ('4e23e529-4d7b-4483-9e02-9330710ec8cf', 'PLATAFORMA_VISITANTE',
+               'Visitante', 'Classificação de acesso como visitante da plataforma.', 'ATIVO'),
+              ('f4580390-6c02-45b2-9abc-3b3d5011a701', 'PLATAFORMA_ANALISTA',
+               'Analista', 'Classificação de acesso como analista da plataforma.', 'ATIVO')
+            ON CONFLICT (codigo) DO UPDATE SET nome_plataforma = EXCLUDED.nome_plataforma;
+
+            INSERT INTO usuario_permissao_plataforma (id_usuario, id_permissao)
+            SELECT up.id_usuario, p.id
+            FROM usuario_perfil up
+            JOIN aplicacao a ON a.id = up.id_aplicacao AND a.slug = 'plataforma-admin'
+            JOIN usuario_aplicacao ua ON ua.id_usuario = up.id_usuario AND ua.id_aplicacao = up.id_aplicacao
+            JOIN perfil f ON f.id_perfil = up.id_perfil AND f.id_aplicacao = up.id_aplicacao
+            JOIN perfil_permissao pp ON pp.id_perfil = f.id_perfil AND pp.id_aplicacao = f.id_aplicacao
+            JOIN aplicacao_permissao ap ON ap.id_aplicacao = pp.id_aplicacao AND ap.id_permissao = pp.id_permissao
+            JOIN permissao p ON p.id = ap.id_permissao AND p.codigo = 'PLATAFORMA_ADMINISTRAR'
+            WHERE ua.ativo AND f.status = 'ATIVO' AND p.status = 'ATIVO'
+            ON CONFLICT (id_usuario, id_permissao) DO NOTHING;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

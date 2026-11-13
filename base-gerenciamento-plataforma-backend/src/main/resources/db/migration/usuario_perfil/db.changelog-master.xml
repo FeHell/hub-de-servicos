@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <changeSet id="1-usuario-perfil-vinculo" author="sistema">
+        <createTable tableName="usuario_perfil">
+            <column name="id_usuario" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="id_aplicacao" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="id_perfil" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey tableName="usuario_perfil" columnNames="id_usuario, id_aplicacao, id_perfil" constraintName="pk_usuario_perfil"/>
+        <addForeignKeyConstraint constraintName="fk_usuario_perfil_usuario_aplicacao"
+                                 baseTableName="usuario_perfil" baseColumnNames="id_usuario, id_aplicacao"
+                                 referencedTableName="usuario_aplicacao" referencedColumnNames="id_usuario, id_aplicacao"
+                                 onDelete="RESTRICT"/>
+        <addForeignKeyConstraint constraintName="fk_usuario_perfil_perfil"
+                                 baseTableName="usuario_perfil" baseColumnNames="id_aplicacao, id_perfil"
+                                 referencedTableName="perfil" referencedColumnNames="id_aplicacao, id_perfil"
+                                 onDelete="RESTRICT"/>
+        <createIndex tableName="usuario_perfil" indexName="idx_usuario_perfil_aplicacao_perfil">
+            <column name="id_aplicacao"/>
+            <column name="id_perfil"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

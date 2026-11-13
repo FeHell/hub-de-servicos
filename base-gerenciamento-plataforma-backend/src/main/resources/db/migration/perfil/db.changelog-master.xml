@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <changeSet id="1-perfil-criacao" author="sistema">
+        <createTable tableName="perfil">
+            <column name="id_perfil" type="UUID">
+                <constraints primaryKey="true" primaryKeyName="pk_perfil" nullable="false"/>
+            </column>
+            <column name="id_aplicacao" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+            <column name="nome" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="descricao" type="TEXT"/>
+            <column name="status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint constraintName="fk_perfil_aplicacao"
+                                 baseTableName="perfil" baseColumnNames="id_aplicacao"
+                                 referencedTableName="aplicacao" referencedColumnNames="id"
+                                 onDelete="RESTRICT"/>
+        <addUniqueConstraint tableName="perfil" columnNames="id_aplicacao, id_perfil"
+                             constraintName="uk_perfil_aplicacao_perfil"/>
+        <addUniqueConstraint tableName="perfil" columnNames="id_aplicacao, nome"
+                             constraintName="uk_perfil_aplicacao_nome"/>
+        <sql>
+            ALTER TABLE perfil ADD CONSTRAINT ck_perfil_status CHECK (status IN ('ATIVO', 'INATIVO'));
+        </sql>
+        <rollback>
+            <dropTable tableName="perfil"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

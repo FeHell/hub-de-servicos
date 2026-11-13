@@ -1,0 +1,6 @@
+/Users/fernandoluciooliveira/dev/projetos/base-gerenciamento-plataforma/base-gerenciamento-plataforma-backend/src/test/java/br/com/gerenciamentoplataforma/autenticacao/AutenticacaoPostgresTest.java
+/Users/fernandoluciooliveira/dev/projetos/base-gerenciamento-plataforma/base-gerenciamento-plataforma-backend/src/test/java/br/com/gerenciamentoplataforma/autenticacao/config/AutenticacaoHttpTest.java
+/Users/fernandoluciooliveira/dev/projetos/base-gerenciamento-plataforma/base-gerenciamento-plataforma-backend/src/test/java/br/com/gerenciamentoplataforma/persistencia/MapeamentoPersistenciaTest.java
+/Users/fernandoluciooliveira/dev/projetos/base-gerenciamento-plataforma/base-gerenciamento-plataforma-backend/src/test/java/br/com/gerenciamentoplataforma/autenticacao/service/TokenJwtTest.java
+/Users/fernandoluciooliveira/dev/projetos/base-gerenciamento-plataforma/base-gerenciamento-plataforma-backend/src/test/java/br/com/gerenciamentoplataforma/administracao/AdministracaoPostgresTest.java
+/Users/fernandoluciooliveira/dev/projetos/base-gerenciamento-plataforma/base-gerenciamento-plataforma-backend/src/test/java/br/com/gerenciamentoplataforma/persistencia/PersistenciaPostgresTest.java
