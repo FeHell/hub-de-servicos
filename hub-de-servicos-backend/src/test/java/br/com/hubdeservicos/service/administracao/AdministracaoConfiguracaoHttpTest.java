@@ -59,7 +59,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(controllers = AdministracaoConfiguracaoController.class,
         excludeAutoConfiguration = UserDetailsServiceAutoConfiguration.class,
         properties = {"hub.administracao.aplicacao-id=00000000-0000-4000-8000-000000000001",
-                "TEXTBEE_API_KEY=credencial-ficticia-privada"})
+                "INFOBIP_API_KEY=credencial-ficticia-privada"})
 @Import({SegurancaWeb.class, AcessoAdministrativo.class, AdministracaoConfiguracaoService.class,
         RegistroAdministrativo.class, SmsProviderResolver.class, SmsService.class,
         AdministracaoConfiguracaoHttpTest.Componentes.class})
@@ -79,8 +79,8 @@ class AdministracaoConfiguracaoHttpTest {
     @MockBean private AutorizacaoService autorizacao;
     @MockBean private ConfiguracaoSistemaRepository configuracoes;
     @MockBean private AuditoriaRepository auditoria;
-    @Autowired @Qualifier("textBeeSmsProvider")
-    private SmsProvider textBee;
+    @Autowired @Qualifier("infobipSmsProvider")
+    private SmsProvider infobip;
 
     @BeforeEach
     void preparar() {
@@ -100,7 +100,7 @@ class AdministracaoConfiguracaoHttpTest {
                 .andExpect(status().isForbidden());
         mvc.perform(put(ATIVO).header(HttpHeaders.AUTHORIZATION, "Bearer visitante")
                 .contentType(MediaType.APPLICATION_JSON).content("""
-                        {"codigo":"TEXTBEE"}
+                        {"codigo":"INFOBIP"}
                         """)).andExpect(status().isForbidden());
         verifyNoInteractions(configuracoes, auditoria);
     }
@@ -120,7 +120,7 @@ class AdministracaoConfiguracaoHttpTest {
     void listaSomenteConfiguracaoPermitidaEProvedoresRegistradosSemCredenciais() throws Exception {
         var configuracao = mock(ConfiguracaoSistemaEntity.class);
         when(configuracao.getChave()).thenReturn(SMS_PROVEDOR_ATIVO);
-        when(configuracao.getValor()).thenReturn("TEXTBEE");
+        when(configuracao.getValor()).thenReturn("INFOBIP");
         when(configuracoes.findByChave(SMS_PROVEDOR_ATIVO)).thenReturn(Optional.of(configuracao));
 
         mvc.perform(get(BASE).header(HttpHeaders.AUTHORIZATION, "Bearer admin"))
@@ -129,11 +129,11 @@ class AdministracaoConfiguracaoHttpTest {
                 .andExpect(content().string(not(containsString("credencial-ficticia-privada"))));
         mvc.perform(get(BASE + "/sms/provedores").header(HttpHeaders.AUTHORIZATION, "Bearer admin"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[1].codigo").value("TEXTBEE"))
-                .andExpect(jsonPath("$[1].nome").value("TextBee"))
+                .andExpect(jsonPath("$[0].codigo").value("INFOBIP"))
+                .andExpect(jsonPath("$[0].nome").value("Infobip"))
                 .andExpect(content().string(not(containsString("credencial-ficticia-privada"))));
         mvc.perform(get(ATIVO).header(HttpHeaders.AUTHORIZATION, "Bearer admin"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.valor").value("TEXTBEE"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.valor").value("INFOBIP"))
                 .andExpect(content().string(not(containsString("credencial-ficticia-privada"))));
     }
 
@@ -147,26 +147,26 @@ class AdministracaoConfiguracaoHttpTest {
         doAnswer(chamada -> {
             valor.set(chamada.getArgument(0));
             return null;
-        }).when(registro).atualizarValor(eq("TEXTBEE"), eq(AGORA));
+        }).when(registro).atualizarValor(eq("INFOBIP"), eq(AGORA));
         when(configuracoes.findForUpdateByChave(SMS_PROVEDOR_ATIVO)).thenReturn(Optional.of(registro));
         when(configuracoes.buscarValor(SMS_PROVEDOR_ATIVO, StatusCadastro.ATIVO))
                 .thenAnswer(chamada -> Optional.of(valor.get()));
         var mensagem = new SmsSendRequest("+12025550123", "teste");
-        when(textBee.send(mensagem)).thenReturn(SmsSendResult.aceito("TEXTBEE", null));
+        when(infobip.send(mensagem)).thenReturn(SmsSendResult.aceito("INFOBIP", null));
 
         assertThat(sms.send(mensagem).codigoProvedor()).isEqualTo("SIMULADO");
         mvc.perform(put(ATIVO).header(HttpHeaders.AUTHORIZATION, "Bearer admin")
                 .contentType(MediaType.APPLICATION_JSON).content("""
-                        {"codigo":"TEXTBEE"}
-                        """)).andExpect(status().isOk()).andExpect(jsonPath("$.valor").value("TEXTBEE"));
-        assertThat(sms.send(mensagem).codigoProvedor()).isEqualTo("TEXTBEE");
+                        {"codigo":"INFOBIP"}
+                        """)).andExpect(status().isOk()).andExpect(jsonPath("$.valor").value("INFOBIP"));
+        assertThat(sms.send(mensagem).codigoProvedor()).isEqualTo("INFOBIP");
 
         var evento = ArgumentCaptor.forClass(AuditoriaEntity.class);
         verify(auditoria).save(evento.capture());
         assertThat(evento.getValue().getIdUsuario()).isEqualTo(ADMIN);
         assertThat(evento.getValue().getIdAplicacao()).isEqualTo(APLICACAO);
         assertThat(evento.getValue().getValorAntigo().path("valor").asText()).isEqualTo("SIMULADO");
-        assertThat(evento.getValue().getValorNovo().path("valor").asText()).isEqualTo("TEXTBEE");
+        assertThat(evento.getValue().getValorNovo().path("valor").asText()).isEqualTo("INFOBIP");
     }
 
     @TestConfiguration(proxyBeanMethods = false)
@@ -182,10 +182,10 @@ class AdministracaoConfiguracaoHttpTest {
         }
 
         @Bean
-        SmsProvider textBeeSmsProvider() {
+        SmsProvider infobipSmsProvider() {
             var provedor = mock(SmsProvider.class);
-            when(provedor.getProviderCode()).thenReturn("TEXTBEE");
-            when(provedor.getDisplayName()).thenReturn("TextBee");
+            when(provedor.getProviderCode()).thenReturn("INFOBIP");
+            when(provedor.getDisplayName()).thenReturn("Infobip");
             return provedor;
         }
 

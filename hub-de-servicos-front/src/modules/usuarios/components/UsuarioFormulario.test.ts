@@ -77,6 +77,51 @@ describe('saída do formulário de usuários', () => {
 })
 
 describe('permissões da plataforma no formulário', () => {
+  it.each([
+    ['NAO_INFORMADO', 'Não informado'],
+    ['PENDENTE', 'Pendente de confirmação'],
+    ['VERIFICADO', 'Verificado'],
+  ] as const)('apresenta %s dentro do campo e salva o nome carregado', async (situacao, rotulo) => {
+    const { atualizar } = prepararApi()
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        {
+          path: '/',
+          component: UsuarioFormulario,
+          props: {
+            usuario: {
+              ...conta,
+              nome: 'Ana Cheff',
+              telefone: situacao === 'NAO_INFORMADO' ? null : '+5534999999999',
+              situacaoTelefone: situacao,
+            },
+          },
+        },
+      ],
+    })
+    await router.push('/')
+    const tela = mount(RouterView, { global: { plugins: [router] } })
+    await flushPromises()
+    const telefone = tela.get('#usuario-form-telefone')
+    expect(telefone.attributes('aria-describedby')).toBe('estado-telefone')
+    const controle = telefone.element.closest('.campo__controle')
+    expect(controle?.querySelector('#estado-telefone')?.getAttribute('title')).toBe(rotulo)
+    expect(controle?.querySelector('#estado-telefone svg')).not.toBeNull()
+    const nome = tela.get<HTMLInputElement>('#usuario-form-nome')
+    expect(nome.element.value).toBe('Ana Cheff')
+    await nome.setValue(' Ana Silva ')
+    await tela.get('form').trigger('submit')
+    await flushPromises()
+    expect(atualizar).toHaveBeenCalledExactlyOnceWith(conta.id, {
+      login: conta.login,
+      email: conta.email,
+      status: conta.status,
+      nome: 'Ana Silva',
+    })
+    tela.unmount()
+  })
+
   it('carrega o telefone verificado e salva um novo número normalizado como pendente', async () => {
     const { atualizar } = prepararApi()
     atualizar.mockImplementation(async (_id, dados) => ({

@@ -7,6 +7,7 @@ defineProps<{
   rotulo: string
   tipo?: 'text' | 'email' | 'password'
   erro?: string
+  descricao?: string
   autocomplete?: string
 }>()
 const valor = defineModel<string>({ default: '' })
@@ -26,7 +27,7 @@ defineExpose({ focar: () => entrada.value?.focus() })
         :type="tipo || 'text'"
         :autocomplete="autocomplete"
         :aria-invalid="!!erro"
-        :aria-describedby="erro ? id + '-erro' : undefined"
+        :aria-describedby="[descricao, erro && id + '-erro'].filter(Boolean).join(' ') || undefined"
       />
       <div v-if="$slots.acao" class="campo__acao"><slot name="acao" /></div>
     </div>

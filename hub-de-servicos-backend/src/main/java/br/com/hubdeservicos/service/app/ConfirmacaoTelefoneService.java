@@ -60,12 +60,12 @@ public class ConfirmacaoTelefoneService {
         String numero = Objects.requireNonNull(transacao.execute(status -> preparar(idUsuario, entrada, id, codigo)));
 
         // A reserva de número e a cota já estão confirmadas. Nenhum bloqueio fica aberto durante o gateway.
-        boolean aceito = sms.send(new SmsSendRequest(numero, "Conecta Cheff: seu código é " + codigo + ".")).aceito();
+        var envio = sms.send(new SmsSendRequest(numero, "Conecta Cheff: seu código é " + codigo + "."));
         Desafio resultado = transacao.execute(status -> {
             var usuario = perfil.bloquear(idUsuario);
             var desafio = buscar(id, idUsuario);
             if (!numero.equals(usuario.getTelefone()) || desafio.getCodigoHash() == null) throw indisponivel();
-            if (!aceito) {
+            if (!envio.aceito()) {
                 desafio.consumir();
                 return null;
             }
@@ -73,7 +73,14 @@ public class ConfirmacaoTelefoneService {
             return new Desafio(id, "+55 •• •••••-" + numero.substring(numero.length() - 4),
                     desafio.getExpiraEm(), Cadastro.de(usuario));
         });
-        if (resultado == null) throw erro(HttpStatus.BAD_GATEWAY, "Não foi possível enviar o SMS. Tente novamente mais tarde.");
+        if (resultado == null) {
+            String mensagem = switch (envio.erro()) {
+                case DESTINATARIO_INVALIDO -> "Confira se o telefone informado pode receber SMS.";
+                case DESTINATARIO_NAO_AUTORIZADO -> "O serviço de SMS não está autorizado a enviar para este número.";
+                default -> "Não foi possível enviar o SMS. Tente novamente mais tarde.";
+            };
+            throw erro(HttpStatus.BAD_GATEWAY, mensagem);
+        }
         return resultado;
     }
 

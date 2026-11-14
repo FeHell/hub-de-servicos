@@ -33,7 +33,9 @@ internal class CadastroView(context: Context, private val estado: Estado, privat
 
     private fun perfil() {
         val nome = campo(R.string.perfil_nome, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS, estado.nome, 150)
-        val telefone = campo(R.string.perfil_telefone, InputType.TYPE_CLASS_PHONE, estado.telefone, 32)
+        val telefone = campo(R.string.perfil_telefone, InputType.TYPE_CLASS_PHONE, "", 32).apply {
+            aplicarMascaraTelefone(estado.telefone)
+        }
         val situacao = when (estado.perfil?.situacaoTelefone) {
             SituacaoTelefone.VERIFICADO -> R.string.telefone_verificado
             SituacaoTelefone.PENDENTE -> R.string.telefone_pendente
@@ -47,7 +49,7 @@ internal class CadastroView(context: Context, private val estado: Estado, privat
         adicionar(feedback, 8)
 
         fun preencher(acao: () -> Unit) {
-            model.editarPerfil(nome.text.toString(), telefone.text.toString())
+            model.editarPerfil(nome.text.toString(), MascaraTelefone.nacional(telefone.text))
             esconderTeclado()
             acao()
         }

@@ -52,6 +52,16 @@ class AutenticacaoModel(private val sessao: SessaoApp, private val apiPerfil: Pe
         if (!estado.carregando) atualizar(Estado(tela, email = estado.email))
     }
 
+    fun voltar(): Boolean {
+        when (estado.tela) {
+            Tela.CADASTRO -> mudarTela(Tela.LOGIN)
+            Tela.PERFIL -> voltarHome()
+            Tela.CONFIRMACAO -> corrigirTelefone()
+            else -> return false
+        }
+        return true
+    }
+
     fun revalidarAoAbrir() {
         if (estado.tela == Tela.HOME && !estado.carregando) {
             atualizar(Estado())

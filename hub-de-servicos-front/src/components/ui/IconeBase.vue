@@ -12,6 +12,8 @@ const caminhos = {
   sair: 'M9 4H4v16h5 M13 8l4 4-4 4 M8 12h12',
   escudo: 'M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6z M8 12l3 3 5-6',
   usuario: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0 M4 21v-2a8 8 0 0 1 16 0v2',
+  telefoneAusente: 'M5 4h14v16H5z M10 16h4 M9 9h6',
+  relogio: 'M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0 M12 6v6l4 2',
   check: 'M5 12l4 4L19 6',
   cadastros: 'M3 6h7l2 3h9v11H3z M3 6V4h7l2 2h9v3',
   grafico: 'M4 4v16h16 M9 15v-4 M14 15V7 M19 15v-8',

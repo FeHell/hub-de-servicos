@@ -22,18 +22,18 @@ import static org.mockito.Mockito.when;
 class SmsServiceTest {
 
     private final ConfiguracaoSistemaRepository configuracoes = mock(ConfiguracaoSistemaRepository.class);
-    private final SmsProvider textBee = mock(SmsProvider.class);
+    private final SmsProvider infobip = mock(SmsProvider.class);
     private final SmsSendRequest pedido = new SmsSendRequest("+12025550123", "Mensagem simulada");
 
     @Test
-    void delegaTextBeePeloContratoSemConhecerImplementacao() {
-        when(configuracoes.buscarValor(SMS_PROVEDOR_ATIVO, StatusCadastro.ATIVO)).thenReturn(Optional.of("TEXTBEE"));
-        when(textBee.getProviderCode()).thenReturn("TEXTBEE");
-        var esperado = SmsSendResult.aceito("TEXTBEE", "lote");
-        when(textBee.send(pedido)).thenReturn(esperado);
+    void delegaInfobipPeloContratoSemConhecerImplementacao() {
+        when(configuracoes.buscarValor(SMS_PROVEDOR_ATIVO, StatusCadastro.ATIVO)).thenReturn(Optional.of("INFOBIP"));
+        when(infobip.getProviderCode()).thenReturn("INFOBIP");
+        var esperado = SmsSendResult.aceito("INFOBIP", "lote");
+        when(infobip.send(pedido)).thenReturn(esperado);
 
-        assertThat(servico(textBee).send(pedido)).isEqualTo(esperado);
-        verify(textBee).send(pedido);
+        assertThat(servico(infobip).send(pedido)).isEqualTo(esperado);
+        verify(infobip).send(pedido);
     }
 
     @Test
@@ -56,12 +56,12 @@ class SmsServiceTest {
 
     @Test
     void falhaInesperadaDoProvedorNaoVazaDetalhe() {
-        when(configuracoes.buscarValor(SMS_PROVEDOR_ATIVO, StatusCadastro.ATIVO)).thenReturn(Optional.of("TEXTBEE"));
-        when(textBee.getProviderCode()).thenReturn("TEXTBEE");
-        when(textBee.send(pedido)).thenThrow(new IllegalStateException("Detalhe interno"));
+        when(configuracoes.buscarValor(SMS_PROVEDOR_ATIVO, StatusCadastro.ATIVO)).thenReturn(Optional.of("INFOBIP"));
+        when(infobip.getProviderCode()).thenReturn("INFOBIP");
+        when(infobip.send(pedido)).thenThrow(new IllegalStateException("Detalhe interno"));
 
-        assertThat(servico(textBee).send(pedido))
-                .isEqualTo(SmsSendResult.falha("TEXTBEE", Erro.FALHA_DO_PROVEDOR));
+        assertThat(servico(infobip).send(pedido))
+                .isEqualTo(SmsSendResult.falha("INFOBIP", Erro.FALHA_DO_PROVEDOR));
     }
 
     private SmsService servico(SmsProvider... provedores) {

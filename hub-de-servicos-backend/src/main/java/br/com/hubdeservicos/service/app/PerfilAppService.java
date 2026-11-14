@@ -31,10 +31,7 @@ public class PerfilAppService {
     @Transactional
     public Cadastro atualizar(UUID id, AtualizarCadastro dados) {
         var usuario = bloquear(id);
-        if (dados.nome() != null) {
-            String nome = dados.nome().strip();
-            usuario.atualizarNome(nome.isEmpty() ? null : nome);
-        }
+        if (dados.nome() != null) usuario.atualizarNome(dados.nome());
         if (dados.telefone() != null) telefones.atualizar(usuario, dados.telefone());
         return Cadastro.de(usuario);
     }

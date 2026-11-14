@@ -236,6 +236,7 @@ public class AdministracaoPlataformaService {
         String hash = senhas.gerarHash(dados.senha());
         UUID administracao = bloquearAlteracoesDeUsuarios();
         var usuario = cadastroUsuarios.salvar(dados.login(), hash, dados.email(), status);
+        usuario.atualizarNome(dados.nome());
         telefones.atualizar(usuario, dados.telefone());
         registro.registrar("CRIAR_USUARIO", "usuario", null, usuario.getId());
         var codigos = dados.permissoesPlataforma() == null ? List.<String>of() : dados.permissoesPlataforma();
@@ -255,6 +256,7 @@ public class AdministracaoPlataformaService {
         var desejadas = dados.permissoesPlataforma();
         verificarUltimoAdministrador(usuario, dados.status(), atuais, desejadas == null ? atuais : desejadas);
         usuario.atualizar(dados.login().strip(), dados.email().strip(), dados.status());
+        if (dados.nome() != null) usuario.atualizarNome(dados.nome());
         if (dados.telefone() != null) telefones.atualizar(usuario, dados.telefone());
         var codigos = desejadas == null ? atuais : permissoesPlataforma.substituir(id, administracao, desejadas);
         if (desativou) {

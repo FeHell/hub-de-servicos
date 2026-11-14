@@ -147,14 +147,19 @@ A classificação de visitante ou analista fica disponível na sessão. A autori
 
 Os módulos internos usam `SmsService.send(SmsSendRequest)`. O serviço lê a configuração ativa `SMS_PROVEDOR_ATIVO` do banco a cada solicitação. O `SmsProviderResolver` reúne os beans `SmsProvider` por código único e escolhe o delegate. O resultado informa aceitação pelo provedor, identificador externo quando houver e código de erro quando aplicável. O serviço não oferece um endpoint HTTP de envio. Evite reenviar automaticamente após timeout, pois o provedor pode ter aceitado a solicitação antes de a conexão falhar.
 
-O changeset `1-configuracao-sistema` cria `configuracao_sistema` e insere a configuração inicial ativa com valor `TEXTBEE`. A tabela contém `id` UUID, `chave` única, `valor`, `descricao`, `tipo`, `status`, `data_criacao` e `data_atualizacao`. O changeset é aditivo e não define rollback que apague a tabela e suas configurações. As alterações administrativas registram operador, aplicação e valores anterior e novo na tabela `auditoria`.
+O changeset `2-configuracao-sms-infobip` troca a seleção de TextBee para Infobip no registro existente. As alterações administrativas registram operador, aplicação e valores anterior e novo na tabela `auditoria`.
 
-### Configurar o TextBee
+### Configurar a Infobip
 
-- Defina `TEXTBEE_API_KEY` no ambiente do backend. No Eclipse, configure-a na aba **Environment** da execução local. Em outros ambientes, forneça-a pelo gerenciador de segredos.
-- Defina `TEXTBEE_DEVICE_ID` se precisar usar um dispositivo específico. Sem essa variável, o TextBee seleciona o dispositivo padrão ou um dispositivo habilitado disponível na conta.
-- O envio real precisa de conta configurada e dispositivo Android com SIM e permissão de SMS. Use um destinatário autorizado, preferencialmente em formato internacional. A configuração pode ser consultada sem chave. Uma tentativa interna de envio sem chave retorna `CREDENCIAIS_AUSENTES`.
-- O adaptador usa `POST /api/v1/gateway/send-sms` com `x-api-key`. O `smsBatchId` identifica o lote quando retornado. A aceitação ou o despacho para o dispositivo emissor não confirma entrega ao destinatário. [Documentação oficial do TextBee](https://textbee.dev/docs/sending-sms/sending-sms)
+No Eclipse, abra **Run Configurations → Environment** da configuração que inicia o backend e mantenha as variáveis abaixo. Reinicie essa execução para carregar as variáveis e o novo adaptador. Variáveis da execução do Eclipse não são automaticamente exportadas para outros processos.
+
+| Variável | Valor esperado |
+| --- | --- |
+| `INFOBIP_BASE_URL` | Origem HTTPS exclusiva da conta, sem caminho |
+| `INFOBIP_API_KEY` | Chave com permissão de envio de SMS |
+| `INFOBIP_SMS_SENDER` | Remetente autorizado pela conta. O perfil `local` usa `InfoSMS` quando a variável é omitida. Nos demais perfis, configure explicitamente. |
+
+Na inicialização, procure no Console a linha `Infobip SMS`; ela distingue URL ausente ou inválida e indica a presença da chave e do remetente sem exibir valores. Use a origem HTTPS da conta, sem o caminho `/sms/3/messages` e sem aspas. O adaptador envia por `POST /sms/3/messages`, sem retry automático. O `messageId` identifica a aceitação pela Infobip. Não há webhook de entrega configurado. Para validar a entrega, confirme o recebimento no aparelho ou inspecione o relatório pelo identificador no ambiente da conta. Faça o teste com destinatário verificado e autorizado. [Guia oficial da Infobip](https://www.infobip.com/docs/developer-resources/quickstart).
 
 ### Administração
 
@@ -165,9 +170,9 @@ A tela **Configurações → Sistema** usa as rotas abaixo, protegidas pela auto
 | `GET /api/v1/admin/configuracoes` | Lista as configurações permitidas. Atualmente expõe apenas a seleção de SMS. |
 | `GET /api/v1/admin/configuracoes/sms/provedores` | Lista os provedores registrados com código e nome de exibição. |
 | `GET /api/v1/admin/configuracoes/sms/provedor-ativo` | Retorna o registro da configuração de seleção de SMS, incluindo seu status. |
-| `PUT /api/v1/admin/configuracoes/sms/provedor-ativo` | Valida o código enviado em `{"codigo":"TEXTBEE"}` e persiste a escolha. |
+| `PUT /api/v1/admin/configuracoes/sms/provedor-ativo` | Valida o código enviado em `{"codigo":"INFOBIP"}` e persiste a escolha. |
 
-Para adicionar um provedor, implemente `SmsProvider` em `sms/provider` e registre-o como bean Spring, com código exclusivo, nome de exibição e configuração externa para seus segredos. O resolver e a tela passam a listar a implementação. Após a implantação do novo bean, a escolha é efetuada no painel e vale para o envio seguinte. Nenhuma credencial faz parte dos contratos administrativos.
+Para adicionar um provedor, implemente `SmsProvider` em `provider` e registre-o como bean Spring, com código exclusivo, nome de exibição e configuração externa para seus segredos. O resolver e a tela passam a listar a implementação. Após a implantação do novo bean, a escolha é efetuada no painel e vale para o envio seguinte. Nenhuma credencial faz parte dos contratos administrativos.
 
 ## Cadastro e sessão do aplicativo
 

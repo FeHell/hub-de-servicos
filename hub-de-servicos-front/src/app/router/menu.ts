@@ -23,7 +23,7 @@ type GrupoMenu = {
 }
 
 const administrar = 'PLATAFORMA_ADMINISTRAR'
-const cadastroUsuario = () => import('@/modules/usuarios/pages/UsuarioCadastroPagina.vue')
+const cadastroUsuario = () => import('@/modules/usuarios/pages/UsuarioEdicao.vue')
 
 export const atalhosMenu: TelaMenu[] = [
   {
@@ -53,7 +53,7 @@ export const gruposMenu: GrupoMenu[] = [
         caminho: 'cadastros/usuarios',
         titulo: 'Usuários',
         icone: 'usuario',
-        componente: () => import('@/modules/usuarios/pages/UsuariosPagina.vue'),
+        componente: () => import('@/modules/usuarios/pages/UsuariosPesquisa.vue'),
         internas: [
           {
             nome: 'usuarios-novo',

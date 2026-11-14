@@ -8,3 +8,6 @@ server:
 hub:
   autenticacao:
     cookie-seguro: false
+  sms:
+    infobip:
+      remetente-padrao: InfoSMS

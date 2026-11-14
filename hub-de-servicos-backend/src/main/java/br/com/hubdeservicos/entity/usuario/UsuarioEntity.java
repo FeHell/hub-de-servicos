@@ -97,7 +97,8 @@ public class UsuarioEntity {
     }
 
     public void atualizarNome(String nome) {
-        this.nome = nome;
+        String valor = nome == null ? "" : nome.strip();
+        this.nome = valor.isEmpty() ? null : valor;
     }
 
     public void atualizarTelefone(String telefone) {

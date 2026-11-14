@@ -108,7 +108,7 @@ function aposExcluir() {
         </caption>
         <thead role="rowgroup">
           <tr role="row">
-            <th scope="col" role="columnheader">Nome do usuário</th>
+            <th scope="col" role="columnheader">Nome</th>
             <th scope="col" role="columnheader">E-mail</th>
             <th scope="col" role="columnheader">Tipo de acesso</th>
             <th scope="col" role="columnheader">Permissões</th>
@@ -121,9 +121,12 @@ function aposExcluir() {
           <tr v-for="usuario in dados.itens" :key="usuario.id" role="row">
             <th scope="row" role="rowheader" class="usuario-nome">
               <span class="usuario-avatar" aria-hidden="true">{{
-                usuario.login.slice(0, 2).toUpperCase()
+                (usuario.nome || usuario.login).slice(0, 2).toUpperCase()
               }}</span>
-              {{ usuario.login }}
+              <span
+                >{{ usuario.nome || 'Não informado'
+                }}<small class="usuario-login">{{ usuario.login }}</small></span
+              >
             </th>
             <td role="cell" data-rotulo="E-mail">{{ usuario.email }}</td>
             <td role="cell" data-rotulo="Tipo de acesso">
@@ -297,6 +300,11 @@ tr > :first-child {
 }
 tr > :last-child {
   padding-right: var(--espaco-5);
+}
+.usuario-login {
+  display: block;
+  color: var(--cor-texto-secundario);
+  font-weight: normal;
 }
 .usuario-avatar {
   display: inline-grid;

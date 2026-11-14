@@ -6,7 +6,6 @@ import CabecalhoPagina from '@/components/ui/CabecalhoPagina.vue'
 import { useAutenticacao } from '@/modules/autenticacao/stores/autenticacao'
 import { ErroApi } from '@/services/clienteHttp'
 import UsuarioFormulario from '../components/UsuarioFormulario.vue'
-import UsuarioPermissoes from '../components/UsuarioPermissoes.vue'
 import type { Usuario, UsuarioListagem } from '../contratos'
 import { useUsuariosApi } from '../services/usuariosApi'
 
@@ -123,12 +122,6 @@ async function atualizarPermissoes() {
       @cancelar="voltar"
       @salvo="salvo"
     />
-    <!-- <UsuarioPermissoes
-      v-if="usuario"
-      :key="usuario.id"
-      :usuario="usuario"
-      @alterado="atualizarPermissoes"
-    /> -->
   </div>
 </template>
 

@@ -7,6 +7,7 @@ type StatusCadastro = ValorEnum<'statusCadastro'>
 export interface Usuario {
   id: string
   login: string
+  nome?: string | null
   email: string
   status: StatusUsuario
   dataCriacao: string
@@ -45,6 +46,7 @@ export interface DashboardUsuarios {
 
 export interface NovoUsuario {
   login: string
+  nome?: string | null
   email: string
   senha: string
   status: StatusUsuario
@@ -53,7 +55,7 @@ export interface NovoUsuario {
 }
 
 export type AtualizarUsuario = Pick<Usuario, 'login' | 'email' | 'status'> &
-  Partial<Pick<NovoUsuario, 'permissoesPlataforma' | 'telefone'>>
+  Partial<Pick<NovoUsuario, 'permissoesPlataforma' | 'telefone' | 'nome'>>
 
 export const opcoesStatus = opcoesEnum('statusUsuario')
 export const opcoesTipo = opcoesEnum('tipoAcesso')

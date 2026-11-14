@@ -21,7 +21,7 @@ export const rotulosEnum = {
     USUARIO: 'Usuário',
   },
   provedorSms: {
-    TEXTBEE: 'TextBee',
+    INFOBIP: 'Infobip',
   },
   situacaoTelefone: {
     NAO_INFORMADO: 'Não informado',

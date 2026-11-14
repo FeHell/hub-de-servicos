@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+    <changeSet id="2-configuracao-sms-infobip" author="sistema">
+        <update tableName="configuracao_sistema">
+            <column name="valor" value="INFOBIP"/>
+            <column name="data_atualizacao" valueComputed="CURRENT_TIMESTAMP"/>
+            <where>chave = 'SMS_PROVEDOR_ATIVO' AND valor = 'TEXTBEE'</where>
+        </update>
+        <!-- A reversão exige restaurar o adaptador anterior e escolher o provedor explicitamente. -->
+    </changeSet>
+</databaseChangeLog>

@@ -306,6 +306,27 @@ class AdministracaoPostgresTest {
     }
 
     @Test
+    void criaListaEAtualizaNomeSemConfundirComLogin() throws Exception {
+        String login = "teste-" + UUID.randomUUID();
+        String email = login + "@example.test";
+        var criado = criar(ADMIN + "/usuarios", Map.of(
+                "login", login, "email", email, "senha", SENHA, "nome", "  Ana Cheff  "));
+        UUID id = id(criado);
+        usuarios.add(id);
+        assertThat(criado.path("nome").asText()).isEqualTo("Ana Cheff");
+        chamar(HttpMethod.GET, ADMIN + "/usuarios?login=" + login, tokenPlataforma, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.itens[0].nome").value("Ana Cheff"));
+        var rota = ADMIN + "/usuarios/" + id;
+        chamar(HttpMethod.GET, rota, tokenPlataforma, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$.nome").value("Ana Cheff"));
+        chamar(HttpMethod.PUT, rota, tokenPlataforma, Map.of(
+                "login", login, "email", email, "status", "ATIVO", "nome", "Ana Silva"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.nome").value("Ana Silva"));
+        chamar(HttpMethod.PUT, rota, tokenPlataforma, Map.of("login", login, "email", email, "status", "ATIVO"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.nome").value("Ana Silva"));
+    }
+
+    @Test
     void atribuiOsDoisPerfisDeNegocioEAdministraTelefoneSemVerificar() throws Exception {
         String empresa = "PLATAFORMA_EMPRESA";
         String trabalhador = "PLATAFORMA_TRABALHADOR";

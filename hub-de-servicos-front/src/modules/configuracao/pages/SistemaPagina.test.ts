@@ -14,8 +14,8 @@ const salvar = vi.fn()
 
 beforeEach(() => {
   vi.resetAllMocks()
-  provedores.mockResolvedValue([{ codigo: 'TEXTBEE', nome: 'TextBee' }])
-  consultar.mockResolvedValue({ valor: 'TEXTBEE', status: 'ATIVO' })
+  provedores.mockResolvedValue([{ codigo: 'INFOBIP', nome: 'Infobip' }])
+  consultar.mockResolvedValue({ valor: 'INFOBIP', status: 'ATIVO' })
   vi.mocked(useConfiguracaoApi).mockReturnValue({
     listarProvedoresSms: provedores,
     consultarProvedorSms: consultar,
@@ -28,8 +28,8 @@ describe('configuração de SMS', () => {
     const pagina = mount(SistemaPagina)
     await flushPromises()
 
-    expect(pagina.text()).toContain('Provedor ativo TextBee')
-    expect(pagina.findAll('option').map((opcao) => opcao.text())).toEqual(['TextBee'])
+    expect(pagina.text()).toContain('Provedor ativo Infobip')
+    expect(pagina.findAll('option').map((opcao) => opcao.text())).toEqual(['Infobip'])
     expect(pagina.get('button[type="submit"]').attributes('disabled')).toBeDefined()
 
     pagina.unmount()
@@ -37,7 +37,7 @@ describe('configuração de SMS', () => {
 
   it('salva a seleção da API e mostra sucesso ou erro', async () => {
     provedores.mockResolvedValue([
-      { codigo: 'TEXTBEE', nome: 'TextBee' },
+      { codigo: 'INFOBIP', nome: 'Infobip' },
       { codigo: 'SIMULADO', nome: 'Provedor simulado' },
     ])
     salvar.mockRejectedValueOnce(new ErroApi('Provedor de SMS indisponível.', 400))
@@ -50,7 +50,7 @@ describe('configuração de SMS', () => {
     await flushPromises()
 
     expect(pagina.get('[role="alert"]').text()).toBe('Provedor de SMS indisponível.')
-    expect(pagina.text()).toContain('Provedor ativo TextBee')
+    expect(pagina.text()).toContain('Provedor ativo Infobip')
     await pagina.get('form').trigger('submit')
     await flushPromises()
 
@@ -62,7 +62,7 @@ describe('configuração de SMS', () => {
   })
 
   it('indica configuração inativa e impede alteração pela tela', async () => {
-    consultar.mockResolvedValue({ valor: 'TEXTBEE', status: 'INATIVO' })
+    consultar.mockResolvedValue({ valor: 'INFOBIP', status: 'INATIVO' })
     const pagina = mount(SistemaPagina)
     await flushPromises()
 

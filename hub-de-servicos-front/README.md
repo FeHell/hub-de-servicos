@@ -64,3 +64,5 @@ Os testes automatizados usam respostas controladas da API e não acessam o Postg
 ## Padrões de manutenção
 
 Adicione funcionalidades em seus módulos e reutilize os componentes existentes. Cadastre rótulos de enums em `src/shared/traducoes/enums.ts`. Use `traduzirEnum` para exibição, `opcoesEnum` para opções e mantenha os valores originais nos filtros e na API. Passe o nome do catálogo quando disponível para permissões dinâmicas. Centralize novos padrões visuais nos tokens. Preserve a tipagem das requisições, o comportamento de teclado, os estados de carregamento e a adaptação a telas pequenas. Novas rotas devem validar o acesso e usar a autorização aplicada pelo backend.
+
+Páginas de pesquisa usam o sufixo `Pesquisa` e páginas de criação/edição usam `Edicao`, tanto no nome do componente quanto no arquivo. Exemplos: `UsuariosPesquisa.vue` e `UsuarioEdicao.vue`.

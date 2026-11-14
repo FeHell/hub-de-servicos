@@ -4,7 +4,10 @@ import android.animation.ValueAnimator
 import android.app.Activity
 import android.app.AlertDialog
 import android.graphics.Typeface
+import android.os.Build
 import android.os.Bundle
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
@@ -26,6 +29,7 @@ class MainActivity : Activity() {
     private lateinit var conteudo: LinearLayout
     private lateinit var scroll: ScrollView
     private var ultimaTela: Tela? = null
+    private var callbackVoltar: OnBackInvokedCallback? = null
     private var confirmacaoSaida: AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,7 +77,26 @@ class MainActivity : Activity() {
         model.observar(::renderizar)
     }
 
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        if (!model.voltar()) super.onBackPressed()
+    }
+
+    private fun atualizarBotaoVoltar(tela: Tela?) {
+        if (Build.VERSION.SDK_INT < 33) return
+        val secundaria = tela == Tela.CADASTRO || tela == Tela.PERFIL || tela == Tela.CONFIRMACAO
+        if (secundaria && callbackVoltar == null) {
+            val callback = OnBackInvokedCallback { model.voltar() }
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, callback)
+            callbackVoltar = callback
+        } else if (!secundaria) {
+            callbackVoltar?.let(onBackInvokedDispatcher::unregisterOnBackInvokedCallback)
+            callbackVoltar = null
+        }
+    }
+
     override fun onStop() {
+        atualizarBotaoVoltar(null)
         confirmacaoSaida?.dismiss()
         model.observar(null)
         ultimaTela = null
@@ -86,6 +109,7 @@ class MainActivity : Activity() {
         val mudouTela = anterior != estado.tela
         val animar = anterior != null && mudouTela && estado.tela != Tela.RESTAURAR
         ultimaTela = estado.tela
+        atualizarBotaoVoltar(estado.tela)
         conteudo.removeAllViews()
         if (mudouTela) scroll.scrollTo(0, 0)
         when (estado.tela) {

@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import BotaoBase from '@/components/ui/BotaoBase.vue'
 import CampoSelecao from '@/components/ui/CampoSelecao.vue'
+import IconeBase from '@/components/ui/IconeBase.vue'
 import CampoTexto from '@/components/ui/CampoTexto.vue'
 import DialogoBase from '@/components/ui/DialogoBase.vue'
 import SelecaoPermissoesPlataforma from './SelecaoPermissoesPlataforma.vue'
@@ -16,12 +17,21 @@ const props = defineProps<{ usuario?: UsuarioListagem; contaPropria?: boolean }>
 const emit = defineEmits<{ cancelar: []; salvo: [Usuario] }>()
 const api = useUsuariosApi()
 const login = ref(props.usuario?.login ?? '')
+const nome = ref(props.usuario?.nome ?? '')
 const email = ref(props.usuario?.email ?? '')
 const status = ref<StatusUsuario>(props.usuario?.status ?? 'ATIVO')
 const senha = ref('')
 const telefone = ref(mascararTelefone(props.usuario?.telefone ?? ''))
 const situacaoTelefone = ref(props.usuario?.situacaoTelefone)
 const erroTelefone = ref('')
+const iconesTelefone = {
+  NAO_INFORMADO: 'telefoneAusente',
+  PENDENTE: 'relogio',
+  VERIFICADO: 'check',
+} as const
+const rotuloTelefone = computed(() =>
+  situacaoTelefone.value ? traduzirEnum('situacaoTelefone', situacaoTelefone.value) : '',
+)
 function editarTelefone(valor: string) {
   telefone.value = mascararTelefone(valor)
   erroTelefone.value = ''
@@ -33,6 +43,7 @@ const confirmandoSaida = ref(false)
 let resolverSaida: ((descartar: boolean) => void) | undefined
 const campos = computed(() => ({
   login: login.value,
+  nome: nome.value,
   email: email.value,
   status: status.value,
   telefone: telefone.value,
@@ -46,6 +57,7 @@ const permissoesAlteradas = computed(
 const alterado = computed(
   () =>
     login.value !== original.value.login ||
+    nome.value !== original.value.nome ||
     email.value !== original.value.email ||
     status.value !== original.value.status ||
     telefone.value !== original.value.telefone ||
@@ -111,6 +123,7 @@ async function salvar() {
     usuario = props.usuario
       ? await api.atualizar(props.usuario.id, {
           ...dados,
+          ...(nome.value !== original.value.nome && { nome: nome.value.trim() }),
           ...(telefone.value !== original.value.telefone && { telefone: numero }),
           ...(permissoesAlteradas.value && {
             permissoesPlataforma: campos.value.permissoesPlataforma,
@@ -119,6 +132,7 @@ async function salvar() {
       : await api.criar({
           ...dados,
           senha: senha.value,
+          ...(nome.value.trim() && { nome: nome.value.trim() }),
           ...(numero && { telefone: numero }),
           permissoesPlataforma: campos.value.permissoesPlataforma,
         })
@@ -132,6 +146,7 @@ async function salvar() {
   } finally {
     salvando.value = false
   }
+  nome.value = usuario.nome ?? ''
   login.value = usuario.login
   email.value = usuario.email
   status.value = usuario.status
@@ -155,6 +170,14 @@ async function salvar() {
     <p v-if="erro" class="formulario__erro" role="alert">{{ erro }}</p>
     <div class="formulario__campos">
       <CampoTexto
+        id="usuario-form-nome"
+        v-model="nome"
+        rotulo="Nome"
+        maxlength="150"
+        autocomplete="name"
+        :disabled="salvando"
+      />
+      <!-- <CampoTexto
         id="usuario-form-login"
         v-model="login"
         rotulo="Nome de usuário"
@@ -162,7 +185,7 @@ async function salvar() {
         autocomplete="off"
         required
         :disabled="salvando"
-      />
+      /> -->
       <CampoTexto
         id="usuario-form-email"
         v-model="email"
@@ -173,23 +196,26 @@ async function salvar() {
         required
         :disabled="salvando"
       />
-      <div class="tipo-acesso">
-        <CampoTexto
-          id="usuario-form-telefone"
-          :model-value="telefone"
-          :erro="erroTelefone"
-          rotulo="Telefone"
-          inputmode="tel"
-          autocomplete="tel"
-          maxlength="32"
-          placeholder="(34) 99999-9999"
-          :disabled="salvando"
-          @update:model-value="editarTelefone"
-        />
-        <span v-if="situacaoTelefone" role="status">
-          {{ traduzirEnum('situacaoTelefone', situacaoTelefone) }}
-        </span>
-      </div>
+      <CampoTexto
+        id="usuario-form-telefone"
+        :model-value="telefone"
+        :erro="erroTelefone"
+        rotulo="Telefone"
+        inputmode="tel"
+        autocomplete="tel"
+        maxlength="32"
+        placeholder="(34) 99999-9999"
+        :disabled="salvando"
+        :descricao="rotuloTelefone ? 'estado-telefone' : undefined"
+        @update:model-value="editarTelefone"
+      >
+        <template v-if="situacaoTelefone" #acao>
+          <span id="estado-telefone" class="telefone-status" :title="rotuloTelefone">
+            <IconeBase :nome="iconesTelefone[situacaoTelefone]" :tamanho="18" />
+            <span class="somente-leitor">{{ rotuloTelefone }}</span>
+          </span>
+        </template>
+      </CampoTexto>
       <CampoSelecao
         id="usuario-form-status"
         v-model="status"
@@ -256,6 +282,11 @@ async function salvar() {
 }
 .formulario__erro {
   color: var(--cor-erro);
+}
+.telefone-status {
+  display: inline-flex;
+  align-items: center;
+  color: var(--cor-texto-secundario);
 }
 .tipo-acesso {
   display: grid;
