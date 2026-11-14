@@ -1,5 +1,6 @@
 package br.com.hubdeservicos.android.auth
 
+import java.math.BigDecimal
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.util.UUID
@@ -103,8 +104,24 @@ class ApiAutenticacaoTest {
             sessao.autenticado { api.confirmarTelefone(it, UUID.randomUUID().toString(), "000000") }
         }.status)
         assertEquals(SituacaoTelefone.PENDENTE, sessao.autenticado(::perfil).situacaoTelefone)
+        sessao.autenticado { api.selecionarPapel(it, PapelUsuario.EMPRESA, true) }
+        val perfis = sessao.autenticado { api.selecionarPapel(it, PapelUsuario.TRABALHADOR, true) }
+        assertEquals(setOf(PapelUsuario.EMPRESA, PapelUsuario.TRABALHADOR), perfis.papeis)
+        sessao.autenticado { api.atualizarCadastro(it, "Ana Teste", telefone, Remuneracao(BigDecimal("25.15"))) }
+        val municipio = sessao.autenticado { api.registrarMunicipio(it, "Uberaba", "Minas Gerais") }
+        assertEquals(Municipio(3170107, "Uberaba", "MG"), municipio.municipio)
+        assertEquals(BigDecimal("25.15"), municipio.remuneracao.valorHora)
+        assertEquals(422, assertThrows(FalhaApi::class.java) {
+            sessao.autenticado { api.registrarMunicipio(it, "Inexistente", "MG") }
+        }.status)
+        sessao.autenticado { api.selecionarPapel(it, PapelUsuario.EMPRESA, false) }
+        val limpo = sessao.autenticado { api.atualizarCadastro(it, "Ana Teste", telefone, Remuneracao()) }
+        assertEquals(Remuneracao(), limpo.remuneracao)
+        assertEquals(setOf(PapelUsuario.TRABALHADOR), limpo.papeis)
         val sessaoRestaurada = SessaoApp(api, armazenamento)
         assertEquals(criado, sessaoRestaurada.restaurar())
+        assertEquals(Municipio(3170107, "Uberaba", "MG"), sessaoRestaurada.autenticado(::perfil).municipio)
+        assertEquals(setOf(PapelUsuario.TRABALHADOR), sessaoRestaurada.autenticado(::perfil).papeis)
         sessaoRestaurada.sair()
         assertEquals(null, SessaoApp(api, armazenamento).restaurar())
     }

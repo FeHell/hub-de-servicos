@@ -26,6 +26,10 @@ import br.com.hubdeservicos.android.R
 
 class MainActivity : Activity() {
     private val model by lazy { (application as HubApplication).autenticacao }
+    private lateinit var localizacao: LocalizacaoHome
+    private var situacaoLocalizacao: LocalizacaoUi = LocalizacaoUi.SemPermissao
+    private var estadoExibido: Estado? = null
+    private var visivel = false
     private lateinit var conteudo: LinearLayout
     private lateinit var scroll: ScrollView
     private var ultimaTela: Tela? = null
@@ -34,6 +38,10 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        localizacao = LocalizacaoHome(this, model) { situacao ->
+            situacaoLocalizacao = situacao
+            estadoExibido?.takeIf { visivel && it.tela == Tela.HOME }?.let(::renderizar)
+        }
         scroll = ScrollView(this).apply {
             isFillViewport = true
             setBackgroundColor(getColor(R.color.gastro_fundo))
@@ -73,6 +81,7 @@ class MainActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
+        visivel = true
         model.revalidarAoAbrir()
         model.observar(::renderizar)
     }
@@ -95,7 +104,20 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LocalizacaoHome.PEDIDO_PERMISSAO) localizacao.resultadoPermissao()
+    }
+
+    override fun onDestroy() {
+        localizacao.fechar()
+        super.onDestroy()
+    }
+
     override fun onStop() {
+        visivel = false
+        localizacao.parar()
+        estadoExibido = null
         atualizarBotaoVoltar(null)
         confirmacaoSaida?.dismiss()
         model.observar(null)
@@ -105,6 +127,8 @@ class MainActivity : Activity() {
     }
 
     private fun renderizar(estado: Estado) {
+        estadoExibido = estado
+        if (estado.tela == Tela.LOGIN || estado.tela == Tela.CADASTRO) localizacao.encerrarSessao()
         val anterior = ultimaTela
         val mudouTela = anterior != estado.tela
         val animar = anterior != null && mudouTela && estado.tela != Tela.RESTAURAR
@@ -118,7 +142,11 @@ class MainActivity : Activity() {
             Tela.HOME -> {
                 val usuario = requireNotNull(estado.usuario)
                 conteudo.adicionar(marca())
-                conteudo.adicionar(HomeView(this, usuario, estado, model::abrirPerfil, ::confirmarSaida), 22)
+                conteudo.adicionar(HomeView(this, usuario, estado, model::abrirPerfil, ::confirmarSaida,
+                    model::selecionarPapel, situacaoLocalizacao, localizacao.rotuloAcao(), localizacao::atualizar), 22)
+                if (mudouTela) conteudo.post {
+                    if (visivel && ultimaTela == Tela.HOME) localizacao.exibir(usuario.id)
+                }
             }
             Tela.PERFIL, Tela.CONFIRMACAO -> {
                 conteudo.adicionar(marca())

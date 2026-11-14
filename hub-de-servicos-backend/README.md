@@ -218,3 +218,18 @@ TESTE_PERSISTENCIA_POSTGRES=true TESTE_AUTENTICACAO_POSTGRES=true \
 ```
 
 `TESTE_POSTGRES_SCHEMA` permite indicar um schema de teste já migrado. O padrão é `public`. As suítes gravam registros temporários e a sequência de auditoria pode avançar. Elas verificam persistência, autenticação, renovação concorrente, logout, isolamento e operações administrativas.
+
+## Preferências cadastrais do aplicativo
+
+As rotas abaixo exigem sessão do aplicativo. O usuário é identificado pela sessão.
+
+| Rota | Comportamento |
+| --- | --- |
+| `GET /api/v1/app/perfil` | Inclui papéis selecionados, remuneração pretendida e último município identificado. |
+| `PUT /api/v1/app/perfil` | Aceita `remuneracao` com `valorHora` e `valorDiaria`, decimais em reais enviados como texto no formato `"25.00"`. A omissão do objeto preserva os valores e campos vazios no objeto removem os respectivos valores. A edição exige o papel Trabalhador selecionado. |
+| `PUT /api/v1/app/perfil/papeis/{papel}` | `papel` aceita `EMPRESA` ou `TRABALHADOR`. Envie `{"selecionado":true}` ou `{"selecionado":false}`. Os papéis são independentes e expressam preferências, sem conceder permissões. |
+| `PUT /api/v1/app/perfil/localizacao` | Recebe `cidade` e `estado` (UF ou nome), identifica o município no catálogo e registra o código IBGE e o instante da observação. Retorna HTTP 422 sem aceitar texto livre quando o município é desconhecido. |
+
+O catálogo versionado `municipios-ibge.csv` foi extraído da [API de Localidades do IBGE](https://servicodados.ibge.gov.br/api/v1/localidades/municipios) em 14/11/2026. Use um novo changeset para futuras atualizações do catálogo. A API recebe os nomes já resolvidos no Android e não armazena coordenadas.
+
+Consulte o [planejamento de notificações push](docs/planejamento-notificacoes-push.md).

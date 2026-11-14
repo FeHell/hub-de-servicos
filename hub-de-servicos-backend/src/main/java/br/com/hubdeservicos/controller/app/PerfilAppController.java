@@ -10,12 +10,16 @@ import br.com.hubdeservicos.service.app.ConfirmacaoTelefoneService;
 import br.com.hubdeservicos.service.app.PerfilAppService;
 import br.com.hubdeservicos.service.autenticacao.AutenticacaoService;
 import br.com.hubdeservicos.service.autenticacao.IdentidadeJwt;
+import br.com.hubdeservicos.dto.app.ContratosPerfilApp.IdentificarMunicipio;
+import br.com.hubdeservicos.dto.app.ContratosPerfilApp.SelecionarPapel;
+import br.com.hubdeservicos.entity.usuario.PapelUsuario;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,6 +30,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(PerfilAppController.ROTA)
 public class PerfilAppController {
     public static final String ROTA = "/api/v1/app/perfil";
+
+    public static final String PAPEIS = "/papeis/{papel}";
+    public static final String LOCALIZACAO = "/localizacao";
 
     private final AutenticacaoService autenticacao;
     private final PerfilAppService perfil;
@@ -47,6 +54,19 @@ public class PerfilAppController {
     public ResponseEntity<Cadastro> atualizar(@AuthenticationPrincipal IdentidadeJwt identidade,
                                             @Valid @RequestBody AtualizarCadastro dados) {
         return resposta(perfil.atualizar(usuario(identidade), dados));
+    }
+
+    @PutMapping(PAPEIS)
+    public ResponseEntity<Cadastro> selecionarPapel(@AuthenticationPrincipal IdentidadeJwt identidade,
+                                                  @PathVariable PapelUsuario papel,
+                                                  @Valid @RequestBody SelecionarPapel dados) {
+        return resposta(perfil.selecionarPapel(usuario(identidade), papel, dados.selecionado()));
+    }
+
+    @PutMapping(LOCALIZACAO)
+    public ResponseEntity<Cadastro> registrarMunicipio(@AuthenticationPrincipal IdentidadeJwt identidade,
+                                                     @Valid @RequestBody IdentificarMunicipio dados) {
+        return resposta(perfil.registrarMunicipio(usuario(identidade), dados));
     }
 
     @PostMapping("/telefone/confirmacao")

@@ -87,8 +87,14 @@ class PerfilAppPostgresTest {
         enviar(post(SMS + "/validar"), conta, smsEnviado.resposta(smsEnviado.codigo())).andExpect(status().isConflict());
         enviar(put(ROTA), conta, Map.of("telefone", "+55 " + numero))
                 .andExpect(jsonPath("$.situacaoTelefone").value("VERIFICADO"));
-        enviar(put(ROTA), conta, Map.of("telefone", telefone()))
+        String novoNumero = telefone();
+        enviar(put(ROTA), conta, Map.of("telefone", novoNumero))
                 .andExpect(jsonPath("$.situacaoTelefone").value("PENDENTE"));
+        enviar(get(ROTA), renovar(conta), null).andExpect(jsonPath("$.situacaoTelefone").value("PENDENTE"));
+        when(relogio.instant()).thenReturn(AGORA.plusSeconds(70));
+        var novoEnvio = iniciar(conta, novoNumero);
+        enviar(post(SMS + "/validar"), conta, novoEnvio.resposta(novoEnvio.codigo()))
+                .andExpect(jsonPath("$.situacaoTelefone").value("VERIFICADO"));
         enviar(put(ROTA), conta, Map.of("telefone", ""))
                 .andExpect(jsonPath("$.situacaoTelefone").value("NAO_INFORMADO"));
         enviar(get(ROTA), outra, null).andExpect(jsonPath("$.nome").doesNotExist());
@@ -145,6 +151,72 @@ class PerfilAppPostgresTest {
         }
         assertThat(jdbc.queryForObject("select count(*) from usuario where telefone = ?", Long.class, "+55" + numero))
                 .isEqualTo(1L);
+    }
+
+    @Test
+    void papeisIndependentesERecuperadosSemConcederPermissoes() throws Exception {
+        var conta = conta();
+        var outra = conta();
+        String rota = ROTA + "/papeis/";
+        enviar(put(rota + "EMPRESA"), null, Map.of("selecionado", true)).andExpect(status().isUnauthorized());
+        enviar(put(rota + "EMPRESA"), conta, Map.of()).andExpect(status().isBadRequest());
+        enviar(put(rota + "EMPRESA"), conta, Map.of("selecionado", true, "id", outra.id()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.papeis[0]").value("EMPRESA"));
+        enviar(put(rota + "TRABALHADOR"), conta, Map.of("selecionado", true)).andExpect(status().isOk());
+        enviar(get(ROTA), renovar(conta), null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.papeis.length()").value(2));
+        enviar(get(ROTA), outra, null).andExpect(jsonPath("$.papeis").isEmpty());
+        assertThat(jdbc.queryForObject("select count(*) from usuario_permissao_plataforma where id_usuario = ?",
+                Long.class, java.util.UUID.fromString(conta.id()))).isZero();
+        enviar(put(rota + "EMPRESA"), conta, Map.of("selecionado", false)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.papeis[0]").value("TRABALHADOR"));
+        enviar(put(rota + "TRABALHADOR"), conta, Map.of("selecionado", false)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.papeis").isEmpty());
+    }
+
+    @Test
+    void remuneracaoOpcionalExataEPreservadaAoDesmarcarPapel() throws Exception {
+        var conta = conta();
+        enviar(put(ROTA), conta, Map.of("remuneracao", Map.of("valorHora", 25))).andExpect(status().isConflict());
+        String papel = ROTA + "/papeis/TRABALHADOR";
+        enviar(put(papel), conta, Map.of("selecionado", true)).andExpect(status().isOk());
+        enviar(put(ROTA), conta, Map.of("remuneracao", Map.of("valorHora", "25.00"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.remuneracao.valorHora").value("25.00"))
+                .andExpect(jsonPath("$.remuneracao.valorDiaria").doesNotExist());
+        enviar(put(ROTA), conta, Map.of("remuneracao", Map.of("valorDiaria", "180.72"))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.remuneracao.valorHora").doesNotExist())
+                .andExpect(jsonPath("$.remuneracao.valorDiaria").value("180.72"));
+        enviar(put(ROTA), conta, Map.of("remuneracao", Map.of("valorHora", "0.00", "valorDiaria", "9999999999.99")))
+                .andExpect(status().isOk());
+        for (String invalido : java.util.List.of("-0.01", "25.001", "10000000000.00", "abc")) {
+            enviar(put(ROTA), conta, Map.of("remuneracao", Map.of("valorHora", invalido))).andExpect(status().isBadRequest());
+        }
+        enviar(put(papel), conta, Map.of("selecionado", false)).andExpect(status().isOk());
+        enviar(put(ROTA), conta, Map.of("nome", "Nome atualizado")).andExpect(status().isOk());
+        enviar(get(ROTA), renovar(conta), null).andExpect(jsonPath("$.remuneracao.valorHora").value("0.00"))
+                .andExpect(jsonPath("$.remuneracao.valorDiaria").value("9999999999.99"));
+        enviar(put(papel), conta, Map.of("selecionado", true)).andExpect(status().isOk());
+        enviar(put(ROTA), conta, Map.of("remuneracao", Map.of())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.remuneracao.valorHora").doesNotExist())
+                .andExpect(jsonPath("$.remuneracao.valorDiaria").doesNotExist());
+    }
+
+    @Test
+    void salvaSomenteMunicipioCanonicoEAtualizaQuandoMuda() throws Exception {
+        var conta = conta();
+        var outra = conta();
+        String rota = ROTA + "/localizacao";
+        var uberaba = Map.of("cidade", " Uberaba ", "estado", "minas gerais", "id", outra.id());
+        enviar(put(rota), null, uberaba).andExpect(status().isUnauthorized());
+        enviar(put(rota), conta, uberaba).andExpect(status().isOk())
+                .andExpect(jsonPath("$.municipio.codigoIbge").value(3170107))
+                .andExpect(jsonPath("$.municipio.uf").value("MG"));
+        enviar(put(rota), conta, Map.of("cidade", "Sao Paulo", "estado", "SP")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.municipio.nome").value("São Paulo"));
+        enviar(put(rota), conta, Map.of("cidade", "Cidade inexistente", "estado", "SP"))
+                .andExpect(status().isUnprocessableEntity());
+        enviar(get(ROTA), renovar(conta), null).andExpect(jsonPath("$.municipio.codigoIbge").value(3550308));
+        enviar(get(ROTA), outra, null).andExpect(jsonPath("$.municipio").doesNotExist());
     }
 
     private int atualizarConcorrente(Conta conta, String numero, CyclicBarrier barreira) throws Exception {

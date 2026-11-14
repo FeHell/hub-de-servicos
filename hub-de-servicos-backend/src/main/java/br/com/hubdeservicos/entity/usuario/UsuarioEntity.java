@@ -5,10 +5,14 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -49,6 +53,25 @@ public class UsuarioEntity {
 
     @Column(name = "telefone_verificado_em")
     private Instant telefoneVerificadoEm;
+
+    @Column(name = "papel_empresa", nullable = false)
+    private boolean papelEmpresa;
+
+    @Column(name = "papel_trabalhador", nullable = false)
+    private boolean papelTrabalhador;
+
+    @Column(name = "valor_hora", precision = 12, scale = 2)
+    private BigDecimal valorHora;
+
+    @Column(name = "valor_diaria", precision = 12, scale = 2)
+    private BigDecimal valorDiaria;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "codigo_municipio_atual")
+    private MunicipioEntity municipioAtual;
+
+    @Column(name = "municipio_observado_em")
+    private Instant municipioObservadoEm;
 
     protected UsuarioEntity() {
     }
@@ -94,6 +117,30 @@ public class UsuarioEntity {
 
     public Instant getTelefoneVerificadoEm() {
         return telefoneVerificadoEm;
+    }
+
+    public boolean isPapelEmpresa() { return papelEmpresa; }
+    public boolean isPapelTrabalhador() { return papelTrabalhador; }
+    public BigDecimal getValorHora() { return valorHora; }
+    public BigDecimal getValorDiaria() { return valorDiaria; }
+    public MunicipioEntity getMunicipioAtual() { return municipioAtual; }
+    public Instant getMunicipioObservadoEm() { return municipioObservadoEm; }
+
+    public void atualizarPapel(PapelUsuario papel, boolean selecionado) {
+        switch (papel) {
+            case EMPRESA -> papelEmpresa = selecionado;
+            case TRABALHADOR -> papelTrabalhador = selecionado;
+        }
+    }
+
+    public void atualizarRemuneracao(BigDecimal hora, BigDecimal diaria) {
+        this.valorHora = hora;
+        this.valorDiaria = diaria;
+    }
+
+    public void atualizarMunicipio(MunicipioEntity municipio, Instant observadoEm) {
+        this.municipioAtual = Objects.requireNonNull(municipio);
+        this.municipioObservadoEm = Objects.requireNonNull(observadoEm);
     }
 
     public void atualizarNome(String nome) {

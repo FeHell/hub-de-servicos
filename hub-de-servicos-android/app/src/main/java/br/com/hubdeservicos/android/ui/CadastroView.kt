@@ -2,15 +2,21 @@ package br.com.hubdeservicos.android.ui
 
 import android.content.Context
 import android.graphics.Typeface
+import android.text.Editable
+import android.text.TextWatcher
 import android.text.InputFilter
 import android.text.InputType
+import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import br.com.hubdeservicos.android.R
+import br.com.hubdeservicos.android.auth.PapelUsuario
+import br.com.hubdeservicos.android.auth.Remuneracao
 import br.com.hubdeservicos.android.auth.SituacaoTelefone
 
 internal class CadastroView(context: Context, private val estado: Estado, private val model: AutenticacaoModel) :
@@ -36,34 +42,72 @@ internal class CadastroView(context: Context, private val estado: Estado, privat
         val telefone = campo(R.string.perfil_telefone, InputType.TYPE_CLASS_PHONE, "", 32).apply {
             aplicarMascaraTelefone(estado.telefone)
         }
-        val situacao = when (estado.perfil?.situacaoTelefone) {
-            SituacaoTelefone.VERIFICADO -> R.string.telefone_verificado
-            SituacaoTelefone.PENDENTE -> R.string.telefone_pendente
-            else -> R.string.telefone_ausente
-        }
-        mensagem(context.getString(situacao), R.color.gastro_texto_suave)
-        val feedback = context.texto("", 14, R.color.gastro_erro).apply {
-            visibility = View.GONE
+        val icone = ImageView(context).apply { importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }
+        val rotulo = context.texto("", 15, R.color.gastro_texto_suave, Typeface.DEFAULT_BOLD).apply {
             accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         }
-        adicionar(feedback, 8)
+        adicionar(LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(icone, LayoutParams(context.dp(20), context.dp(20)))
+            addView(rotulo, LayoutParams(0, -2, 1f).apply { marginStart = context.dp(8) })
+        }, 10)
+        val orientacao = context.texto(context.getString(R.string.telefone_orientacao), 14, R.color.gastro_texto_suave)
+        adicionar(orientacao, 6)
+
+        val temRemuneracao = estado.perfil?.papeis?.contains(PapelUsuario.TRABALHADOR) == true
+        val hora = if (temRemuneracao) {
+            adicionar(context.texto(context.getString(R.string.remuneracao_titulo), 18, R.color.gastro_oliva,
+                Typeface.DEFAULT_BOLD).apply { isAccessibilityHeading = true }, 20)
+            campo(R.string.remuneracao_hora, InputType.TYPE_CLASS_NUMBER, "", 40).apply {
+                aplicarMascaraMoeda(estado.remuneracao?.valorHora)
+            }
+        } else null
+        val diaria = if (temRemuneracao) campo(R.string.remuneracao_diaria, InputType.TYPE_CLASS_NUMBER, "", 40).apply {
+            aplicarMascaraMoeda(estado.remuneracao?.valorDiaria)
+        } else null
 
         fun preencher(acao: () -> Unit) {
-            model.editarPerfil(nome.text.toString(), MascaraTelefone.nacional(telefone.text))
+            if (telefone.text.isNotBlank() && !EstadoTelefone.valido(telefone.text)) {
+                telefone.error = context.getString(R.string.telefone_invalido)
+                telefone.requestFocus()
+                return
+            }
+            val remuneracao = if (hora != null && diaria != null) {
+                Remuneracao(MascaraMoeda.valor(hora.text), MascaraMoeda.valor(diaria.text))
+            } else null
+            model.editarPerfil(nome.text.toString(), MascaraTelefone.nacional(telefone.text), remuneracao)
             esconderTeclado()
             acao()
         }
 
         adicionar(context.botaoCadastro(R.string.perfil_salvar, habilitado) { preencher(model::salvarPerfil) }, 18)
-        if (estado.perfil?.situacaoTelefone != SituacaoTelefone.VERIFICADO) {
-            adicionar(context.botaoCadastro(R.string.sms_iniciar, habilitado, false) {
-                if (telefone.text.isBlank()) {
-                    feedback.text = context.getString(R.string.pendencia_telefone)
-                    feedback.visibility = View.VISIBLE
-                    telefone.requestFocus()
-                } else preencher(model::iniciarConfirmacao)
-            }, 8)
+        val verificar = context.botaoCadastro(R.string.sms_iniciar, habilitado, false) {
+            preencher(model::iniciarConfirmacao)
         }
+        adicionar(verificar, 8)
+
+        fun atualizarTelefone() {
+            val atual = EstadoTelefone.apresentar(telefone.text, estado.perfil?.telefone, estado.perfil?.situacaoTelefone)
+            val verificado = atual == SituacaoTelefone.VERIFICADO
+            icone.setImageResource(if (verificado) R.drawable.gastro_check else R.drawable.gastro_alerta)
+            val cor = context.getColor(if (verificado) R.color.gastro_oliva else R.color.gastro_erro)
+            icone.setColorFilter(cor)
+            rotulo.setTextColor(cor)
+            rotulo.setText(when (atual) {
+                SituacaoTelefone.VERIFICADO -> R.string.telefone_verificado
+                SituacaoTelefone.PENDENTE -> R.string.telefone_pendente
+                SituacaoTelefone.NAO_INFORMADO -> R.string.telefone_ausente
+            })
+            orientacao.visibility = if (atual == SituacaoTelefone.NAO_INFORMADO) View.VISIBLE else View.GONE
+            verificar.visibility = if (!verificado && EstadoTelefone.valido(telefone.text)) View.VISIBLE else View.GONE
+        }
+        atualizarTelefone()
+        telefone.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable) = atualizarTelefone()
+        })
         adicionar(context.botaoCadastro(R.string.perfil_voltar, habilitado, false, model::voltarHome), 8)
     }
 

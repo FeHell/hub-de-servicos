@@ -20,3 +20,5 @@ Para um aparelho conectado por USB com depuração habilitada, use `adb reverse 
 ```
 
 APK gerado em `app/build/outputs/apk/debug/app-debug.apk`. Os testes JVM cobrem as chamadas HTTP e a restauração, rotação e revogação de sessão. O teste real de integração é opcional. Defina `HUB_ANDROID_API_TESTE` com a origem de uma instância dedicada a testes antes de executar `testDebugUnitTest`. Ele cria uma conta de teste e valida o fluxo completo com o backend.
+
+A Home oferece seleção independente de Empresa e Trabalhador e mostra o município quando a localização aproximada é autorizada. O app identifica município e UF com o geocoder do Android e envia apenas esses nomes ao backend, que resolve o código do IBGE e o horário da observação. É possível atualizar a cidade na Home, e o acesso ao app continua disponível sem permissão. Use o backend com as migrations de preferências cadastrais aplicadas para testar a persistência dos papéis, da remuneração e do município.

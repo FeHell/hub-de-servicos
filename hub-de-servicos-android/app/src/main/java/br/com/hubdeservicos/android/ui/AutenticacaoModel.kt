@@ -6,6 +6,9 @@ import br.com.hubdeservicos.android.R
 import br.com.hubdeservicos.android.auth.CadastroUsuario
 import br.com.hubdeservicos.android.auth.DesafioTelefone
 import br.com.hubdeservicos.android.auth.PerfilApi
+import br.com.hubdeservicos.android.auth.Municipio
+import br.com.hubdeservicos.android.auth.PapelUsuario
+import br.com.hubdeservicos.android.auth.Remuneracao
 import br.com.hubdeservicos.android.auth.FalhaApi
 import br.com.hubdeservicos.android.auth.SessaoApp
 import br.com.hubdeservicos.android.auth.Usuario
@@ -26,6 +29,7 @@ data class Estado(
     val perfil: CadastroUsuario? = null,
     val nome: String = "",
     val telefone: String = "",
+    val remuneracao: Remuneracao? = null,
     val desafio: DesafioTelefone? = null
 )
 
@@ -95,8 +99,24 @@ class AutenticacaoModel(private val sessao: SessaoApp, private val apiPerfil: Pe
         estadoComPerfil(Tela.PERFIL, atual)
     }
 
-    fun editarPerfil(nome: String, telefone: String) {
-        estado = estado.copy(nome = nome, telefone = telefone)
+    fun editarPerfil(nome: String, telefone: String, remuneracao: Remuneracao?) {
+        estado = estado.copy(nome = nome, telefone = telefone, remuneracao = remuneracao)
+    }
+
+    fun selecionarPapel(papel: PapelUsuario, selecionado: Boolean) = executar(cadastral = true) {
+        val atual = sessao.autenticado { apiPerfil.selecionarPapel(it, papel, selecionado) }
+        estadoComPerfil(Tela.HOME, atual)
+    }
+
+    internal fun registrarMunicipio(idUsuario: String, cidade: String, uf: String, receber: (Municipio?) -> Unit) {
+        fila.execute {
+            val municipio = runCatching {
+                if (sessao.restaurar()?.id == idUsuario) {
+                    sessao.autenticado { apiPerfil.registrarMunicipio(it, cidade, uf).municipio }
+                } else null
+            }.getOrNull()
+            principal.post { if (estado.usuario?.id == idUsuario) receber(municipio) }
+        }
     }
 
     fun voltarHome() = executar(cadastral = true) {
@@ -114,30 +134,50 @@ class AutenticacaoModel(private val sessao: SessaoApp, private val apiPerfil: Pe
     }
 
     fun iniciarConfirmacao() = executar(cadastral = true) {
-        val resultado = sessao.autenticado { apiPerfil.iniciarConfirmacao(it, estado.telefone.trim()) }
-        estadoComPerfil(Tela.CONFIRMACAO, resultado.cadastro).copy(desafio = resultado, nome = estado.nome)
+        try {
+            val resultado = sessao.autenticado { apiPerfil.iniciarConfirmacao(it, estado.telefone.trim()) }
+            estadoComPerfil(Tela.CONFIRMACAO, resultado.cadastro)
+                .copy(desafio = resultado, nome = estado.nome, remuneracao = estado.remuneracao)
+        } catch (falha: FalhaApi) {
+            if (falha.status != 502) throw falha
+            // O backend pode ter persistido o novo telefone antes da falha do provedor.
+            val atual = try {
+                consultarPerfil()
+            } catch (consulta: FalhaApi) {
+                if (consulta.status == 401) throw consulta
+                null
+            } catch (_: IOException) {
+                null
+            } catch (_: JSONException) {
+                null
+            }
+            estado.copy(carregando = false, perfil = atual, erroPerfil = falha.mensagemPerfil,
+                erro = if (falha.mensagemPerfil == null) R.string.erro_servico else null)
+        }
     }
 
     fun reenviar() = executar(cadastral = true) {
         val resultado = sessao.autenticado(apiPerfil::reenviarConfirmacao)
-        estadoComPerfil(Tela.CONFIRMACAO, resultado.cadastro).copy(desafio = resultado, nome = estado.nome)
+        estadoComPerfil(Tela.CONFIRMACAO, resultado.cadastro).copy(desafio = resultado, nome = estado.nome, remuneracao = estado.remuneracao)
     }
 
     fun confirmar(codigo: String) = executar(cadastral = true) {
         val id = requireNotNull(estado.desafio).id
         val atual = sessao.autenticado { apiPerfil.confirmarTelefone(it, id, codigo) }
-        estadoComPerfil(Tela.PERFIL, atual).copy(mensagem = R.string.telefone_confirmado, nome = estado.nome)
+        estadoComPerfil(Tela.PERFIL, atual).copy(mensagem = R.string.telefone_confirmado, nome = estado.nome,
+            remuneracao = estado.remuneracao)
     }
 
     private fun consultarPerfil() = sessao.autenticado(apiPerfil::consultarCadastro)
 
     private fun salvarDados() = sessao.autenticado {
-        apiPerfil.atualizarCadastro(it, estado.nome.trim(), estado.telefone.trim())
+        apiPerfil.atualizarCadastro(it, estado.nome.trim(), estado.telefone.trim(), estado.remuneracao)
     }
 
     private fun estadoComPerfil(tela: Tela, perfil: CadastroUsuario) =
         Estado(tela, usuario = estado.usuario, perfil = perfil, nome = perfil.nome.orEmpty(),
-            telefone = perfil.telefone.orEmpty())
+            telefone = perfil.telefone.orEmpty(),
+            remuneracao = perfil.remuneracao.takeIf { PapelUsuario.TRABALHADOR in perfil.papeis })
 
     fun sair() = executar {
         sessao.sair()

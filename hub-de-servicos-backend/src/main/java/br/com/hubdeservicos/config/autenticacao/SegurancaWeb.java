@@ -51,6 +51,8 @@ public class SegurancaWeb {
                         .requestMatchers("/api/v1/aplicacoes/" + AutenticacaoAppService.SLUG + "/autenticacao/**").denyAll()
                         .requestMatchers(HttpMethod.POST, AutenticacaoAppController.ROTA + "/cadastro",
                                 AutenticacaoAppController.ROTA + "/login", AutenticacaoAppController.ROTA + "/renovar").permitAll()
+                        .requestMatchers(HttpMethod.PUT, PerfilAppController.ROTA + PerfilAppController.PAPEIS,
+                                PerfilAppController.ROTA + PerfilAppController.LOCALIZACAO).authenticated()
                         .requestMatchers(PerfilAppController.ROTA, PerfilAppController.ROTA + "/telefone/confirmacao",
                                 PerfilAppController.ROTA + "/telefone/confirmacao/reenviar",
                                 PerfilAppController.ROTA + "/telefone/confirmacao/validar").authenticated()

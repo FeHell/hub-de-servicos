@@ -53,7 +53,7 @@
     <string name="pendencia_confirmacao">Confirme seu telefone por SMS</string>
     <string name="pendencia_outro">Complete os dados restantes</string>
     <string name="telefone_ausente">Telefone não informado</string>
-    <string name="telefone_pendente">Telefone pendente de confirmação</string>
+    <string name="telefone_pendente">Telefone não verificado</string>
     <string name="telefone_verificado">Telefone verificado</string>
     <string name="telefone_confirmado">Telefone confirmado com sucesso.</string>
     <string name="sms_iniciar">Enviar código por SMS</string>
@@ -64,4 +64,27 @@
     <string name="sms_reenviar">Reenviar código</string>
     <string name="sms_corrigir">Corrigir telefone</string>
     <string name="sms_codigo_invalido">Informe os seis dígitos recebidos por SMS.</string>
+    <string name="telefone_orientacao">Informe seu telefone com DDD para receber o código por SMS.</string>
+    <string name="telefone_invalido">Informe um telefone brasileiro válido com DDD.</string>
+    <string name="papeis_titulo">Como você quer participar?</string>
+    <string name="papel_empresa">Empresa</string>
+    <string name="papel_empresa_descricao">Quero anunciar oportunidades e encontrar trabalhadores.</string>
+    <string name="papel_trabalhador">Trabalhador</string>
+    <string name="papel_trabalhador_descricao">Quero encontrar oportunidades e oferecer meus serviços.</string>
+    <string name="perfis_indisponiveis">Não foi possível carregar seus perfis.</string>
+    <string name="remuneracao_titulo">Remuneração pretendida</string>
+    <string name="remuneracao_hora">Valor por hora (opcional)</string>
+    <string name="remuneracao_diaria">Valor por diária (opcional)</string>
+    <string name="localizacao_titulo">Sua localização</string>
+    <string name="localizacao_cidade">%1$s — %2$s</string>
+    <string name="localizacao_obtendo">Obtendo localização…</string>
+    <string name="localizacao_permissao">Permissão de localização não concedida.</string>
+    <string name="localizacao_indisponivel">Localização indisponível. Confira se ela está ativada no aparelho.</string>
+    <string name="localizacao_erro">Não foi possível identificar a cidade.</string>
+    <string name="localizacao_explicacao">Usamos a localização aproximada para identificar sua cidade. Você pode continuar usando o app sem permitir.</string>
+    <string name="localizacao_autorizar">Permitir localização</string>
+    <string name="localizacao_permitir">Continuar</string>
+    <string name="localizacao_agora_nao">Agora não</string>
+    <string name="localizacao_configuracoes">Abrir configurações</string>
+    <string name="localizacao_atualizar">Atualizar cidade</string>
 </resources>

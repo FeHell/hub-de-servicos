@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+    <changeSet id="5-cadastro-municipios-ibge" author="sistema">
+        <createTable tableName="municipio_ibge">
+            <column name="codigo_ibge" type="INTEGER"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="nome" type="VARCHAR(120)"><constraints nullable="false"/></column>
+            <column name="uf" type="VARCHAR(2)"><constraints nullable="false"/></column>
+            <column name="nome_busca" type="VARCHAR(120)"><constraints nullable="false"/></column>
+            <column name="uf_busca" type="VARCHAR(40)"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="municipio_ibge" columnNames="nome_busca,uf" constraintName="uk_municipio_nome_uf"/>
+        <loadData tableName="municipio_ibge" file="municipios-ibge.csv" relativeToChangelogFile="true"
+                  separator=";" encoding="UTF-8">
+            <column header="codigo_ibge" name="codigo_ibge" type="NUMERIC"/>
+        </loadData>
+        <rollback><dropTable tableName="municipio_ibge"/></rollback>
+    </changeSet>
+    <changeSet id="6-usuario-preferencias-cadastro" author="sistema">
+        <addColumn tableName="usuario">
+            <column name="papel_empresa" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="papel_trabalhador" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="valor_hora" type="NUMERIC(12,2)"/>
+            <column name="valor_diaria" type="NUMERIC(12,2)"/>
+            <column name="codigo_municipio_atual" type="INTEGER"/>
+            <column name="municipio_observado_em" type="TIMESTAMPTZ"/>
+        </addColumn>
+        <addForeignKeyConstraint baseTableName="usuario" baseColumnNames="codigo_municipio_atual"
+                                 referencedTableName="municipio_ibge" referencedColumnNames="codigo_ibge"
+                                 constraintName="fk_usuario_municipio_atual" onDelete="RESTRICT"/>
+        <createIndex tableName="usuario" indexName="ix_usuario_municipio_atual">
+            <column name="codigo_municipio_atual"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE usuario ADD CONSTRAINT ck_usuario_valores_pretendidos
+                CHECK (valor_hora >= 0 AND valor_hora &lt;&gt; 'NaN' OR valor_hora IS NULL);
+            ALTER TABLE usuario ADD CONSTRAINT ck_usuario_valor_diaria
+                CHECK (valor_diaria >= 0 AND valor_diaria &lt;&gt; 'NaN' OR valor_diaria IS NULL);
+            ALTER TABLE usuario ADD CONSTRAINT ck_usuario_municipio_observado
+                CHECK ((codigo_municipio_atual IS NULL) = (municipio_observado_em IS NULL));
+        </sql>
+        <rollback>
+            <sql splitStatements="false">
+                DO $$ BEGIN
+                    IF EXISTS (SELECT 1 FROM usuario WHERE papel_empresa OR papel_trabalhador
+                               OR valor_hora IS NOT NULL OR valor_diaria IS NOT NULL OR codigo_municipio_atual IS NOT NULL) THEN
+                        RAISE EXCEPTION 'Exporte e preserve as preferências de cadastro antes de reverter.';
+                    END IF;
+                END $$;
+            </sql>
+            <dropIndex tableName="usuario" indexName="ix_usuario_municipio_atual"/>
+            <dropForeignKeyConstraint baseTableName="usuario" constraintName="fk_usuario_municipio_atual"/>
+            <sql>ALTER TABLE usuario DROP CONSTRAINT ck_usuario_municipio_observado, DROP CONSTRAINT ck_usuario_valor_diaria, DROP CONSTRAINT ck_usuario_valores_pretendidos;</sql>
+            <dropColumn tableName="usuario" columnName="municipio_observado_em"/>
+            <dropColumn tableName="usuario" columnName="codigo_municipio_atual"/>
+            <dropColumn tableName="usuario" columnName="valor_diaria"/>
+            <dropColumn tableName="usuario" columnName="valor_hora"/>
+            <dropColumn tableName="usuario" columnName="papel_trabalhador"/>
+            <dropColumn tableName="usuario" columnName="papel_empresa"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

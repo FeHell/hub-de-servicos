@@ -28,5 +28,6 @@
     <include file="permissao/perfis-negocio.xml" relativeToChangelogFile="true"/>
     <include file="usuario/cadastro-progressivo.xml" relativeToChangelogFile="true"/>
     <include file="configuracao/infobip.xml" relativeToChangelogFile="true"/>
+    <include file="usuario/preferencias-cadastro.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

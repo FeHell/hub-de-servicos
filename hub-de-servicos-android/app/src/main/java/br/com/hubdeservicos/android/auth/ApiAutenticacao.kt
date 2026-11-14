@@ -27,7 +27,9 @@ interface AutenticacaoApi {
 
 interface PerfilApi {
     fun consultarCadastro(acesso: String): CadastroUsuario
-    fun atualizarCadastro(acesso: String, nome: String, telefone: String): CadastroUsuario
+    fun atualizarCadastro(acesso: String, nome: String, telefone: String, remuneracao: Remuneracao? = null): CadastroUsuario
+    fun selecionarPapel(acesso: String, papel: PapelUsuario, selecionado: Boolean): CadastroUsuario
+    fun registrarMunicipio(acesso: String, cidade: String, estado: String): CadastroUsuario
     fun iniciarConfirmacao(acesso: String, telefone: String): DesafioTelefone
     fun reenviarConfirmacao(acesso: String): DesafioTelefone
     fun confirmarTelefone(acesso: String, idDesafio: String, codigo: String): CadastroUsuario
@@ -57,9 +59,18 @@ class ApiAutenticacao(origem: String) : AutenticacaoApi, PerfilApi {
     override fun consultarCadastro(acesso: String) =
         CadastroUsuario.de(requisicao("GET", "/perfil", acesso = acesso, perfil = true))
 
-    override fun atualizarCadastro(acesso: String, nome: String, telefone: String) =
-        CadastroUsuario.de(requisicao("PUT", "/perfil", JSONObject().put("nome", nome).put("telefone", telefone),
-            acesso, perfil = true))
+    override fun atualizarCadastro(acesso: String, nome: String, telefone: String, remuneracao: Remuneracao?) =
+        atualizarPerfil("", JSONObject().put("nome", nome).put("telefone", telefone)
+            .put("remuneracao", remuneracao?.json()), acesso)
+
+    override fun selecionarPapel(acesso: String, papel: PapelUsuario, selecionado: Boolean) =
+        atualizarPerfil("/papeis/${papel.name}", JSONObject().put("selecionado", selecionado), acesso)
+
+    override fun registrarMunicipio(acesso: String, cidade: String, estado: String) =
+        atualizarPerfil("/localizacao", JSONObject().put("cidade", cidade).put("estado", estado), acesso)
+
+    private fun atualizarPerfil(sufixo: String, dados: JSONObject, acesso: String) =
+        CadastroUsuario.de(requisicao("PUT", "/perfil$sufixo", dados, acesso, perfil = true))
 
     override fun iniciarConfirmacao(acesso: String, telefone: String) =
         DesafioTelefone.de(requisicao("POST", "/perfil/telefone/confirmacao",
@@ -103,7 +114,7 @@ class ApiAutenticacao(origem: String) : AutenticacaoApi, PerfilApi {
                     }
                 }.getOrNull() else null
                 throw FalhaApi(status, !perfil && detalhe?.contains("72 bytes", ignoreCase = true) == true,
-                    detalhe.takeIf { perfil && status in setOf(400, 409, 410, 429, 502) })
+                    detalhe.takeIf { perfil && status in setOf(400, 409, 410, 422, 429, 502) })
             }
             if (status == HttpURLConnection.HTTP_NO_CONTENT) return JSONObject()
             return conexao.inputStream.bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
