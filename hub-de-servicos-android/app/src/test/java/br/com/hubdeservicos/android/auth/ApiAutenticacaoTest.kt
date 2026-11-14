@@ -122,6 +122,14 @@ class ApiAutenticacaoTest {
         assertEquals(criado, sessaoRestaurada.restaurar())
         assertEquals(Municipio(3170107, "Uberaba", "MG"), sessaoRestaurada.autenticado(::perfil).municipio)
         assertEquals(setOf(PapelUsuario.TRABALHADOR), sessaoRestaurada.autenticado(::perfil).papeis)
+        val municipios = sessaoRestaurada.autenticado { api.pesquisarMunicipios(it, "Uberlândia") }
+        assertEquals(Municipio(3170206, "Uberlândia", "MG"), municipios.first())
+        val manual = sessaoRestaurada.autenticado { api.selecionarMunicipio(it, municipios.first().codigoIbge) }
+        assertEquals(Municipio(3170206, "Uberlândia", "MG", manual = true), manual.municipio)
+        assertEquals(manual.municipio, sessaoRestaurada.autenticado {
+            api.registrarMunicipio(it, "Uberaba", "MG")
+        }.municipio)
+        assertEquals(manual.municipio, sessaoRestaurada.autenticado(::perfil).municipio)
         sessaoRestaurada.sair()
         assertEquals(null, SessaoApp(api, armazenamento).restaurar())
     }

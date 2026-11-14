@@ -82,8 +82,12 @@ class MainActivity : Activity() {
     override fun onStart() {
         super.onStart()
         visivel = true
-        model.revalidarAoAbrir()
         model.observar(::renderizar)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        model.revalidarAoAbrir()
     }
 
     @Suppress("DEPRECATION")
@@ -143,9 +147,11 @@ class MainActivity : Activity() {
                 val usuario = requireNotNull(estado.usuario)
                 conteudo.adicionar(marca())
                 conteudo.adicionar(HomeView(this, usuario, estado, model::abrirPerfil, ::confirmarSaida,
-                    model::selecionarPapel, situacaoLocalizacao, localizacao.rotuloAcao(), localizacao::atualizar), 22)
+                    model::selecionarPapel, situacaoLocalizacao, localizacao::atualizar), 22)
                 if (mudouTela) conteudo.post {
-                    if (visivel && ultimaTela == Tela.HOME) localizacao.exibir(usuario.id)
+                    val atual = estadoExibido
+                    if (visivel && atual?.tela == Tela.HOME && atual.usuario?.id == usuario.id)
+                        localizacao.exibir(usuario.id, atual.perfil?.municipio)
                 }
             }
             Tela.PERFIL, Tela.CONFIRMACAO -> {

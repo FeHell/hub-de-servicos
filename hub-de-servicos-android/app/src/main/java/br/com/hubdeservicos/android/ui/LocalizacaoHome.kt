@@ -26,7 +26,7 @@ internal sealed interface LocalizacaoUi {
     data object SemPermissao : LocalizacaoUi
     data object Indisponivel : LocalizacaoUi
     data object Erro : LocalizacaoUi
-    data class Identificada(val municipio: Municipio) : LocalizacaoUi
+    data object Identificada : LocalizacaoUi
 }
 
 internal class LocalizacaoHome(
@@ -45,13 +45,29 @@ internal class LocalizacaoHome(
     private var consulta: CancellationSignal? = null
     private var prazo: Runnable? = null
     private var solicitouNaTela = false
+    private var municipio: Municipio? = null
+    private var selecao: SelecaoMunicipioDialogo? = null
+    private var confirmarTroca: AlertDialog? = null
+    private var retomadaExplicita = false
 
-    fun exibir(id: String) {
+    fun exibir(id: String, salvo: Municipio?) {
         if (usuario != id) {
             cancelar()
             usuario = id
             ultimaConsulta = null
             ultimaSituacao = LocalizacaoUi.SemPermissao
+        }
+        municipio = salvo
+        if (retomadaExplicita && !solicitouNaTela) {
+            retomadaExplicita = false
+            if (temPermissao()) {
+                buscar(explicita = true)
+                return
+            }
+        }
+        if (salvo?.manual == true) {
+            mostrar(LocalizacaoUi.Identificada)
+            return
         }
         if (temPermissao()) {
             val ult = ultimaConsulta
@@ -65,24 +81,35 @@ internal class LocalizacaoHome(
     }
 
     fun atualizar() {
-        if (temPermissao()) buscar()
-        else if (preferencias.getBoolean(SOLICITADO, false) &&
-            !activity.shouldShowRequestPermissionRationale(ACCESS_COARSE_LOCATION)) {
-            activity.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                Uri.fromParts("package", activity.packageName, null)))
-        } else explicar()
+        val id = usuario ?: return
+        if (selecao != null) return
+        if (consulta != null) {
+            cancelar()
+            mostrar(if (municipio == null) LocalizacaoUi.Indisponivel else LocalizacaoUi.Identificada)
+        }
+        selecao = SelecaoMunicipioDialogo(activity, model, id, ::usarLocalizacao,
+            aoSalvar = { salvo ->
+                municipio = salvo
+                mostrar(LocalizacaoUi.Identificada, forcar = true)
+            }, aoFechar = { selecao = null })
     }
 
-    fun rotuloAcao(): Int = if (!temPermissao() && preferencias.getBoolean(SOLICITADO, false) &&
-        !activity.shouldShowRequestPermissionRationale(ACCESS_COARSE_LOCATION)) {
-        R.string.localizacao_configuracoes
-    } else if (!temPermissao()) R.string.localizacao_autorizar else R.string.localizacao_atualizar
+    private fun usarLocalizacao() {
+        if (temPermissao()) buscar(explicita = true)
+        else if (preferencias.getBoolean(SOLICITADO, false) &&
+            !activity.shouldShowRequestPermissionRationale(ACCESS_COARSE_LOCATION)) {
+            retomadaExplicita = true
+            activity.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", activity.packageName, null)))
+        } else explicar(explicita = true)
+    }
 
     fun resultadoPermissao() {
         solicitouNaTela = false
         ultimaConsulta = null
         if (usuario != null) {
-            if (temPermissao()) buscar() else mostrar(LocalizacaoUi.SemPermissao)
+            if (temPermissao()) buscar(explicita = retomadaExplicita) else mostrar(LocalizacaoUi.SemPermissao)
+            retomadaExplicita = false
         }
     }
 
@@ -92,11 +119,15 @@ internal class LocalizacaoHome(
             ultimaConsulta = null
         }
         explicacao?.dismiss()
+        selecao?.fechar()
+        confirmarTroca?.dismiss()
     }
 
     fun encerrarSessao() {
         parar()
         usuario = null
+        municipio = null
+        retomadaExplicita = false
         ultimaConsulta = null
         ultimaSituacao = LocalizacaoUi.SemPermissao
         apresentar(ultimaSituacao)
@@ -107,7 +138,7 @@ internal class LocalizacaoHome(
         geocodificacao.shutdownNow()
     }
 
-    private fun explicar() {
+    private fun explicar(explicita: Boolean = false) {
         if (explicacao != null || solicitouNaTela) return
         preferencias.edit().putBoolean(EXPLICADO, true).apply()
         explicacao = AlertDialog.Builder(activity)
@@ -116,6 +147,7 @@ internal class LocalizacaoHome(
             .setNegativeButton(R.string.localizacao_agora_nao, null)
             .setPositiveButton(R.string.localizacao_permitir) { _, _ ->
                 solicitouNaTela = true
+                retomadaExplicita = explicita
                 preferencias.edit().putBoolean(SOLICITADO, true).apply()
                 activity.requestPermissions(arrayOf(ACCESS_COARSE_LOCATION), PEDIDO_PERMISSAO)
             }
@@ -124,7 +156,7 @@ internal class LocalizacaoHome(
     }
 
     @Suppress("MissingPermission")
-    private fun buscar() {
+    private fun buscar(explicita: Boolean = false) {
         val id = usuario ?: return
         if (!temPermissao() || consulta != null) return
         ultimaConsulta = SystemClock.elapsedRealtime()
@@ -147,11 +179,11 @@ internal class LocalizacaoHome(
                 .filter { SystemClock.elapsedRealtimeNanos() - it.elapsedRealtimeNanos in 0..RECENTE }
                 .maxByOrNull { it.elapsedRealtimeNanos }
             when {
-                recente != null -> identificar(id, sinal, recente)
+                recente != null -> identificar(id, sinal, recente, explicita)
                 Build.VERSION.SDK_INT >= 30 -> localizador.getCurrentLocation(provedores.first(), sinal,
-                    activity.mainExecutor) { local -> identificar(id, sinal, local) }
+                    activity.mainExecutor) { local -> identificar(id, sinal, local, explicita) }
                 else -> pedirUmaLocalizacaoLegada(provedores.first(), sinal) { local ->
-                    identificar(id, sinal, local)
+                    identificar(id, sinal, local, explicita)
                 }
             }
         } catch (_: SecurityException) {
@@ -169,7 +201,7 @@ internal class LocalizacaoHome(
     }
 
     @Suppress("DEPRECATION")
-    private fun identificar(id: String, sinal: CancellationSignal, local: Location?) {
+    private fun identificar(id: String, sinal: CancellationSignal, local: Location?, explicita: Boolean) {
         if (consulta !== sinal) return
         if (local == null) {
             terminar(LocalizacaoUi.Indisponivel)
@@ -194,11 +226,7 @@ internal class LocalizacaoHome(
                     if (endereco == null) terminar(LocalizacaoUi.Erro)
                     else {
                         prazo?.let(principal::removeCallbacks)
-                        model.registrarMunicipio(id, endereco.locality, endereco.adminArea) { municipio ->
-                            if (consulta === sinal) {
-                                terminar(municipio?.let { LocalizacaoUi.Identificada(it) } ?: LocalizacaoUi.Erro)
-                            }
-                        }
+                        escolherLocalizacao(id, sinal, endereco.locality, endereco.adminArea, explicita)
                     }
                 }
             }
@@ -218,6 +246,28 @@ internal class LocalizacaoHome(
         }
     }
 
+    private fun escolherLocalizacao(id: String, sinal: CancellationSignal, cidade: String, estado: String,
+                                      explicita: Boolean) {
+        fun gravar(confirmada: Boolean) {
+            model.registrarMunicipio(id, cidade, estado, confirmada) { salvo ->
+                if (consulta === sinal) {
+                    if (salvo != null) municipio = salvo
+                    terminar(if (salvo != null) LocalizacaoUi.Identificada else LocalizacaoUi.Erro)
+                }
+            }
+        }
+        if (explicita && municipio != null) {
+            confirmarTroca = AlertDialog.Builder(activity)
+                .setTitle(R.string.municipio_trocar_automatico)
+                .setMessage(activity.getString(R.string.municipio_trocar_confirmar, cidade, estado))
+                .setNegativeButton(R.string.cancelar) { _, _ -> terminar(LocalizacaoUi.Identificada) }
+                .setPositiveButton(R.string.municipio_confirmar) { _, _ -> gravar(true) }
+                .setOnCancelListener { terminar(LocalizacaoUi.Identificada) }
+                .setOnDismissListener { confirmarTroca = null }
+                .show()
+        } else gravar(explicita)
+    }
+
     private fun cancelar() {
         val sinal = consulta
         consulta = null
@@ -231,8 +281,8 @@ internal class LocalizacaoHome(
         mostrar(situacao)
     }
 
-    private fun mostrar(situacao: LocalizacaoUi) {
-        if (situacao == ultimaSituacao) return
+    private fun mostrar(situacao: LocalizacaoUi, forcar: Boolean = false) {
+        if (!forcar && situacao == ultimaSituacao) return
         ultimaSituacao = situacao
         apresentar(situacao)
     }

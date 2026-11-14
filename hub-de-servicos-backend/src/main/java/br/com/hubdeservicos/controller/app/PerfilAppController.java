@@ -13,7 +13,11 @@ import br.com.hubdeservicos.service.autenticacao.IdentidadeJwt;
 import br.com.hubdeservicos.dto.app.ContratosPerfilApp.IdentificarMunicipio;
 import br.com.hubdeservicos.dto.app.ContratosPerfilApp.SelecionarPapel;
 import br.com.hubdeservicos.entity.usuario.PapelUsuario;
+import br.com.hubdeservicos.dto.app.ContratosPerfilApp.OpcaoMunicipio;
+import br.com.hubdeservicos.dto.app.ContratosPerfilApp.SelecionarMunicipio;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -33,6 +38,9 @@ public class PerfilAppController {
 
     public static final String PAPEIS = "/papeis/{papel}";
     public static final String LOCALIZACAO = "/localizacao";
+
+    public static final String LOCALIZACAO_MANUAL = LOCALIZACAO + "/manual";
+    public static final String MUNICIPIOS = "/municipios";
 
     private final AutenticacaoService autenticacao;
     private final PerfilAppService perfil;
@@ -60,13 +68,26 @@ public class PerfilAppController {
     public ResponseEntity<Cadastro> selecionarPapel(@AuthenticationPrincipal IdentidadeJwt identidade,
                                                   @PathVariable PapelUsuario papel,
                                                   @Valid @RequestBody SelecionarPapel dados) {
-        return resposta(perfil.selecionarPapel(usuario(identidade), papel, dados.selecionado()));
+        return resposta(perfil.selecionarPapel(usuario(identidade), identidade.idAplicacao(), papel, dados.selecionado()));
     }
 
     @PutMapping(LOCALIZACAO)
     public ResponseEntity<Cadastro> registrarMunicipio(@AuthenticationPrincipal IdentidadeJwt identidade,
                                                      @Valid @RequestBody IdentificarMunicipio dados) {
         return resposta(perfil.registrarMunicipio(usuario(identidade), dados));
+    }
+
+    @GetMapping(MUNICIPIOS)
+    public ResponseEntity<List<OpcaoMunicipio>> pesquisarMunicipios(@AuthenticationPrincipal IdentidadeJwt identidade,
+                                                                   @RequestParam @Size(max = 120) String nome) {
+        usuario(identidade);
+        return resposta(perfil.pesquisarMunicipios(nome));
+    }
+
+    @PutMapping(LOCALIZACAO_MANUAL)
+    public ResponseEntity<Cadastro> selecionarMunicipio(@AuthenticationPrincipal IdentidadeJwt identidade,
+                                                         @Valid @RequestBody SelecionarMunicipio dados) {
+        return resposta(perfil.selecionarMunicipio(usuario(identidade), dados.codigoIbge()));
     }
 
     @PostMapping("/telefone/confirmacao")

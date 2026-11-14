@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+    <changeSet id="7-unificar-papeis-plataforma" author="sistema">
+        <preConditions onFail="HALT">
+            <sqlCheck expectedResult="2">SELECT count(*) FROM permissao
+                WHERE codigo IN ('PLATAFORMA_EMPRESA', 'PLATAFORMA_TRABALHADOR') AND nome_plataforma IS NOT NULL</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO usuario_permissao_plataforma (id_usuario, id_permissao)
+            SELECT u.id, p.id
+            FROM usuario u
+            JOIN permissao p ON (u.papel_empresa AND p.codigo = 'PLATAFORMA_EMPRESA')
+                OR (u.papel_trabalhador AND p.codigo = 'PLATAFORMA_TRABALHADOR')
+            ON CONFLICT (id_usuario, id_permissao) DO NOTHING;
+        </sql>
+        <dropColumn tableName="usuario" columnName="papel_empresa"/>
+        <dropColumn tableName="usuario" columnName="papel_trabalhador"/>
+        <rollback>
+            <addColumn tableName="usuario">
+                <column name="papel_empresa" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+                <column name="papel_trabalhador" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            </addColumn>
+            <sql>
+                UPDATE usuario u SET papel_empresa = EXISTS (
+                    SELECT 1 FROM usuario_permissao_plataforma v JOIN permissao p ON p.id = v.id_permissao
+                    WHERE v.id_usuario = u.id AND p.codigo = 'PLATAFORMA_EMPRESA'),
+                    papel_trabalhador = EXISTS (
+                    SELECT 1 FROM usuario_permissao_plataforma v JOIN permissao p ON p.id = v.id_permissao
+                    WHERE v.id_usuario = u.id AND p.codigo = 'PLATAFORMA_TRABALHADOR');
+            </sql>
+        </rollback>
+    </changeSet>
+    <changeSet id="8-usuario-origem-municipio" author="sistema">
+        <addColumn tableName="usuario">
+            <column name="municipio_manual" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+        </addColumn>
+        <sql>ALTER TABLE usuario ADD CONSTRAINT ck_usuario_municipio_manual CHECK (NOT municipio_manual OR codigo_municipio_atual IS NOT NULL);</sql>
+        <rollback>
+            <sql splitStatements="false">
+                DO $$ BEGIN
+                    IF EXISTS (SELECT 1 FROM usuario WHERE municipio_manual) THEN
+                        RAISE EXCEPTION 'Preserve a origem das cidades escolhidas manualmente antes de reverter.';
+                    END IF;
+                END $$;
+            </sql>
+            <sql>ALTER TABLE usuario DROP CONSTRAINT ck_usuario_municipio_manual;</sql>
+            <dropColumn tableName="usuario" columnName="municipio_manual"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

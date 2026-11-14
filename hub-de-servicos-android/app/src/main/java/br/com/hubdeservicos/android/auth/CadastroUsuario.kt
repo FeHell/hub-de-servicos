@@ -27,7 +27,7 @@ data class CadastroUsuario(
                     Remuneracao(it?.decimal("valorHora"), it?.decimal("valorDiaria"))
                 },
                 json.optJSONObject("municipio")?.let {
-                    Municipio(it.getInt("codigoIbge"), it.getString("nome"), it.getString("uf"))
+                    Municipio.de(it)
                 }
             )
         }
@@ -45,7 +45,12 @@ data class Remuneracao(val valorHora: BigDecimal? = null, val valorDiaria: BigDe
 // Os valores monetários são transportados como texto decimal em base 10.
 private fun JSONObject.decimal(chave: String): BigDecimal? = if (isNull(chave)) null else getString(chave).toBigDecimal()
 
-data class Municipio(val codigoIbge: Int, val nome: String, val uf: String)
+data class Municipio(val codigoIbge: Int, val nome: String, val uf: String, val manual: Boolean = false) {
+    companion object {
+        internal fun de(json: JSONObject) = Municipio(json.getInt("codigoIbge"), json.getString("nome"),
+            json.getString("uf"), json.optBoolean("manual"))
+    }
+}
 
 enum class SituacaoTelefone { NAO_INFORMADO, PENDENTE, VERIFICADO }
 

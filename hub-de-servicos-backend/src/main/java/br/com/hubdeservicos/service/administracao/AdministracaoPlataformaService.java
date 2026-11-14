@@ -253,7 +253,7 @@ public class AdministracaoPlataformaService {
         persistencia.refresh(usuario);
         boolean desativou = usuario.getStatus() == StatusUsuario.ATIVO && dados.status() != StatusUsuario.ATIVO;
         var atuais = permissoesPlataforma.consultar(id);
-        var desejadas = dados.permissoesPlataforma();
+        var desejadas = permissoesPlataforma.conciliar(atuais, dados.permissoesPlataforma(), dados.permissoesOriginais());
         verificarUltimoAdministrador(usuario, dados.status(), atuais, desejadas == null ? atuais : desejadas);
         usuario.atualizar(dados.login().strip(), dados.email().strip(), dados.status());
         if (dados.nome() != null) usuario.atualizarNome(dados.nome());

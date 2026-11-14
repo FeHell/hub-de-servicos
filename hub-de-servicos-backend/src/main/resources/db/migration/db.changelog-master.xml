@@ -29,5 +29,6 @@
     <include file="usuario/cadastro-progressivo.xml" relativeToChangelogFile="true"/>
     <include file="configuracao/infobip.xml" relativeToChangelogFile="true"/>
     <include file="usuario/preferencias-cadastro.xml" relativeToChangelogFile="true"/>
+    <include file="usuario/perfis-unificados-cidade-manual.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

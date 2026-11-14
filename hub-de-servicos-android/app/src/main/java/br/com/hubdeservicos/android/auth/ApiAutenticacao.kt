@@ -3,6 +3,8 @@ package br.com.hubdeservicos.android.auth
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
+import java.net.URLEncoder
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -29,7 +31,9 @@ interface PerfilApi {
     fun consultarCadastro(acesso: String): CadastroUsuario
     fun atualizarCadastro(acesso: String, nome: String, telefone: String, remuneracao: Remuneracao? = null): CadastroUsuario
     fun selecionarPapel(acesso: String, papel: PapelUsuario, selecionado: Boolean): CadastroUsuario
-    fun registrarMunicipio(acesso: String, cidade: String, estado: String): CadastroUsuario
+    fun registrarMunicipio(acesso: String, cidade: String, estado: String, confirmada: Boolean = false): CadastroUsuario
+    fun pesquisarMunicipios(acesso: String, nome: String): List<Municipio>
+    fun selecionarMunicipio(acesso: String, codigoIbge: Int): CadastroUsuario
     fun iniciarConfirmacao(acesso: String, telefone: String): DesafioTelefone
     fun reenviarConfirmacao(acesso: String): DesafioTelefone
     fun confirmarTelefone(acesso: String, idDesafio: String, codigo: String): CadastroUsuario
@@ -66,8 +70,18 @@ class ApiAutenticacao(origem: String) : AutenticacaoApi, PerfilApi {
     override fun selecionarPapel(acesso: String, papel: PapelUsuario, selecionado: Boolean) =
         atualizarPerfil("/papeis/${papel.name}", JSONObject().put("selecionado", selecionado), acesso)
 
-    override fun registrarMunicipio(acesso: String, cidade: String, estado: String) =
-        atualizarPerfil("/localizacao", JSONObject().put("cidade", cidade).put("estado", estado), acesso)
+    override fun registrarMunicipio(acesso: String, cidade: String, estado: String, confirmada: Boolean) =
+        atualizarPerfil("/localizacao",
+            JSONObject().put("cidade", cidade).put("estado", estado).put("confirmada", confirmada), acesso)
+
+    override fun pesquisarMunicipios(acesso: String, nome: String): List<Municipio> {
+        val termo = URLEncoder.encode(nome, "UTF-8")
+        val itens = JSONArray(resposta("GET", "/perfil/municipios?nome=$termo", acesso = acesso, perfil = true))
+        return List(itens.length()) { Municipio.de(itens.getJSONObject(it)) }
+    }
+
+    override fun selecionarMunicipio(acesso: String, codigoIbge: Int) =
+        atualizarPerfil("/localizacao/manual", JSONObject().put("codigoIbge", codigoIbge), acesso)
 
     private fun atualizarPerfil(sufixo: String, dados: JSONObject, acesso: String) =
         CadastroUsuario.de(requisicao("PUT", "/perfil$sufixo", dados, acesso, perfil = true))
@@ -90,6 +104,12 @@ class ApiAutenticacao(origem: String) : AutenticacaoApi, PerfilApi {
         acesso: String? = null,
         perfil: Boolean = false
     ): JSONObject {
+        return JSONObject(resposta(metodo, rota, corpo, acesso, perfil))
+    }
+
+    private fun resposta(
+        metodo: String, rota: String, corpo: JSONObject? = null, acesso: String? = null, perfil: Boolean = false
+    ): String {
         val url = base ?: throw IllegalStateException("Origem da API ausente")
         val conexao = URI.create(url + (if (perfil) "" else "/autenticacao") + rota).toURL().openConnection() as HttpURLConnection
         try {
@@ -116,8 +136,8 @@ class ApiAutenticacao(origem: String) : AutenticacaoApi, PerfilApi {
                 throw FalhaApi(status, !perfil && detalhe?.contains("72 bytes", ignoreCase = true) == true,
                     detalhe.takeIf { perfil && status in setOf(400, 409, 410, 422, 429, 502) })
             }
-            if (status == HttpURLConnection.HTTP_NO_CONTENT) return JSONObject()
-            return conexao.inputStream.bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
+            if (status == HttpURLConnection.HTTP_NO_CONTENT) return "{}"
+            return conexao.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
         } finally {
             conexao.disconnect()
         }

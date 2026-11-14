@@ -65,7 +65,8 @@ public final class ContratosAdministrativos {
     public record AtualizarUsuario(@NotBlank @Size(max = 50) String login,
                                    @EmailUsuario String email,
                                    @NotNull StatusUsuario status,
-                                   List<@NotBlank @Size(max = 100) String> permissoesPlataforma, @Size(max = 32) String telefone, @Size(max = 150) String nome) {
+                                   List<@NotBlank @Size(max = 100) String> permissoesPlataforma, @Size(max = 32) String telefone, @Size(max = 150) String nome,
+                                   @Size(max = 200) List<@NotBlank @Size(max = 100) String> permissoesOriginais) {
     }
 
     public record NovaSenha(@SenhaNova

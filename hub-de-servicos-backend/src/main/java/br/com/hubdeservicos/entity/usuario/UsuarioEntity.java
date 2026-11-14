@@ -54,12 +54,6 @@ public class UsuarioEntity {
     @Column(name = "telefone_verificado_em")
     private Instant telefoneVerificadoEm;
 
-    @Column(name = "papel_empresa", nullable = false)
-    private boolean papelEmpresa;
-
-    @Column(name = "papel_trabalhador", nullable = false)
-    private boolean papelTrabalhador;
-
     @Column(name = "valor_hora", precision = 12, scale = 2)
     private BigDecimal valorHora;
 
@@ -72,6 +66,9 @@ public class UsuarioEntity {
 
     @Column(name = "municipio_observado_em")
     private Instant municipioObservadoEm;
+
+    @Column(name = "municipio_manual", nullable = false)
+    private boolean municipioManual;
 
     protected UsuarioEntity() {
     }
@@ -119,28 +116,22 @@ public class UsuarioEntity {
         return telefoneVerificadoEm;
     }
 
-    public boolean isPapelEmpresa() { return papelEmpresa; }
-    public boolean isPapelTrabalhador() { return papelTrabalhador; }
     public BigDecimal getValorHora() { return valorHora; }
     public BigDecimal getValorDiaria() { return valorDiaria; }
     public MunicipioEntity getMunicipioAtual() { return municipioAtual; }
     public Instant getMunicipioObservadoEm() { return municipioObservadoEm; }
 
-    public void atualizarPapel(PapelUsuario papel, boolean selecionado) {
-        switch (papel) {
-            case EMPRESA -> papelEmpresa = selecionado;
-            case TRABALHADOR -> papelTrabalhador = selecionado;
-        }
-    }
+    public boolean isMunicipioManual() { return municipioManual; }
 
     public void atualizarRemuneracao(BigDecimal hora, BigDecimal diaria) {
         this.valorHora = hora;
         this.valorDiaria = diaria;
     }
 
-    public void atualizarMunicipio(MunicipioEntity municipio, Instant observadoEm) {
+    public void atualizarMunicipio(MunicipioEntity municipio, Instant observadoEm, boolean manual) {
         this.municipioAtual = Objects.requireNonNull(municipio);
         this.municipioObservadoEm = Objects.requireNonNull(observadoEm);
+        this.municipioManual = manual;
     }
 
     public void atualizarNome(String nome) {

@@ -71,7 +71,7 @@ public class ConfirmacaoTelefoneService {
             }
             desafio.registrarEnvio();
             return new Desafio(id, "+55 •• •••••-" + numero.substring(numero.length() - 4),
-                    desafio.getExpiraEm(), Cadastro.de(usuario));
+                    desafio.getExpiraEm(), perfil.cadastro(usuario));
         });
         if (resultado == null) {
             String mensagem = switch (envio.erro()) {
@@ -134,7 +134,7 @@ public class ConfirmacaoTelefoneService {
         }
         usuario.verificarTelefone(desafio.getTelefone(), agora);
         desafio.consumir();
-        return Cadastro.de(usuario);
+        return perfil.cadastro(usuario);
     }
 
     private DesafioTelefoneEntity buscar(UUID id, UUID usuario) {

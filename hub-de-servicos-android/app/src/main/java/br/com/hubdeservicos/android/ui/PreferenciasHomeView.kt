@@ -10,6 +10,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import br.com.hubdeservicos.android.R
 import br.com.hubdeservicos.android.auth.PapelUsuario
+import br.com.hubdeservicos.android.auth.Municipio
 
 internal class PreferenciasHomeView(
     context: Context, estado: Estado, selecionar: (PapelUsuario, Boolean) -> Unit
@@ -70,7 +71,7 @@ internal class PreferenciasHomeView(
 }
 
 internal class LocalizacaoHomeView(
-    context: Context, situacao: LocalizacaoUi, rotuloAcao: Int, atualizar: () -> Unit
+    context: Context, situacao: LocalizacaoUi, municipio: Municipio?, habilitado: Boolean, atualizar: () -> Unit
 ) : LinearLayout(context) {
     init {
         orientation = VERTICAL
@@ -88,16 +89,19 @@ internal class LocalizacaoHomeView(
             }, LayoutParams(context.dp(20), context.dp(20)))
             addView(titulo, LayoutParams(0, -2, 1f).apply { marginStart = context.dp(8) })
         })
+        val cidade = municipio?.let { context.getString(R.string.localizacao_cidade, it.nome, it.uf) }
         val mensagem = when (situacao) {
             LocalizacaoUi.Obtendo -> context.getString(R.string.localizacao_obtendo)
             LocalizacaoUi.SemPermissao -> context.getString(R.string.localizacao_permissao)
             LocalizacaoUi.Indisponivel -> context.getString(R.string.localizacao_indisponivel)
             LocalizacaoUi.Erro -> context.getString(R.string.localizacao_erro)
-            is LocalizacaoUi.Identificada -> context.getString(R.string.localizacao_cidade,
-                situacao.municipio.nome, situacao.municipio.uf)
+            LocalizacaoUi.Identificada -> if (cidade == null) context.getString(R.string.localizacao_erro) else null
         }
-        adicionar(context.texto(mensagem, 15, R.color.gastro_texto_suave)
-            .apply { accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }, 5)
-        if (situacao != LocalizacaoUi.Obtendo) adicionar(context.botaoCadastro(rotuloAcao, true, false, atualizar), 8)
+        cidade?.let { adicionar(context.texto(it, 16, R.color.gastro_oliva, Typeface.DEFAULT_BOLD), 5) }
+        if (mensagem != null && !(municipio?.manual == true && situacao == LocalizacaoUi.SemPermissao)) {
+            adicionar(context.texto(mensagem, 15, R.color.gastro_texto_suave)
+                .apply { accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }, 5)
+        }
+        adicionar(context.botaoCadastro(R.string.localizacao_atualizar, habilitado, false, atualizar), 8)
     }
 }

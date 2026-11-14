@@ -67,9 +67,8 @@ class AutenticacaoModel(private val sessao: SessaoApp, private val apiPerfil: Pe
     }
 
     fun revalidarAoAbrir() {
-        if (estado.tela == Tela.HOME && !estado.carregando) {
-            atualizar(Estado())
-            restaurar()
+        if (estado.tela == Tela.HOME) executar(cadastral = true) {
+            estadoComPerfil(Tela.HOME, consultarPerfil())
         }
     }
 
@@ -108,14 +107,36 @@ class AutenticacaoModel(private val sessao: SessaoApp, private val apiPerfil: Pe
         estadoComPerfil(Tela.HOME, atual)
     }
 
-    internal fun registrarMunicipio(idUsuario: String, cidade: String, uf: String, receber: (Municipio?) -> Unit) {
+    internal fun pesquisarMunicipios(idUsuario: String, termo: String, receber: (List<Municipio>?) -> Unit) {
+        operarMunicipio(idUsuario, { apiPerfil.pesquisarMunicipios(it, termo) }, receber)
+    }
+
+    internal fun selecionarMunicipio(idUsuario: String, municipio: Municipio, receber: (Municipio?) -> Unit) {
+        atualizarMunicipio(idUsuario, { apiPerfil.selecionarMunicipio(it, municipio.codigoIbge) }, receber)
+    }
+
+    internal fun registrarMunicipio(idUsuario: String, cidade: String, uf: String, confirmada: Boolean,
+                                    receber: (Municipio?) -> Unit) {
+        atualizarMunicipio(idUsuario, { apiPerfil.registrarMunicipio(it, cidade, uf, confirmada) }, receber)
+    }
+
+    private fun atualizarMunicipio(idUsuario: String, gravar: (String) -> CadastroUsuario, receber: (Municipio?) -> Unit) {
+        operarMunicipio(idUsuario, gravar) { cadastro ->
+            if (cadastro != null) {
+                atualizar(estado.copy(perfil = estado.perfil?.copy(municipio = cadastro.municipio) ?: cadastro))
+            }
+            receber(cadastro?.municipio)
+        }
+    }
+
+    private fun <T> operarMunicipio(idUsuario: String, operacao: (String) -> T, receber: (T?) -> Unit) {
+        if (estado.usuario?.id != idUsuario) return
         fila.execute {
-            val municipio = runCatching {
-                if (sessao.restaurar()?.id == idUsuario) {
-                    sessao.autenticado { apiPerfil.registrarMunicipio(it, cidade, uf).municipio }
-                } else null
+            // A identidade e o token são verificados na mesma fila das mudanças de sessão.
+            val resultado = runCatching {
+                if (sessao.restaurar()?.id == idUsuario) sessao.autenticado(operacao) else null
             }.getOrNull()
-            principal.post { if (estado.usuario?.id == idUsuario) receber(municipio) }
+            principal.post { if (estado.usuario?.id == idUsuario) receber(resultado) }
         }
     }
 

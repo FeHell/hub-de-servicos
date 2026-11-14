@@ -124,6 +124,50 @@ class AdministracaoPostgresTest {
     }
 
     @Test
+    void sincronizaAmbientesEPreservaAlteracoesDeFormularioDesatualizado() throws Exception {
+        String app = "/api/v1/app";
+        String consulta = app + "/perfil";
+        String empresa = "PLATAFORMA_EMPRESA";
+        String trabalhador = "PLATAFORMA_TRABALHADOR";
+        String visitante = "PLATAFORMA_VISITANTE";
+        String email = "sincronizacao-" + UUID.randomUUID() + "@example.test";
+        var credenciais = Map.of("email", email, "senha", SENHA);
+        var criado = chamar(HttpMethod.POST, app + "/autenticacao/cadastro", null, credenciais)
+                .andExpect(status().isCreated()).andReturn();
+        var id = UUID.fromString(json.readTree(criado.getResponse().getContentAsByteArray()).path("id").asText());
+        var autenticado = chamar(HttpMethod.POST, app + "/autenticacao/login", null, credenciais)
+                .andExpect(status().isOk()).andReturn();
+        String tokenApp = json.readTree(autenticado.getResponse().getContentAsByteArray()).path("tokenAcesso").asText();
+        String rotaAdmin = ADMIN + "/usuarios/" + id;
+        var conta = chamar(HttpMethod.GET, rotaAdmin, tokenPlataforma, null).andExpect(status().isOk()).andReturn();
+        String login = json.readTree(conta.getResponse().getContentAsByteArray()).path("login").asText();
+        chamar(HttpMethod.PUT, rotaAdmin, tokenPlataforma, Map.of("login", login, "email", email, "status", "ATIVO",
+                "permissoesPlataforma", List.of(empresa, trabalhador, visitante))).andExpect(status().isOk());
+        chamar(HttpMethod.GET, consulta, tokenApp, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.papeis").value(org.hamcrest.Matchers.contains("EMPRESA", "TRABALHADOR")));
+        chamar(HttpMethod.PUT, rotaAdmin, tokenPlataforma, Map.of("login", login, "email", email, "status", "ATIVO",
+                "permissoesPlataforma", List.of(visitante))).andExpect(status().isOk());
+        chamar(HttpMethod.GET, consulta, tokenApp, null).andExpect(status().isOk()).andExpect(jsonPath("$.papeis").isEmpty());
+
+        for (String papel : List.of("EMPRESA", "TRABALHADOR")) {
+            chamar(HttpMethod.PUT, consulta + "/papeis/" + papel, tokenApp, Map.of("selecionado", true))
+                    .andExpect(status().isOk());
+        }
+        chamar(HttpMethod.GET, rotaAdmin, tokenPlataforma, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.permissoesPlataforma").value(org.hamcrest.Matchers.hasItems(empresa, trabalhador, visitante)));
+        chamar(HttpMethod.PUT, rotaAdmin, tokenPlataforma, Map.of("login", login, "email", email, "status", "ATIVO",
+                "permissoesOriginais", List.of(empresa, visitante), "permissoesPlataforma", List.of(visitante)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.permissoesPlataforma").value(org.hamcrest.Matchers.contains(trabalhador, visitante)));
+        for (String papel : List.of("TRABALHADOR", "EMPRESA")) {
+            chamar(HttpMethod.PUT, consulta + "/papeis/" + papel, tokenApp, Map.of("selecionado", false))
+                    .andExpect(status().isOk());
+        }
+        chamar(HttpMethod.GET, rotaAdmin, tokenPlataforma, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$.permissoesPlataforma").value(org.hamcrest.Matchers.contains(visitante)));
+    }
+
+    @Test
     void administraCadastrosComIsolamentoERevogaVinculoSemPerderHistorico() throws Exception {
         chamar(HttpMethod.GET, ADMIN + "/usuarios", null, null).andExpect(status().isUnauthorized());
         chamar(HttpMethod.GET, ADMIN + "/usuarios?tamanho=101", tokenPlataforma, null)

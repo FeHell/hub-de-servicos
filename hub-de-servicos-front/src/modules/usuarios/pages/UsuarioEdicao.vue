@@ -120,6 +120,7 @@ async function atualizarPermissoes() {
       :usuario="usuario"
       :conta-propria="usuario?.id === autenticacao.usuario?.id"
       @cancelar="voltar"
+      @atualizar="carregar"
       @salvo="salvo"
     />
   </div>

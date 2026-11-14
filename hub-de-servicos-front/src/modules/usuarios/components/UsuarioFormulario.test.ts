@@ -235,8 +235,58 @@ describe('permissões da plataforma no formulário', () => {
 
     expect(atualizar).toHaveBeenCalledExactlyOnceWith(
       conta.id,
-      expect.objectContaining({ permissoesPlataforma: [] }),
+      expect.objectContaining({ permissoesPlataforma: [], permissoesOriginais: [visitante] }),
     )
+    tela.unmount()
+  })
+
+  it('salva os dois perfis na edição com as concessões originais', async () => {
+    const { atualizar } = prepararApi()
+    const empresa = 'PLATAFORMA_EMPRESA'
+    const trabalhador = 'PLATAFORMA_TRABALHADOR'
+    vi.mocked(useUsuariosApi().listarPermissoesPlataforma).mockResolvedValue([
+      { id: 'e', codigo: empresa, nome: 'Empresa', status: 'ATIVO', descricao: null },
+      { id: 't', codigo: trabalhador, nome: 'Trabalhador', status: 'ATIVO', descricao: null },
+    ])
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', component: UsuarioFormulario, props: { usuario: conta } }],
+    })
+    await router.push('/')
+    const tela = mount(RouterView, { global: { plugins: [router] } })
+    await flushPromises()
+    for (const codigo of [empresa, trabalhador]) {
+      await tela.get(`input[value="${codigo}"]`).setValue(true)
+    }
+    await tela.get('form').trigger('submit')
+    await flushPromises()
+    expect(atualizar).toHaveBeenCalledExactlyOnceWith(
+      conta.id,
+      expect.objectContaining({
+        permissoesPlataforma: [empresa, trabalhador, visitante],
+        permissoesOriginais: [visitante],
+      }),
+    )
+    tela.unmount()
+  })
+
+  it('solicita atualização de um cadastro e protege o rascunho de permissões', async () => {
+    prepararApi()
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', component: UsuarioFormulario, props: { usuario: conta } }],
+    })
+    await router.push('/')
+    const tela = mount(RouterView, { global: { plugins: [router] } })
+    await flushPromises()
+    const formulario = tela.getComponent(UsuarioFormulario)
+    const atualizar = formulario
+      .findAll('button')
+      .find((botao) => botao.text() === 'Atualizar dados')!
+    await atualizar.trigger('click')
+    expect(formulario.emitted('atualizar')).toHaveLength(1)
+    await tela.get(`input[value="${visitante}"]`).setValue(false)
+    expect((atualizar.element as HTMLButtonElement).disabled).toBe(true)
     tela.unmount()
   })
 

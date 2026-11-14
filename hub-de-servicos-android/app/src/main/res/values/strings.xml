@@ -82,9 +82,19 @@
     <string name="localizacao_indisponivel">Localização indisponível. Confira se ela está ativada no aparelho.</string>
     <string name="localizacao_erro">Não foi possível identificar a cidade.</string>
     <string name="localizacao_explicacao">Usamos a localização aproximada para identificar sua cidade. Você pode continuar usando o app sem permitir.</string>
-    <string name="localizacao_autorizar">Permitir localização</string>
     <string name="localizacao_permitir">Continuar</string>
     <string name="localizacao_agora_nao">Agora não</string>
-    <string name="localizacao_configuracoes">Abrir configurações</string>
     <string name="localizacao_atualizar">Atualizar cidade</string>
+    <string name="municipio_selecionar">Selecione sua cidade</string>
+    <string name="municipio_pesquisar">Digite o nome da cidade</string>
+    <string name="municipio_minimo">Digite pelo menos duas letras para pesquisar.</string>
+    <string name="municipio_buscando">Buscando cidades…</string>
+    <string name="municipio_vazio">Nenhuma cidade encontrada.</string>
+    <string name="municipio_erro_busca">Não foi possível buscar as cidades. Tente pesquisar novamente.</string>
+    <string name="municipio_erro_salvar">Não foi possível salvar a cidade. Tente novamente.</string>
+    <string name="municipio_salvando">Salvando cidade…</string>
+    <string name="municipio_confirmar">Confirmar</string>
+    <string name="municipio_usar_localizacao">Usar localização</string>
+    <string name="municipio_trocar_automatico">Atualizar pela localização?</string>
+    <string name="municipio_trocar_confirmar">Deseja usar %1$s — %2$s como sua cidade?</string>
 </resources>

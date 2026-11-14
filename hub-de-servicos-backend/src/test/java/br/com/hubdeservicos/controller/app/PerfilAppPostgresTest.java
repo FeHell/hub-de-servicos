@@ -154,7 +154,7 @@ class PerfilAppPostgresTest {
     }
 
     @Test
-    void papeisIndependentesERecuperadosSemConcederPermissoes() throws Exception {
+    void papeisIndependentesERecuperadosNaTabelaDePermissoes() throws Exception {
         var conta = conta();
         var outra = conta();
         String rota = ROTA + "/papeis/";
@@ -167,7 +167,9 @@ class PerfilAppPostgresTest {
                 .andExpect(jsonPath("$.papeis.length()").value(2));
         enviar(get(ROTA), outra, null).andExpect(jsonPath("$.papeis").isEmpty());
         assertThat(jdbc.queryForObject("select count(*) from usuario_permissao_plataforma where id_usuario = ?",
-                Long.class, java.util.UUID.fromString(conta.id()))).isZero();
+                Long.class, java.util.UUID.fromString(conta.id()))).isEqualTo(2);
+        enviar(put(rota + "PLATAFORMA_ADMINISTRAR"), conta, Map.of("selecionado", true))
+                .andExpect(status().isBadRequest());
         enviar(put(rota + "EMPRESA"), conta, Map.of("selecionado", false)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.papeis[0]").value("TRABALHADOR"));
         enviar(put(rota + "TRABALHADOR"), conta, Map.of("selecionado", false)).andExpect(status().isOk())
@@ -217,6 +219,35 @@ class PerfilAppPostgresTest {
                 .andExpect(status().isUnprocessableEntity());
         enviar(get(ROTA), renovar(conta), null).andExpect(jsonPath("$.municipio.codigoIbge").value(3550308));
         enviar(get(ROTA), outra, null).andExpect(jsonPath("$.municipio").doesNotExist());
+    }
+
+    @Test
+    void pesquisaMunicipiosEProtegeEscolhaManualDeLeiturasAutomaticas() throws Exception {
+        var conta = conta();
+        String rota = ROTA + "/localizacao";
+        var busca = get(ROTA + "/municipios").param("nome", "  uberlândia ");
+        enviar(busca, null, null).andExpect(status().isUnauthorized());
+        enviar(get(ROTA + "/municipios").param("nome", "  uberlandia  "), conta, null)
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].codigoIbge").value(3170206));
+        enviar(get(ROTA + "/municipios").param("nome", "bom jesus"), conta, null)
+                .andExpect(jsonPath("$[?(@.nome == 'Bom Jesus')].uf").isArray())
+                .andExpect(jsonPath("$[?(@.nome == 'Bom Jesus')].uf").value(
+                        org.hamcrest.Matchers.hasItems("PB", "PI")));
+        enviar(get(ROTA + "/municipios").param("nome", "%%"), conta, null).andExpect(jsonPath("$").isEmpty());
+        enviar(get(ROTA + "/municipios").param("nome", "sa"), conta, null)
+                .andExpect(jsonPath("$.length()").value(25));
+
+        enviar(put(rota + "/manual"), conta, Map.of("codigoIbge", 3170107))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.municipio.manual").value(true))
+                .andExpect(jsonPath("$.municipio.codigoIbge").value(3170107));
+        enviar(put(rota + "/manual"), conta, Map.of("codigoIbge", 9999999)).andExpect(status().isUnprocessableEntity());
+        enviar(put(rota), conta, Map.of("cidade", "Inexistente", "estado", "MG")).andExpect(status().isUnprocessableEntity());
+        enviar(put(rota), conta, Map.of("cidade", "São Paulo", "estado", "SP")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.municipio.codigoIbge").value(3170107));
+        enviar(get(ROTA), renovar(conta), null).andExpect(jsonPath("$.municipio.codigoIbge").value(3170107));
+        enviar(put(rota), conta, Map.of("cidade", "São Paulo", "estado", "SP", "confirmada", true))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.municipio.codigoIbge").value(3550308))
+                .andExpect(jsonPath("$.municipio.manual").value(false));
     }
 
     private int atualizarConcorrente(Conta conta, String numero, CyclicBarrier barreira) throws Exception {

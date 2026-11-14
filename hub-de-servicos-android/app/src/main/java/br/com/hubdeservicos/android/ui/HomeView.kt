@@ -14,7 +14,7 @@ import br.com.hubdeservicos.android.auth.Usuario
 internal class HomeView(
     context: Context, usuario: Usuario, estado: Estado, abrirPerfil: () -> Unit, sair: () -> Unit,
     selecionar: (PapelUsuario, Boolean) -> Unit,
-    localizacao: LocalizacaoUi, acaoLocalizacao: Int, atualizarLocalizacao: () -> Unit
+    localizacao: LocalizacaoUi, atualizarLocalizacao: () -> Unit
 ) :
     LinearLayout(context) {
 
@@ -24,8 +24,12 @@ internal class HomeView(
         adicionar(context.texto(context.getString(R.string.saudacao, estado.perfil?.nome ?: usuario.email), 30, R.color.gastro_oliva, serifa)
             .apply { isAccessibilityHeading = true })
 
-        adicionar(LocalizacaoHomeView(context, localizacao, acaoLocalizacao, atualizarLocalizacao), 14)
+        adicionar(LocalizacaoHomeView(context, localizacao, estado.perfil?.municipio, !estado.carregando, atualizarLocalizacao), 14)
         adicionar(PreferenciasHomeView(context, estado, selecionar), 20)
+        (estado.erroPerfil ?: estado.erro?.let(context::getString))?.let { erro ->
+            adicionar(context.texto(erro, 15, R.color.gastro_erro)
+                .apply { accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }, 12)
+        }
         adicionar(PendenciasCadastroView(context, estado.perfil, !estado.carregando, abrirPerfil), 16)
 
         val apresentacao = LinearLayout(context).apply {
@@ -59,10 +63,6 @@ internal class HomeView(
         }
         adicionar(vazio, 10)
 
-        (estado.erroPerfil ?: estado.erro?.let(context::getString))?.let { erro ->
-            adicionar(context.texto(erro, 15, R.color.gastro_erro)
-                .apply { accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }, 12)
-        }
         adicionar(Button(context).apply {
             setText(R.string.sair)
             minimumHeight = context.dp(48)

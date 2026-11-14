@@ -1,6 +1,7 @@
 package br.com.hubdeservicos.dto.app;
 
 import br.com.hubdeservicos.dto.usuario.SituacaoTelefone;
+import br.com.hubdeservicos.entity.usuario.MunicipioEntity;
 import br.com.hubdeservicos.entity.usuario.PapelUsuario;
 import br.com.hubdeservicos.entity.usuario.UsuarioEntity;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -10,6 +11,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -33,10 +35,19 @@ public final class ContratosPerfilApp {
     }
 
     public record IdentificarMunicipio(@NotBlank @Size(max = 120) String cidade,
-                                       @NotBlank @Size(max = 40) String estado) {
+                                       @NotBlank @Size(max = 40) String estado, boolean confirmada) {
     }
 
-    public record Municipio(int codigoIbge, String nome, String uf, Instant observadoEm) {
+    public record SelecionarMunicipio(@NotNull @Positive Integer codigoIbge) {
+    }
+
+    public record OpcaoMunicipio(int codigoIbge, String nome, String uf) {
+        public static OpcaoMunicipio de(MunicipioEntity municipio) {
+            return new OpcaoMunicipio(municipio.getCodigoIbge(), municipio.getNome(), municipio.getUf());
+        }
+    }
+
+    public record Municipio(int codigoIbge, String nome, String uf, Instant observadoEm, boolean manual) {
     }
 
     public record IniciarConfirmacao(@NotBlank @Size(max = 32) String telefone) {
@@ -52,20 +63,17 @@ public final class ContratosPerfilApp {
     public record Cadastro(UUID id, String email, String nome, String telefone, SituacaoTelefone situacaoTelefone,
                            List<Pendencia> pendencias, List<PapelUsuario> papeis,
                            Remuneracao remuneracao, Municipio municipio) {
-        public static Cadastro de(UsuarioEntity usuario) {
+        public static Cadastro de(UsuarioEntity usuario, List<PapelUsuario> papeis) {
             List<Pendencia> pendencias = new ArrayList<>();
             if (usuario.getNome() == null) pendencias.add(Pendencia.NOME);
             SituacaoTelefone situacao = SituacaoTelefone.de(usuario);
             if (situacao == SituacaoTelefone.NAO_INFORMADO) pendencias.add(Pendencia.TELEFONE);
             if (situacao == SituacaoTelefone.PENDENTE) pendencias.add(Pendencia.CONFIRMACAO_TELEFONE);
-            List<PapelUsuario> papeis = new ArrayList<>();
-            if (usuario.isPapelEmpresa()) papeis.add(PapelUsuario.EMPRESA);
-            if (usuario.isPapelTrabalhador()) papeis.add(PapelUsuario.TRABALHADOR);
             var local = usuario.getMunicipioAtual();
             Municipio municipio = local == null ? null : new Municipio(local.getCodigoIbge(), local.getNome(),
-                    local.getUf(), usuario.getMunicipioObservadoEm());
+                    local.getUf(), usuario.getMunicipioObservadoEm(), usuario.isMunicipioManual());
             return new Cadastro(usuario.getId(), usuario.getEmail(), usuario.getNome(), usuario.getTelefone(),
-                    situacao, List.copyOf(pendencias), List.copyOf(papeis),
+                    situacao, List.copyOf(pendencias), papeis,
                     new Remuneracao(usuario.getValorHora(), usuario.getValorDiaria()), municipio);
         }
     }

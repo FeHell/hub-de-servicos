@@ -14,7 +14,7 @@ import { useUsuariosApi } from '../services/usuariosApi'
 import { mascararTelefone, normalizarTelefone } from '../telefone'
 
 const props = defineProps<{ usuario?: UsuarioListagem; contaPropria?: boolean }>()
-const emit = defineEmits<{ cancelar: []; salvo: [Usuario] }>()
+const emit = defineEmits<{ cancelar: []; salvo: [Usuario]; atualizar: [] }>()
 const api = useUsuariosApi()
 const login = ref(props.usuario?.login ?? '')
 const nome = ref(props.usuario?.nome ?? '')
@@ -64,6 +64,25 @@ const alterado = computed(
     permissoesAlteradas.value ||
     senha.value !== '',
 )
+
+watch(
+  () => props.usuario,
+  (usuario) => {
+    if (usuario && !alterado.value && !salvando.value) preencherUsuario(usuario)
+  },
+)
+
+function preencherUsuario(usuario: Usuario) {
+  nome.value = usuario.nome ?? ''
+  login.value = usuario.login
+  email.value = usuario.email
+  status.value = usuario.status
+  senha.value = ''
+  telefone.value = mascararTelefone(usuario.telefone ?? '')
+  situacaoTelefone.value = usuario.situacaoTelefone
+  permissoes.value = [...usuario.permissoesPlataforma]
+  original.value = campos.value
+}
 
 function descarregar(evento: BeforeUnloadEvent) {
   evento.preventDefault()
@@ -127,6 +146,7 @@ async function salvar() {
           ...(telefone.value !== original.value.telefone && { telefone: numero }),
           ...(permissoesAlteradas.value && {
             permissoesPlataforma: campos.value.permissoesPlataforma,
+            permissoesOriginais: original.value.permissoesPlataforma,
           }),
         })
       : await api.criar({
@@ -146,15 +166,7 @@ async function salvar() {
   } finally {
     salvando.value = false
   }
-  nome.value = usuario.nome ?? ''
-  login.value = usuario.login
-  email.value = usuario.email
-  status.value = usuario.status
-  senha.value = ''
-  telefone.value = mascararTelefone(usuario.telefone ?? '')
-  situacaoTelefone.value = usuario.situacaoTelefone
-  permissoes.value = [...usuario.permissoesPlataforma]
-  original.value = campos.value
+  preencherUsuario(usuario)
   emit('salvo', usuario)
 }
 </script>
@@ -167,6 +179,11 @@ async function salvar() {
     @submit.prevent="salvar"
   >
     <h2 id="dados-usuario">Dados do usuário</h2>
+    <div v-if="usuario">
+      <BotaoBase variante="discreto" :desabilitado="salvando || alterado" @click="emit('atualizar')"
+        >Atualizar dados</BotaoBase
+      >
+    </div>
     <p v-if="erro" class="formulario__erro" role="alert">{{ erro }}</p>
     <div class="formulario__campos">
       <CampoTexto

@@ -227,9 +227,13 @@ As rotas abaixo exigem sessão do aplicativo. O usuário é identificado pela se
 | --- | --- |
 | `GET /api/v1/app/perfil` | Inclui papéis selecionados, remuneração pretendida e último município identificado. |
 | `PUT /api/v1/app/perfil` | Aceita `remuneracao` com `valorHora` e `valorDiaria`, decimais em reais enviados como texto no formato `"25.00"`. A omissão do objeto preserva os valores e campos vazios no objeto removem os respectivos valores. A edição exige o papel Trabalhador selecionado. |
-| `PUT /api/v1/app/perfil/papeis/{papel}` | `papel` aceita `EMPRESA` ou `TRABALHADOR`. Envie `{"selecionado":true}` ou `{"selecionado":false}`. Os papéis são independentes e expressam preferências, sem conceder permissões. |
-| `PUT /api/v1/app/perfil/localizacao` | Recebe `cidade` e `estado` (UF ou nome), identifica o município no catálogo e registra o código IBGE e o instante da observação. Retorna HTTP 422 sem aceitar texto livre quando o município é desconhecido. |
+| `PUT /api/v1/app/perfil/papeis/{papel}` | `papel` aceita `EMPRESA` ou `TRABALHADOR`. Envie `{"selecionado":true}` ou `{"selecionado":false}`. Os papéis são independentes e correspondem às concessões diretas Empresa e Trabalhador da Área Administrativa. |
+| `PUT /api/v1/app/perfil/localizacao` | Recebe `cidade` e `estado` (UF ou nome), identifica o município no catálogo e registra o código IBGE e o instante da observação. Retorna HTTP 422 se o município for desconhecido. Use `confirmada: true` somente após confirmação explícita para substituir uma escolha manual. |
+| `GET /api/v1/app/perfil/municipios?nome=...` | Pesquisa por nome no catálogo do IBGE, sem distinguir acentos, com até 25 resultados. |
+| `PUT /api/v1/app/perfil/localizacao/manual` | Recebe `codigoIbge` e persiste a escolha no mesmo campo de município, com a origem manual. |
 
 O catálogo versionado `municipios-ibge.csv` foi extraído da [API de Localidades do IBGE](https://servicodados.ibge.gov.br/api/v1/localidades/municipios) em 14/11/2026. Use um novo changeset para futuras atualizações do catálogo. A API recebe os nomes já resolvidos no Android e não armazena coordenadas.
+
+O changeset de unificação preserva as concessões administrativas e agrega as seleções positivas antigas do aplicativo. Depois da migration, reinicie o backend para que a execução passe a consultar apenas `usuario_permissao_plataforma`.
 
 Consulte o [planejamento de notificações push](docs/planejamento-notificacoes-push.md).
