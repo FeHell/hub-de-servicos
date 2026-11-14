@@ -10,6 +10,7 @@ import SelecaoPermissoesPlataforma from './SelecaoPermissoesPlataforma.vue'
 import { ErroApi } from '@/services/clienteHttp'
 import { opcoesStatus, type StatusUsuario, type Usuario, type UsuarioListagem } from '../contratos'
 import { useUsuariosApi } from '../services/usuariosApi'
+import { mascararTelefone, normalizarTelefone } from '../telefone'
 
 const props = defineProps<{ usuario?: UsuarioListagem; contaPropria?: boolean }>()
 const emit = defineEmits<{ cancelar: []; salvo: [Usuario] }>()
@@ -18,6 +19,13 @@ const login = ref(props.usuario?.login ?? '')
 const email = ref(props.usuario?.email ?? '')
 const status = ref<StatusUsuario>(props.usuario?.status ?? 'ATIVO')
 const senha = ref('')
+const telefone = ref(mascararTelefone(props.usuario?.telefone ?? ''))
+const situacaoTelefone = ref(props.usuario?.situacaoTelefone)
+const erroTelefone = ref('')
+function editarTelefone(valor: string) {
+  telefone.value = mascararTelefone(valor)
+  erroTelefone.value = ''
+}
 const permissoes = ref([...(props.usuario?.permissoesPlataforma ?? [])])
 const salvando = ref(false)
 const erro = ref('')
@@ -27,6 +35,7 @@ const campos = computed(() => ({
   login: login.value,
   email: email.value,
   status: status.value,
+  telefone: telefone.value,
   permissoesPlataforma: [...permissoes.value].sort(),
 }))
 const original = ref(campos.value)
@@ -39,6 +48,7 @@ const alterado = computed(
     login.value !== original.value.login ||
     email.value !== original.value.email ||
     status.value !== original.value.status ||
+    telefone.value !== original.value.telefone ||
     permissoesAlteradas.value ||
     senha.value !== '',
 )
@@ -77,6 +87,12 @@ onBeforeRouteUpdate((destino, origem) => destino.params.id === origem.params.id 
 async function salvar() {
   if (salvando.value) return
   erro.value = ''
+  erroTelefone.value = ''
+  const numero = telefone.value.trim() ? normalizarTelefone(telefone.value) : ''
+  if (numero === null) {
+    erroTelefone.value = 'Informe um telefone brasileiro válido com DDD.'
+    return
+  }
   const dados = { login: login.value.trim(), email: email.value.trim(), status: status.value }
   if (!dados.login) {
     erro.value = 'Informe o nome de usuário.'
@@ -95,6 +111,7 @@ async function salvar() {
     usuario = props.usuario
       ? await api.atualizar(props.usuario.id, {
           ...dados,
+          ...(telefone.value !== original.value.telefone && { telefone: numero }),
           ...(permissoesAlteradas.value && {
             permissoesPlataforma: campos.value.permissoesPlataforma,
           }),
@@ -102,10 +119,15 @@ async function salvar() {
       : await api.criar({
           ...dados,
           senha: senha.value,
+          ...(numero && { telefone: numero }),
           permissoesPlataforma: campos.value.permissoesPlataforma,
         })
   } catch (falha) {
-    erro.value = falha instanceof ErroApi ? falha.message : 'Não foi possível salvar o usuário.'
+    if (falha instanceof ErroApi && falha.status === 409 && falha.message.includes('telefone')) {
+      erroTelefone.value = falha.message
+    } else {
+      erro.value = falha instanceof ErroApi ? falha.message : 'Não foi possível salvar o usuário.'
+    }
     return
   } finally {
     salvando.value = false
@@ -114,6 +136,8 @@ async function salvar() {
   email.value = usuario.email
   status.value = usuario.status
   senha.value = ''
+  telefone.value = mascararTelefone(usuario.telefone ?? '')
+  situacaoTelefone.value = usuario.situacaoTelefone
   permissoes.value = [...usuario.permissoesPlataforma]
   original.value = campos.value
   emit('salvo', usuario)
@@ -149,6 +173,23 @@ async function salvar() {
         required
         :disabled="salvando"
       />
+      <div class="tipo-acesso">
+        <CampoTexto
+          id="usuario-form-telefone"
+          :model-value="telefone"
+          :erro="erroTelefone"
+          rotulo="Telefone"
+          inputmode="tel"
+          autocomplete="tel"
+          maxlength="32"
+          placeholder="(34) 99999-9999"
+          :disabled="salvando"
+          @update:model-value="editarTelefone"
+        />
+        <span v-if="situacaoTelefone" role="status">
+          {{ traduzirEnum('situacaoTelefone', situacaoTelefone) }}
+        </span>
+      </div>
       <CampoSelecao
         id="usuario-form-status"
         v-model="status"
@@ -169,10 +210,10 @@ async function salvar() {
         required
         :disabled="salvando"
       />
-      <div class="tipo-acesso">
+      <!-- <div class="tipo-acesso">
         <span>Tipo de acesso efetivo</span>
         <p>{{ traduzirEnum('tipoAcesso', usuario?.tipo ?? 'USUARIO') }}</p>
-      </div>
+      </div> -->
     </div>
     <SelecaoPermissoesPlataforma v-model="permissoes" :desabilitada="salvando" />
     <div class="formulario__acoes">

@@ -57,7 +57,7 @@ function aposExcluir() {
       <CampoTexto
         id="filtro-login"
         v-model="filtros.login"
-        rotulo="Nome de usuário"
+        rotulo="Nome do usuário"
         maxlength="50"
         placeholder="Buscar por login"
       />
@@ -108,7 +108,7 @@ function aposExcluir() {
         </caption>
         <thead role="rowgroup">
           <tr role="row">
-            <th scope="col" role="columnheader">Nome de usuário</th>
+            <th scope="col" role="columnheader">Nome do usuário</th>
             <th scope="col" role="columnheader">E-mail</th>
             <th scope="col" role="columnheader">Tipo de acesso</th>
             <th scope="col" role="columnheader">Permissões</th>

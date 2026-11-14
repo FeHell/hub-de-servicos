@@ -11,6 +11,8 @@ export interface Usuario {
   status: StatusUsuario
   dataCriacao: string
   permissoesPlataforma: string[]
+  telefone?: string | null
+  situacaoTelefone?: ValorEnum<'situacaoTelefone'>
 }
 
 export interface UsuarioListagem extends Usuario {
@@ -47,10 +49,11 @@ export interface NovoUsuario {
   senha: string
   status: StatusUsuario
   permissoesPlataforma: string[]
+  telefone?: string | null
 }
 
 export type AtualizarUsuario = Pick<Usuario, 'login' | 'email' | 'status'> &
-  Partial<Pick<Usuario, 'permissoesPlataforma'>>
+  Partial<Pick<NovoUsuario, 'permissoesPlataforma' | 'telefone'>>
 
 export const opcoesStatus = opcoesEnum('statusUsuario')
 export const opcoesTipo = opcoesEnum('tipoAcesso')

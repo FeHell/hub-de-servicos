@@ -26,6 +26,8 @@ public interface UsuarioRepository extends JpaRepository<UsuarioEntity, UUID> {
     @Query("select u from UsuarioEntity u where lower(u.email) = lower(:email)")
     Optional<UsuarioEntity> buscarEmailParaAutenticacao(@Param("email") String email);
 
+    boolean existsByTelefoneAndIdNot(String telefone, UUID id);
+
     // Compatível com os bloqueios de FK usados pela auditoria durante o encerramento de sessões.
     @Query(value = "select u.* from usuario u where u.id = :id for no key update", nativeQuery = true)
     Optional<UsuarioEntity> bloquearPorId(@Param("id") UUID id);

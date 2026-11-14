@@ -9,8 +9,7 @@ import br.com.hubdeservicos.android.ui.AutenticacaoModel
 class HubApplication : Application() {
     val autenticacao by lazy {
         val origem = BuildConfig.API_ORIGEM.trimEnd('/')
-        AutenticacaoModel(
-            SessaoApp(ApiAutenticacao(origem), SessaoKeystore(this, origem))
-        )
+        val api = ApiAutenticacao(origem)
+        AutenticacaoModel(SessaoApp(api, SessaoKeystore(this, origem)), api)
     }
 }

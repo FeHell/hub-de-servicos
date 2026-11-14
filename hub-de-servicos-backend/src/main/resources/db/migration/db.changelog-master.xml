@@ -25,4 +25,6 @@
     <include file="tokens_atualizacao/integridade-cadeia.xml" relativeToChangelogFile="true"/>
     <include file="configuracao/db.changelog-master.xml" relativeToChangelogFile="true"/>
     <include file="aplicacao/app.xml" relativeToChangelogFile="true"/>
+    <include file="permissao/perfis-negocio.xml" relativeToChangelogFile="true"/>
+    <include file="usuario/cadastro-progressivo.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

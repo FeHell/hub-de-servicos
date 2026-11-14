@@ -2,6 +2,7 @@ package br.com.hubdeservicos.config.autenticacao;
 
 import br.com.hubdeservicos.service.autenticacao.TokenJwt;
 import br.com.hubdeservicos.controller.app.AutenticacaoAppController;
+import br.com.hubdeservicos.controller.app.PerfilAppController;
 import br.com.hubdeservicos.service.app.AutenticacaoAppService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,6 +51,9 @@ public class SegurancaWeb {
                         .requestMatchers("/api/v1/aplicacoes/" + AutenticacaoAppService.SLUG + "/autenticacao/**").denyAll()
                         .requestMatchers(HttpMethod.POST, AutenticacaoAppController.ROTA + "/cadastro",
                                 AutenticacaoAppController.ROTA + "/login", AutenticacaoAppController.ROTA + "/renovar").permitAll()
+                        .requestMatchers(PerfilAppController.ROTA, PerfilAppController.ROTA + "/telefone/confirmacao",
+                                PerfilAppController.ROTA + "/telefone/confirmacao/reenviar",
+                                PerfilAppController.ROTA + "/telefone/confirmacao/validar").authenticated()
                         .requestMatchers(HttpMethod.GET, AutenticacaoAppController.ROTA + "/eu").authenticated()
                         .requestMatchers(HttpMethod.POST, AutenticacaoAppController.ROTA + "/logout").authenticated()
                         .requestMatchers(HttpMethod.POST, AUTENTICACAO + "/login", AUTENTICACAO + "/renovar").permitAll()

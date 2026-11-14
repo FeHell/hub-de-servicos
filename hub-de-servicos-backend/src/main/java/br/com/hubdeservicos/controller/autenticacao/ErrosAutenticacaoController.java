@@ -2,6 +2,7 @@ package br.com.hubdeservicos.controller.autenticacao;
 
 import br.com.hubdeservicos.exception.autenticacao.AutenticacaoNegadaException;
 import br.com.hubdeservicos.controller.app.AutenticacaoAppController;
+import br.com.hubdeservicos.controller.app.PerfilAppController;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice(assignableTypes = {AutenticacaoController.class, SessaoNavegadorController.class,
-        AutenticacaoAppController.class})
+        AutenticacaoAppController.class, PerfilAppController.class})
 public class ErrosAutenticacaoController {
 
     @ExceptionHandler(AutenticacaoNegadaException.class)

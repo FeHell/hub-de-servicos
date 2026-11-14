@@ -10,14 +10,18 @@ import android.widget.LinearLayout
 import br.com.hubdeservicos.android.R
 import br.com.hubdeservicos.android.auth.Usuario
 
-internal class HomeView(context: Context, usuario: Usuario, estado: Estado, sair: () -> Unit) :
+internal class HomeView(
+    context: Context, usuario: Usuario, estado: Estado, abrirPerfil: () -> Unit, sair: () -> Unit
+) :
     LinearLayout(context) {
 
     init {
         orientation = VERTICAL
         val serifa = Typeface.create("serif", Typeface.BOLD)
-        adicionar(context.texto(context.getString(R.string.saudacao, usuario.email), 30, R.color.gastro_oliva, serifa)
+        adicionar(context.texto(context.getString(R.string.saudacao, estado.perfil?.nome ?: usuario.email), 30, R.color.gastro_oliva, serifa)
             .apply { isAccessibilityHeading = true })
+
+        adicionar(PendenciasCadastroView(context, estado.perfil, !estado.carregando, abrirPerfil), 16)
 
         val apresentacao = LinearLayout(context).apply {
             orientation = VERTICAL

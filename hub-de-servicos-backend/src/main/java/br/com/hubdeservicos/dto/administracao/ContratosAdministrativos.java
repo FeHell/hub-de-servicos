@@ -1,5 +1,7 @@
 package br.com.hubdeservicos.dto.administracao;
 
+import br.com.hubdeservicos.dto.usuario.SituacaoTelefone;
+
 import br.com.hubdeservicos.dto.usuario.EmailUsuario;
 import br.com.hubdeservicos.dto.usuario.SenhaNova;
 import br.com.hubdeservicos.entity.aplicacao.AplicacaoEntity;
@@ -49,9 +51,9 @@ public final class ContratosAdministrativos {
                               @EmailUsuario String email,
                               @SenhaNova
                               @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) String senha, StatusUsuario status,
-                              List<@NotBlank @Size(max = 100) String> permissoesPlataforma) {
+                              List<@NotBlank @Size(max = 100) String> permissoesPlataforma, @Size(max = 32) String telefone) {
         public NovoUsuario(String login, String email, String senha) {
-            this(login, email, senha, StatusUsuario.ATIVO, null);
+            this(login, email, senha, StatusUsuario.ATIVO, null, null);
         }
 
         @Override
@@ -63,7 +65,7 @@ public final class ContratosAdministrativos {
     public record AtualizarUsuario(@NotBlank @Size(max = 50) String login,
                                    @EmailUsuario String email,
                                    @NotNull StatusUsuario status,
-                                   List<@NotBlank @Size(max = 100) String> permissoesPlataforma) {
+                                   List<@NotBlank @Size(max = 100) String> permissoesPlataforma, @Size(max = 32) String telefone) {
     }
 
     public record NovaSenha(@SenhaNova
@@ -110,10 +112,10 @@ public final class ContratosAdministrativos {
     }
 
     public record UsuarioInfo(UUID id, String login, String email, StatusUsuario status, Instant dataCriacao,
-                              List<String> permissoesPlataforma) {
+                              List<String> permissoesPlataforma, String telefone, SituacaoTelefone situacaoTelefone) {
         public static UsuarioInfo de(UsuarioEntity u, List<String> permissoesPlataforma) {
             return new UsuarioInfo(u.getId(), u.getLogin(), u.getEmail(), u.getStatus(), u.getDataCriacao(),
-                    permissoesPlataforma);
+                    permissoesPlataforma, u.getTelefone(), SituacaoTelefone.de(u));
         }
     }
 
@@ -123,11 +125,11 @@ public final class ContratosAdministrativos {
     }
 
     public record UsuarioListagem(UUID id, String login, String email, StatusUsuario status, Instant dataCriacao,
-                                  TipoAcessoUsuario tipo, List<PermissaoUsuario> permissoes, List<String> permissoesPlataforma) {
+                                  TipoAcessoUsuario tipo, List<PermissaoUsuario> permissoes, List<String> permissoesPlataforma, String telefone, SituacaoTelefone situacaoTelefone) {
         public static UsuarioListagem de(UsuarioEntity u, TipoAcessoUsuario tipo, List<PermissaoUsuario> permissoes,
                                          List<String> permissoesPlataforma) {
             return new UsuarioListagem(u.getId(), u.getLogin(), u.getEmail(), u.getStatus(), u.getDataCriacao(),
-                    tipo, permissoes, permissoesPlataforma);
+                    tipo, permissoes, permissoesPlataforma, u.getTelefone(), SituacaoTelefone.de(u));
         }
     }
 

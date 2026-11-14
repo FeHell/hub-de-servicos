@@ -94,7 +94,11 @@ class MainActivity : Activity() {
             Tela.HOME -> {
                 val usuario = requireNotNull(estado.usuario)
                 conteudo.adicionar(marca())
-                conteudo.adicionar(HomeView(this, usuario, estado, ::confirmarSaida), 22)
+                conteudo.adicionar(HomeView(this, usuario, estado, model::abrirPerfil, ::confirmarSaida), 22)
+            }
+            Tela.PERFIL, Tela.CONFIRMACAO -> {
+                conteudo.adicionar(marca())
+                conteudo.adicionar(CadastroView(this, estado, model), 22)
             }
         }
         if (mudouTela) animarEntrada(animar)

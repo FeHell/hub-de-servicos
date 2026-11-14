@@ -123,12 +123,12 @@ async function atualizarPermissoes() {
       @cancelar="voltar"
       @salvo="salvo"
     />
-    <UsuarioPermissoes
+    <!-- <UsuarioPermissoes
       v-if="usuario"
       :key="usuario.id"
       :usuario="usuario"
       @alterado="atualizarPermissoes"
-    />
+    /> -->
   </div>
 </template>
 

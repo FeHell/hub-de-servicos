@@ -185,6 +185,24 @@ As sessões usam o mesmo JWT, prazos, rotação e revogação das demais aplica�
 
 O backend limita o cadastro a 5 tentativas por IP por minuto e o login a 30 tentativas por IP e 10 por e-mail por minuto. A resposta de limite é 429. Os contadores ficam na memória de cada instância e usam o endereço remoto observado pelo backend. Em implantação com proxy ou múltiplas réplicas, aplique também limites compartilhados no gateway para essas rotas usando o IP do cliente validado pelo próprio gateway.
 
+## Conclusão cadastral e telefone
+
+As rotas sob `/api/v1/app/perfil` exigem o Bearer da aplicação móvel e operam sempre sobre a conta da sessão.
+
+| Método e rota relativa | Corpo | Retorno |
+| --- | --- | --- |
+| GET `/` | — | `id`, `email`, `nome`, `telefone`, `situacaoTelefone`, `pendencias` |
+| PUT `/` | `nome` e/ou `telefone` | Cadastro atualizado. Campo omitido ou nulo preserva o valor e texto vazio limpa o campo. |
+| POST `/telefone/confirmacao` | `telefone` | `idDesafio`, `telefoneMascarado`, `expiraEm` e `cadastro` após aceitação pelo provedor |
+| POST `/telefone/confirmacao/reenviar` | — | Novo desafio para o número atual |
+| POST `/telefone/confirmacao/validar` | `idDesafio`, `codigo` | Cadastro com telefone verificado após a validação |
+
+O telefone brasileiro é normalizado para `+55` seguido de DDD e número. A restrição `uk_usuario_telefone` também vale para números pendentes. Somente a confirmação de um desafio enviado para o número atual preenche `telefone_verificado_em`. Alterar ou remover o número invalida os desafios e limpa a data. O cadastro progressivo indica as pendências de nome, telefone e confirmação de telefone, sem condicionar o login.
+
+O código de seis dígitos expira em cinco minutos e tem cinco tentativas por desafio. O intervalo de envio é de 60 segundos por usuário e por número. Cada um tem cota de cinco solicitações por janela de 24 horas, inclusive quando o provedor falha. O banco guarda o hash BCrypt. A chamada ao gateway usa o `SmsService`; erros do provedor retornam mensagem genérica. O código não faz parte da resposta.
+
+Os endpoints administrativos de criação e edição aceitam `telefone` opcional e retornam `situacaoTelefone`. Enviar texto vazio na edição remove o telefone. O painel só lê a situação de verificação. Os códigos `PLATAFORMA_EMPRESA` e `PLATAFORMA_TRABALHADOR` são concessões independentes no catálogo existente e não equivalem à aprovação documental.
+
 ## Testes
 
 `mvn clean verify` compila, executa os testes que independem de PostgreSQL e gera o JAR executável em `target/`. Para executar as quatro suítes de integração, use uma instância de teste com o banco `hub_de_servicos` já migrado e exporte `DATABASE_USERNAME`, `DATABASE_PASSWORD` e `TESTE_DATABASE_URL` com a conexão JDBC da instância de teste:

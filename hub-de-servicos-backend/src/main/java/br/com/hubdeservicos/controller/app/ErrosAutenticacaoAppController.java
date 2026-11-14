@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
-@RestControllerAdvice(assignableTypes = AutenticacaoAppController.class)
+@RestControllerAdvice(assignableTypes = {AutenticacaoAppController.class, PerfilAppController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ErrosAutenticacaoAppController {
     @ExceptionHandler(MethodArgumentNotValidException.class)

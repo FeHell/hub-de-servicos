@@ -306,6 +306,44 @@ class AdministracaoPostgresTest {
     }
 
     @Test
+    void atribuiOsDoisPerfisDeNegocioEAdministraTelefoneSemVerificar() throws Exception {
+        String empresa = "PLATAFORMA_EMPRESA";
+        String trabalhador = "PLATAFORMA_TRABALHADOR";
+        var catalogo = chamar(HttpMethod.GET, ADMIN + "/permissoes-plataforma", tokenPlataforma, null)
+                .andExpect(status().isOk()).andReturn().getResponse();
+        assertThat(json.readTree(catalogo.getContentAsByteArray()).findValuesAsText("codigo"))
+                .contains(empresa, trabalhador, "PLATAFORMA_ADMINISTRAR");
+        String login = "teste-" + UUID.randomUUID();
+        String email = login + "@example.test";
+        String telefone = "349" + java.util.concurrent.ThreadLocalRandom.current().nextInt(10_000_000, 100_000_000);
+        var conta = criar(ADMIN + "/usuarios", Map.of("login", login, "email", email, "senha", SENHA,
+                "permissoesPlataforma", List.of(empresa, trabalhador), "telefone", telefone));
+        UUID id = id(conta);
+        usuarios.add(id);
+        assertThat(codigos(conta.path("permissoesPlataforma"))).containsExactly(empresa, trabalhador);
+        assertThat(conta.path("situacaoTelefone").asText()).isEqualTo("PENDENTE");
+        assertThat(conta.path("telefone").asText()).isEqualTo("+55" + telefone);
+        jdbc.update("update usuario set telefone_verificado_em = now() where id = ?", id);
+        chamar(HttpMethod.PUT, ADMIN + "/usuarios/" + id, tokenPlataforma,
+                Map.of("login", login, "email", email, "status", "ATIVO", "telefone", "+55 " + telefone,
+                        "permissoesPlataforma", List.of(trabalhador)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.situacaoTelefone").value("VERIFICADO"))
+                .andExpect(jsonPath("$.permissoesPlataforma").value(is(List.of(trabalhador))));
+        String outro = "teste-" + UUID.randomUUID();
+        chamar(HttpMethod.POST, ADMIN + "/usuarios", tokenPlataforma, Map.of(
+                "login", outro, "email", outro + "@example.test", "senha", SENHA, "telefone", telefone))
+                .andExpect(status().isConflict());
+        String numeroNovo = telefone.startsWith("34") ? "35" + telefone.substring(2) : telefone;
+        chamar(HttpMethod.PUT, ADMIN + "/usuarios/" + id, tokenPlataforma,
+                Map.of("login", login, "email", email, "status", "ATIVO", "telefone", numeroNovo,
+                        "situacaoTelefone", "VERIFICADO"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.situacaoTelefone").value("PENDENTE"));
+        chamar(HttpMethod.PUT, ADMIN + "/usuarios/" + id, tokenPlataforma,
+                Map.of("login", login, "email", email, "status", "ATIVO", "telefone", ""))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.situacaoTelefone").value("NAO_INFORMADO"));
+    }
+
+    @Test
     void disponibilizaNovaPermissaoNoCatalogoSemAlterarFormulario() throws Exception {
         String codigo = "PLATAFORMA_TESTE_" + UUID.randomUUID().toString().replace("-", "").toUpperCase(java.util.Locale.ROOT);
         UUID permissao = id(criar(ADMIN + "/permissoes-plataforma", Map.of("codigo", codigo, "nome", "Acesso de teste")));

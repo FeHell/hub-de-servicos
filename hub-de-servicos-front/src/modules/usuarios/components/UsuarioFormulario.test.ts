@@ -77,6 +77,82 @@ describe('saída do formulário de usuários', () => {
 })
 
 describe('permissões da plataforma no formulário', () => {
+  it('carrega o telefone verificado e salva um novo número normalizado como pendente', async () => {
+    const { atualizar } = prepararApi()
+    atualizar.mockImplementation(async (_id, dados) => ({
+      ...conta,
+      ...dados,
+      situacaoTelefone: 'PENDENTE',
+    }))
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        {
+          path: '/',
+          component: UsuarioFormulario,
+          props: {
+            usuario: { ...conta, telefone: '+5534999999999', situacaoTelefone: 'VERIFICADO' },
+          },
+        },
+      ],
+    })
+    await router.push('/')
+    const tela = mount(RouterView, { global: { plugins: [router] } })
+    await flushPromises()
+    const telefone = tela.get<HTMLInputElement>('#usuario-form-telefone')
+    expect(telefone.element.value).toBe('(34) 99999-9999')
+    expect(tela.text()).toContain('Verificado')
+    await telefone.setValue('1234')
+    await tela.get('form').trigger('submit')
+    expect(atualizar).not.toHaveBeenCalled()
+    expect(tela.text()).toContain('Informe um telefone brasileiro válido com DDD.')
+    await telefone.setValue('34988887777')
+    await tela.get('form').trigger('submit')
+    await flushPromises()
+    expect(atualizar).toHaveBeenCalledExactlyOnceWith(conta.id, {
+      login: conta.login,
+      email: conta.email,
+      status: conta.status,
+      telefone: '+5534988887777',
+    })
+    expect(tela.text()).toContain('Pendente de confirmação')
+    tela.unmount()
+  })
+
+  it('envia Empresa e Trabalhador juntos usando os códigos retornados pelo catálogo', async () => {
+    const { criar } = prepararApi()
+    const empresa = 'PLATAFORMA_EMPRESA'
+    const trabalhador = 'PLATAFORMA_TRABALHADOR'
+    vi.mocked(useUsuariosApi().listarPermissoesPlataforma).mockResolvedValue([
+      { id: 'e', codigo: empresa, nome: 'Empresa', status: 'ATIVO', descricao: null },
+      { id: 't', codigo: trabalhador, nome: 'Trabalhador', status: 'ATIVO', descricao: null },
+    ])
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', component: UsuarioFormulario }],
+    })
+    await router.push('/')
+    const tela = mount(RouterView, { global: { plugins: [router] } })
+    await flushPromises()
+    expect(tela.get('fieldset').text()).toContain('Empresa')
+    expect(tela.get('fieldset').text()).toContain('Trabalhador')
+    await tela.get(`input[value="${empresa}"]`).setValue(true)
+    await tela.get(`input[value="${trabalhador}"]`).setValue(true)
+    await tela.get('#usuario-form-login').setValue(conta.login)
+    await tela.get('#usuario-form-email').setValue(conta.email)
+    await tela.get('#usuario-form-senha').setValue('Senha-inicial-teste!')
+    await tela.get('#usuario-form-telefone').setValue('(34) 99999-9999')
+    await tela.get('form').trigger('submit')
+    await flushPromises()
+    expect(criar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telefone: '+5534999999999',
+        permissoesPlataforma: [empresa, trabalhador],
+      }),
+    )
+    tela.unmount()
+  })
+
   it('preserva as concessões no servidor ao salvar apenas os dados do usuário', async () => {
     const { atualizar } = prepararApi()
     const router = createRouter({

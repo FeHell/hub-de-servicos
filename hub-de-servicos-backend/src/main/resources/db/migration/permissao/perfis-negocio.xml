@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+    <changeSet id="2-permissoes-plataforma-negocio" author="sistema">
+        <sql>
+            INSERT INTO permissao (id, codigo, nome_plataforma, descricao, status)
+            VALUES
+              ('f5143001-be44-43e2-b517-75c131745099', 'PLATAFORMA_EMPRESA', 'Empresa',
+               'Perfil de negócio de empresa ou estabelecimento. Atribuição não concede aprovação documental.', 'ATIVO'),
+              ('44a4469f-c860-49df-8562-5f64efcfb057', 'PLATAFORMA_TRABALHADOR', 'Trabalhador',
+               'Perfil de negócio de trabalhador em busca de oportunidades.', 'ATIVO');
+        </sql>
+        <rollback>
+            <sql>DELETE FROM permissao WHERE id IN ('f5143001-be44-43e2-b517-75c131745099','44a4469f-c860-49df-8562-5f64efcfb057');</sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

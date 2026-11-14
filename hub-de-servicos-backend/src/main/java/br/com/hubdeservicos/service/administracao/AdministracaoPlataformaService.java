@@ -38,6 +38,7 @@ import br.com.hubdeservicos.entity.usuario.StatusUsuario;
 import br.com.hubdeservicos.entity.usuario.UsuarioEntity;
 import br.com.hubdeservicos.repository.usuario.UsuarioRepository;
 import br.com.hubdeservicos.service.usuario.CadastroUsuarioService;
+import br.com.hubdeservicos.service.usuario.TelefoneUsuarioService;
 import br.com.hubdeservicos.repository.usuario.UsuarioPermissaoPlataformaRepository;
 
 import java.time.Instant;
@@ -56,6 +57,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,7 +70,9 @@ public class AdministracaoPlataformaService {
 
     private final AplicacaoRepository aplicacoes;
     private final UsuarioRepository usuarios;
+    private final EntityManager persistencia;
     private final CadastroUsuarioService cadastroUsuarios;
+    private final TelefoneUsuarioService telefones;
     private final ConsultaUsuariosRepository consultaUsuarios;
     private final PermissaoRepository permissoes;
     private final UsuarioPermissaoPlataformaRepository atribuicoes;
@@ -82,7 +86,8 @@ public class AdministracaoPlataformaService {
     private final RevogacaoSessaoService revogacao;
 
     public AdministracaoPlataformaService(AplicacaoRepository aplicacoes, UsuarioRepository usuarios,
-                                          CadastroUsuarioService cadastroUsuarios,
+                                          CadastroUsuarioService cadastroUsuarios, TelefoneUsuarioService telefones,
+                                          EntityManager persistencia,
                                           ConsultaUsuariosRepository consultaUsuarios,
                                           PermissaoRepository permissoes, UsuarioPermissaoPlataformaRepository atribuicoes,
                                           PermissoesPlataformaService permissoesPlataforma,
@@ -92,7 +97,9 @@ public class AdministracaoPlataformaService {
                                           SenhasAdministrativas senhas, RevogacaoSessaoService revogacao) {
         this.aplicacoes = aplicacoes;
         this.usuarios = usuarios;
+        this.persistencia = persistencia;
         this.cadastroUsuarios = cadastroUsuarios;
+        this.telefones = telefones;
         this.consultaUsuarios = consultaUsuarios;
         this.permissoes = permissoes;
         this.atribuicoes = atribuicoes;
@@ -229,6 +236,7 @@ public class AdministracaoPlataformaService {
         String hash = senhas.gerarHash(dados.senha());
         UUID administracao = bloquearAlteracoesDeUsuarios();
         var usuario = cadastroUsuarios.salvar(dados.login(), hash, dados.email(), status);
+        telefones.atualizar(usuario, dados.telefone());
         registro.registrar("CRIAR_USUARIO", "usuario", null, usuario.getId());
         var codigos = dados.permissoesPlataforma() == null ? List.<String>of() : dados.permissoesPlataforma();
         return UsuarioInfo.de(usuario, permissoesPlataforma.substituir(usuario.getId(), administracao, codigos));
@@ -241,11 +249,13 @@ public class AdministracaoPlataformaService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "O administrador deve manter a própria conta ativa.");
         }
         UsuarioEntity usuario = usuarios.bloquearPorId(id).orElseThrow(() -> naoEncontrado("Usuário"));
+        persistencia.refresh(usuario);
         boolean desativou = usuario.getStatus() == StatusUsuario.ATIVO && dados.status() != StatusUsuario.ATIVO;
         var atuais = permissoesPlataforma.consultar(id);
         var desejadas = dados.permissoesPlataforma();
         verificarUltimoAdministrador(usuario, dados.status(), atuais, desejadas == null ? atuais : desejadas);
         usuario.atualizar(dados.login().strip(), dados.email().strip(), dados.status());
+        if (dados.telefone() != null) telefones.atualizar(usuario, dados.telefone());
         var codigos = desejadas == null ? atuais : permissoesPlataforma.substituir(id, administracao, desejadas);
         if (desativou) {
             revogacao.revogarDoUsuario(id);

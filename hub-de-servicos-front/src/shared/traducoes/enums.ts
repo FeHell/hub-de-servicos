@@ -23,7 +23,14 @@ export const rotulosEnum = {
   provedorSms: {
     TEXTBEE: 'TextBee',
   },
+  situacaoTelefone: {
+    NAO_INFORMADO: 'Não informado',
+    PENDENTE: 'Pendente de confirmação',
+    VERIFICADO: 'Verificado',
+  },
   permissao: {
+    PLATAFORMA_EMPRESA: 'Empresa',
+    PLATAFORMA_TRABALHADOR: 'Trabalhador',
     PLATAFORMA_ADMINISTRAR: 'Administrador da plataforma',
     PLATAFORMA_ANALISTA: 'Analista da plataforma',
     PLATAFORMA_VISITANTE: 'Visitante da plataforma',

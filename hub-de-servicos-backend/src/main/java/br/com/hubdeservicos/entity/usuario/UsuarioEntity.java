@@ -41,6 +41,15 @@ public class UsuarioEntity {
     @Column(name = "data_criacao", nullable = false, insertable = false, updatable = false)
     private Instant dataCriacao;
 
+    @Column(name = "nome", length = 150)
+    private String nome;
+
+    @Column(name = "telefone", length = 16)
+    private String telefone;
+
+    @Column(name = "telefone_verificado_em")
+    private Instant telefoneVerificadoEm;
+
     protected UsuarioEntity() {
     }
 
@@ -73,6 +82,36 @@ public class UsuarioEntity {
 
     public Instant getDataCriacao() {
         return dataCriacao;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public Instant getTelefoneVerificadoEm() {
+        return telefoneVerificadoEm;
+    }
+
+    public void atualizarNome(String nome) {
+        this.nome = nome;
+    }
+
+    public void atualizarTelefone(String telefone) {
+        if (!Objects.equals(this.telefone, telefone)) {
+            this.telefone = telefone;
+            this.telefoneVerificadoEm = null;
+        }
+    }
+
+    public void verificarTelefone(String telefone, Instant agora) {
+        if (telefone == null || !telefone.equals(this.telefone)) {
+            throw new IllegalArgumentException("O número do desafio difere do telefone atual.");
+        }
+        this.telefoneVerificadoEm = Objects.requireNonNull(agora);
     }
 
     public void atualizar(String login, String email, StatusUsuario status) {

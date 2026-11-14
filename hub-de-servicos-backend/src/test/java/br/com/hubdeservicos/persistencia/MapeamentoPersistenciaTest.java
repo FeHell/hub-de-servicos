@@ -44,7 +44,7 @@ class MapeamentoPersistenciaTest {
                 .run(contexto -> {
                     assertThat(contexto).hasNotFailed();
                     var metamodelo = contexto.getBean(EntityManagerFactory.class).getMetamodel();
-                    assertThat(metamodelo.getEntities()).hasSize(13);
+                    assertThat(metamodelo.getEntities()).hasSize(14);
                     assertThat(metamodelo.getEntities()).allSatisfy(entidade ->
                             assertThat(entidade.getJavaType().getSimpleName()).endsWith("Entity"));
                     assertThat(metamodelo.entity(UsuarioAplicacaoEntity.class).getIdType().getJavaType())

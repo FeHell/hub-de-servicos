@@ -39,6 +39,22 @@ class SessaoApp(private val api: AutenticacaoApi, private val armazenamento: Arm
         }
     }
 
+    fun <T> autenticado(operacao: (String) -> T): T {
+        val atual = tokenAcesso ?: renovar() ?: throw FalhaApi(401)
+        try {
+            return operacao(atual)
+        } catch (falha: FalhaApi) {
+            if (falha.status != 401) throw falha
+        }
+        val novo = renovar() ?: throw FalhaApi(401)
+        return try {
+            operacao(novo)
+        } catch (falha: FalhaApi) {
+            if (falha.status == 401) invalidar()
+            throw falha
+        }
+    }
+
     fun sair() {
         val atual = tokenAcesso ?: renovar() ?: return
         try {

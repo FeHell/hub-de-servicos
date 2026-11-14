@@ -90,6 +90,19 @@ class ApiAutenticacaoTest {
             override fun apagar() { valor = null }
         }
         assertEquals(criado, SessaoApp(api, armazenamento).entrar(email, senha))
+        fun perfil(acesso: String) = api.consultarCadastro(acesso)
+        val sessao = SessaoApp(api, armazenamento)
+        assertEquals(listOf("NOME", "TELEFONE"), sessao.autenticado(::perfil).pendencias)
+        val telefone = "349" + java.util.concurrent.ThreadLocalRandom.current().nextInt(10_000_000, 100_000_000)
+        val atualizado = sessao.autenticado { api.atualizarCadastro(it, "Ana Teste", telefone) }
+        assertEquals("Ana Teste", atualizado.nome)
+        assertEquals("+55" + telefone, atualizado.telefone)
+        assertEquals(SituacaoTelefone.PENDENTE, atualizado.situacaoTelefone)
+        assertEquals(listOf("CONFIRMACAO_TELEFONE"), atualizado.pendencias)
+        assertEquals(409, assertThrows(FalhaApi::class.java) {
+            sessao.autenticado { api.confirmarTelefone(it, UUID.randomUUID().toString(), "000000") }
+        }.status)
+        assertEquals(SituacaoTelefone.PENDENTE, sessao.autenticado(::perfil).situacaoTelefone)
         val sessaoRestaurada = SessaoApp(api, armazenamento)
         assertEquals(criado, sessaoRestaurada.restaurar())
         sessaoRestaurada.sair()
