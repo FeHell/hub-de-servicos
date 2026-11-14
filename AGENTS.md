@@ -18,7 +18,8 @@
 
 - Classes anotadas com `@Entity` devem terminar com `Entity`. Use o nome da entidade nas consultas JPQL/HQL e mantenha explícitos os mapeamentos de tabela e coluna.
 - Uma renomeação de classe Java preserva tabelas, colunas, constraints, sequences e contratos da API.
-- Organize controllers, services, repositories, DTOs e entidades no módulo responsável. Aplique validação nas entradas e mantenha as transações nos services.
+- Organize classes em `controller.<funcionalidade>`, `service.<funcionalidade>`, `repository.<funcionalidade>`, `entity.<funcionalidade>` e `dto.<funcionalidade>` sob `br.com.hubdeservicos`. Mantenha configurações, exceções, componentes compartilhados, bootstrap e provedores em seus pacotes próprios. Use a mesma organização nos testes da camada e mantenha as suítes transversais de persistência em `persistencia`.
+- Aplique validação nas entradas e mantenha as transações nos services.
 - Gerencie o schema pelo Liquibase em `src/main/resources/db/migration` e mantenha o Hibernate com `ddl-auto: validate`. Preserve o histórico de changesets aplicados.
 - Use o banco exclusivo `hub_de_servicos` no ambiente correspondente. Execute os testes PostgreSQL em uma instância isolada e migrada. Forneça credenciais, chaves e configurações de implantação fora do repositório.
 

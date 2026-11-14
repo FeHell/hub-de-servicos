@@ -1,6 +1,6 @@
 # Backend do Hub de Serviços
 
-Monólito modular em Java 21, Spring Boot 3.2.4 e Maven. O pacote `br.com.hubdeservicos` contém os módulos `administracao`, `aplicacao`, `auditoria`, `autenticacao`, `autorizacao`, `perfil`, `permissao`, `sessao`, `usuario` e os tipos compartilhados em `common`. Cada módulo agrupa as camadas que usa. As entidades terminam com `Entity` e mantêm mapeamentos explícitos de tabelas e colunas. As migrações ficam em `src/main/resources/db/migration`.
+Monólito modular em Java 21, Spring Boot 3.2.4 e Maven. Em `br.com.hubdeservicos`, as camadas `controller`, `repository`, `service`, `entity` e `dto` têm subpacotes por funcionalidade, como `controller.administracao` e `entity.usuario`. Configurações, exceções, bootstrap, provedores e tipos compartilhados ficam em `config`, `exception`, `bootstrap`, `provider` e `common`. A classe principal fica no pacote raiz para o escaneamento do Spring. Os testes seguem as camadas correspondentes e as suítes transversais ficam em `persistencia`. As entidades terminam com `Entity` e mantêm mapeamentos explícitos de tabelas e colunas. As migrações ficam em `src/main/resources/db/migration`.
 
 ## Ambientes
 

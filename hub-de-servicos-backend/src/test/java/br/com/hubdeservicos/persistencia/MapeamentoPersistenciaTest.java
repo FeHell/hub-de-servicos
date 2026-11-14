@@ -1,16 +1,16 @@
 package br.com.hubdeservicos.persistencia;
 
 import br.com.hubdeservicos.HubDeServicosApplication;
-import br.com.hubdeservicos.aplicacao.entity.AplicacaoPermissaoEntity;
-import br.com.hubdeservicos.aplicacao.entity.AplicacaoPermissaoId;
-import br.com.hubdeservicos.perfil.entity.PerfilPermissaoEntity;
-import br.com.hubdeservicos.perfil.entity.PerfilPermissaoId;
-import br.com.hubdeservicos.usuario.entity.UsuarioAplicacaoEntity;
-import br.com.hubdeservicos.usuario.entity.UsuarioAplicacaoId;
-import br.com.hubdeservicos.usuario.entity.UsuarioPerfilEntity;
-import br.com.hubdeservicos.usuario.entity.UsuarioPerfilId;
-import br.com.hubdeservicos.usuario.entity.UsuarioPermissaoPlataformaEntity;
-import br.com.hubdeservicos.usuario.entity.UsuarioPermissaoPlataformaId;
+import br.com.hubdeservicos.entity.aplicacao.AplicacaoPermissaoEntity;
+import br.com.hubdeservicos.entity.aplicacao.AplicacaoPermissaoId;
+import br.com.hubdeservicos.entity.perfil.PerfilPermissaoEntity;
+import br.com.hubdeservicos.entity.perfil.PerfilPermissaoId;
+import br.com.hubdeservicos.entity.usuario.UsuarioAplicacaoEntity;
+import br.com.hubdeservicos.entity.usuario.UsuarioAplicacaoId;
+import br.com.hubdeservicos.entity.usuario.UsuarioPerfilEntity;
+import br.com.hubdeservicos.entity.usuario.UsuarioPerfilId;
+import br.com.hubdeservicos.entity.usuario.UsuarioPermissaoPlataformaEntity;
+import br.com.hubdeservicos.entity.usuario.UsuarioPermissaoPlataformaId;
 
 import jakarta.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
