@@ -74,9 +74,19 @@ public class AutenticacaoService {
 
     @Transactional
     public TokensAutenticacao login(String slug, LoginEntrada entrada, String segredoCliente, String ip) {
-        var encontrado = usuarios.buscarLoginParaAutenticacao(entrada.login());
-        if (entrada.senha().getBytes(StandardCharsets.UTF_8).length > 72
-                || !senhas.matches(entrada.senha(), encontrado.map(UsuarioEntity::getSenhaHash).orElse(hashAusente))) {
+        return iniciarSessao(slug, usuarios.buscarLoginParaAutenticacao(entrada.login()), entrada.senha(),
+                segredoCliente, ip).tokens();
+    }
+
+    @Transactional
+    public LoginComIdentidade loginPorEmail(String slug, String email, String senha, String ip) {
+        return iniciarSessao(slug, usuarios.buscarEmailParaAutenticacao(email), senha, null, ip);
+    }
+
+    private LoginComIdentidade iniciarSessao(String slug, Optional<UsuarioEntity> encontrado, String senha,
+                                             String segredoCliente, String ip) {
+        if (senha.getBytes(StandardCharsets.UTF_8).length > 72
+                || !senhas.matches(senha, encontrado.map(UsuarioEntity::getSenhaHash).orElse(hashAusente))) {
             throw new AutenticacaoNegadaException();
         }
         UsuarioEntity usuario = encontrado.orElseThrow(AutenticacaoNegadaException::new);
@@ -87,7 +97,14 @@ public class AutenticacaoService {
                 StatusSessao.ATIVO, agora.plus(VALIDADE_ABSOLUTA), agora.plus(LIMITE_INATIVIDADE), agora));
         TokensAutenticacao resposta = emitirTokens(sessao, slug, null, agora);
         registrar("LOGIN", sessao, ip);
-        return resposta;
+        return new LoginComIdentidade(resposta, identidadeUsuario(usuario, sessao, slug));
+    }
+
+    public record LoginComIdentidade(TokensAutenticacao tokens, UsuarioAutenticado usuario) {
+        @Override
+        public String toString() {
+            return "LoginComIdentidade";
+        }
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED, noRollbackFor = AutenticacaoNegadaException.class)
@@ -132,8 +149,11 @@ public class AutenticacaoService {
     public UsuarioAutenticado consultarUsuario(String slug, IdentidadeJwt identidade) {
         SessaoEntity sessao = sessoes.findById(identidade.idSessao()).orElseThrow(AutenticacaoNegadaException::new);
         UsuarioEntity usuario = validarSessao(slug, identidade, sessao, relogio.instant());
-        return new UsuarioAutenticado(usuario.getId(), usuario.getLogin(), usuario.getEmail(),
-                sessao.getIdAplicacao(), slug);
+        return identidadeUsuario(usuario, sessao, slug);
+    }
+
+    private static UsuarioAutenticado identidadeUsuario(UsuarioEntity usuario, SessaoEntity sessao, String slug) {
+        return new UsuarioAutenticado(usuario.getId(), usuario.getLogin(), usuario.getEmail(), sessao.getIdAplicacao(), slug);
     }
 
     @Transactional

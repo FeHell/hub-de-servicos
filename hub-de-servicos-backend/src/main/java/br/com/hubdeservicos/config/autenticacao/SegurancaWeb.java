@@ -1,6 +1,8 @@
 package br.com.hubdeservicos.config.autenticacao;
 
 import br.com.hubdeservicos.service.autenticacao.TokenJwt;
+import br.com.hubdeservicos.controller.app.AutenticacaoAppController;
+import br.com.hubdeservicos.service.app.AutenticacaoAppService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.DispatcherType;
@@ -45,6 +47,11 @@ public class SegurancaWeb {
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.GET, "/.well-known/jwks.json",
                                 "/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
+                        .requestMatchers("/api/v1/aplicacoes/" + AutenticacaoAppService.SLUG + "/autenticacao/**").denyAll()
+                        .requestMatchers(HttpMethod.POST, AutenticacaoAppController.ROTA + "/cadastro",
+                                AutenticacaoAppController.ROTA + "/login", AutenticacaoAppController.ROTA + "/renovar").permitAll()
+                        .requestMatchers(HttpMethod.GET, AutenticacaoAppController.ROTA + "/eu").authenticated()
+                        .requestMatchers(HttpMethod.POST, AutenticacaoAppController.ROTA + "/logout").authenticated()
                         .requestMatchers(HttpMethod.POST, AUTENTICACAO + "/login", AUTENTICACAO + "/renovar").permitAll()
                         .requestMatchers(HttpMethod.POST, AUTENTICACAO + "/navegador/login",
                                 AUTENTICACAO + "/navegador/renovar", AUTENTICACAO + "/navegador/logout").permitAll()

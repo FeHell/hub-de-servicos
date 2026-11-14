@@ -1,5 +1,7 @@
 package br.com.hubdeservicos.dto.administracao;
 
+import br.com.hubdeservicos.dto.usuario.EmailUsuario;
+import br.com.hubdeservicos.dto.usuario.SenhaNova;
 import br.com.hubdeservicos.entity.aplicacao.AplicacaoEntity;
 import br.com.hubdeservicos.entity.aplicacao.TipoAplicacao;
 import br.com.hubdeservicos.entity.auditoria.AuditoriaEntity;
@@ -14,7 +16,6 @@ import br.com.hubdeservicos.entity.usuario.UsuarioAplicacaoEntity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -45,8 +46,8 @@ public final class ContratosAdministrativos {
     }
 
     public record NovoUsuario(@NotBlank @Size(max = 50) String login,
-                              @NotBlank @Email @Size(max = 255) String email,
-                              @NotBlank @Size(min = 12, max = 72)
+                              @EmailUsuario String email,
+                              @SenhaNova
                               @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) String senha, StatusUsuario status,
                               List<@NotBlank @Size(max = 100) String> permissoesPlataforma) {
         public NovoUsuario(String login, String email, String senha) {
@@ -60,12 +61,12 @@ public final class ContratosAdministrativos {
     }
 
     public record AtualizarUsuario(@NotBlank @Size(max = 50) String login,
-                                   @NotBlank @Email @Size(max = 255) String email,
+                                   @EmailUsuario String email,
                                    @NotNull StatusUsuario status,
                                    List<@NotBlank @Size(max = 100) String> permissoesPlataforma) {
     }
 
-    public record NovaSenha(@NotBlank @Size(min = 12, max = 72)
+    public record NovaSenha(@SenhaNova
                             @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) String senha) {
         @Override
         public String toString() {

@@ -37,6 +37,7 @@ import br.com.hubdeservicos.service.sessao.RevogacaoSessaoService;
 import br.com.hubdeservicos.entity.usuario.StatusUsuario;
 import br.com.hubdeservicos.entity.usuario.UsuarioEntity;
 import br.com.hubdeservicos.repository.usuario.UsuarioRepository;
+import br.com.hubdeservicos.service.usuario.CadastroUsuarioService;
 import br.com.hubdeservicos.repository.usuario.UsuarioPermissaoPlataformaRepository;
 
 import java.time.Instant;
@@ -67,6 +68,7 @@ public class AdministracaoPlataformaService {
 
     private final AplicacaoRepository aplicacoes;
     private final UsuarioRepository usuarios;
+    private final CadastroUsuarioService cadastroUsuarios;
     private final ConsultaUsuariosRepository consultaUsuarios;
     private final PermissaoRepository permissoes;
     private final UsuarioPermissaoPlataformaRepository atribuicoes;
@@ -80,6 +82,7 @@ public class AdministracaoPlataformaService {
     private final RevogacaoSessaoService revogacao;
 
     public AdministracaoPlataformaService(AplicacaoRepository aplicacoes, UsuarioRepository usuarios,
+                                          CadastroUsuarioService cadastroUsuarios,
                                           ConsultaUsuariosRepository consultaUsuarios,
                                           PermissaoRepository permissoes, UsuarioPermissaoPlataformaRepository atribuicoes,
                                           PermissoesPlataformaService permissoesPlataforma,
@@ -89,6 +92,7 @@ public class AdministracaoPlataformaService {
                                           SenhasAdministrativas senhas, RevogacaoSessaoService revogacao) {
         this.aplicacoes = aplicacoes;
         this.usuarios = usuarios;
+        this.cadastroUsuarios = cadastroUsuarios;
         this.consultaUsuarios = consultaUsuarios;
         this.permissoes = permissoes;
         this.atribuicoes = atribuicoes;
@@ -224,7 +228,7 @@ public class AdministracaoPlataformaService {
         StatusUsuario status = dados.status() == null ? StatusUsuario.ATIVO : dados.status();
         String hash = senhas.gerarHash(dados.senha());
         UUID administracao = bloquearAlteracoesDeUsuarios();
-        var usuario = usuarios.saveAndFlush(new UsuarioEntity(dados.login().strip(), hash, dados.email().strip(), status));
+        var usuario = cadastroUsuarios.salvar(dados.login(), hash, dados.email(), status);
         registro.registrar("CRIAR_USUARIO", "usuario", null, usuario.getId());
         var codigos = dados.permissoesPlataforma() == null ? List.<String>of() : dados.permissoesPlataforma();
         return UsuarioInfo.de(usuario, permissoesPlataforma.substituir(usuario.getId(), administracao, codigos));

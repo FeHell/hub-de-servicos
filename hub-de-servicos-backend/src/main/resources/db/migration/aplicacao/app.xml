@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <changeSet id="2-aplicacao-app-publica" author="sistema">
+        <comment>Provisiona somente a aplicação móvel. A reversão exige preservar os vínculos e as sessões já criados.</comment>
+        <insert tableName="aplicacao">
+            <column name="id" value="6ae84289-a4df-4491-95d0-9c5a684f1ec5"/>
+            <column name="nome" value="Hub de Serviços Mobile"/>
+            <column name="slug" value="hub-de-servicos-app"/>
+            <column name="tipo" value="PUBLICO"/>
+            <column name="status" value="ATIVO"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

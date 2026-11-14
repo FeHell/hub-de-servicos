@@ -24,4 +24,5 @@
     <include file="permissao/plataforma.xml" relativeToChangelogFile="true"/>
     <include file="tokens_atualizacao/integridade-cadeia.xml" relativeToChangelogFile="true"/>
     <include file="configuracao/db.changelog-master.xml" relativeToChangelogFile="true"/>
+    <include file="aplicacao/app.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

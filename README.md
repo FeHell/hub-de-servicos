@@ -6,6 +6,7 @@ Base administrativa independente com autenticação, controle de acesso e audito
 | --- | --- |
 | [hub-de-servicos-front](hub-de-servicos-front/README.md) | Interface Vue 3, TypeScript, Pinia, Vue Router, Vite e Vitest |
 | [hub-de-servicos-backend](hub-de-servicos-backend/README.md) | Monólito modular em Java 21, Spring Boot 3.2.4, Spring Security, JPA/Hibernate, Liquibase e PostgreSQL |
+| [hub-de-servicos-android](hub-de-servicos-android/README.md) | App Android nativo com cadastro, login e sessão |
 | [AGENTS.md](AGENTS.md) | Convenções do projeto e orientações para futuras implementações com o Codex |
 
 ## Executar em desenvolvimento

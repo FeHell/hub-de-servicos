@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Hub de Serviços</string>
+    <string name="entrar">Entrar</string>
+    <string name="criar_conta">Criar conta</string>
+    <string name="voltar_login">Voltar para entrar</string>
+    <string name="email">E-mail</string>
+    <string name="senha">Senha</string>
+    <string name="senha_regras">Use pelo menos 12 caracteres e até 72 bytes em UTF-8.</string>
+    <string name="sair">Sair</string>
+    <string name="tentar_novamente">Tentar novamente</string>
+    <string name="sessao_ativa">Sessão ativa</string>
+    <string name="restaurando">Restaurando sessão…</string>
+</resources>

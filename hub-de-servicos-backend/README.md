@@ -169,13 +169,29 @@ A tela **Configurações → Sistema** usa as rotas abaixo, protegidas pela auto
 
 Para adicionar um provedor, implemente `SmsProvider` em `sms/provider` e registre-o como bean Spring, com código exclusivo, nome de exibição e configuração externa para seus segredos. O resolver e a tela passam a listar a implementação. Após a implantação do novo bean, a escolha é efetuada no painel e vale para o envio seguinte. Nenhuma credencial faz parte dos contratos administrativos.
 
+## Cadastro e sessão do aplicativo
+
+O changeset `2-aplicacao-app-publica` insere `hub-de-servicos-app` na tabela `aplicacao`. O cadastro cria uma conta em `usuario` e um vínculo ativo em `usuario_aplicacao`, na mesma transação. O campo obrigatório `login` recebe um identificador interno. O e-mail é a credencial de identificação do aplicativo e deve ser único sem distinção de caixa. A senha tem pelo menos 12 caracteres e no máximo 72 bytes em UTF-8. O cadastro não exige telefone, documento ou escolha de perfil.
+
+| Rota sob `/api/v1/app/autenticacao` | Entrada | Saída |
+| --- | --- | --- |
+| `POST /cadastro` | `email` e `senha` | 201 com `id` e `email`. |
+| `POST /login` | `email` e `senha` | 200 com `tokenAcesso`, `tokenAtualizacao`, `expiracaoTokenAcesso` e `usuario` com `id` e `email`. |
+| `POST /renovar` | `tokenAtualizacao` | 200 com o novo par de tokens e a expiração do access token. |
+| `GET /eu` | Bearer do aplicativo | 200 com `id` e `email`. |
+| `POST /logout` | Bearer do aplicativo | 204 após revogar a sessão. |
+
+As sessões usam o mesmo JWT, prazos, rotação e revogação das demais aplicações do Hub. O acesso exige vínculo com `hub-de-servicos-app`. As rotas administrativas continuam usando sua própria aplicação. Dados inválidos retornam 400. Conflito no cadastro retorna 409 sem ecoar o e-mail. Login inválido retorna 401 com resposta comum para senha incorreta e conta inexistente.
+
+O backend limita o cadastro a 5 tentativas por IP por minuto e o login a 30 tentativas por IP e 10 por e-mail por minuto. A resposta de limite é 429. Os contadores ficam na memória de cada instância e usam o endereço remoto observado pelo backend. Em implantação com proxy ou múltiplas réplicas, aplique também limites compartilhados no gateway para essas rotas usando o IP do cliente validado pelo próprio gateway.
+
 ## Testes
 
-`mvn clean verify` compila, executa os testes que independem de PostgreSQL e gera o JAR executável em `target/`. Para executar as três suítes de integração, use uma instância de teste com o banco `hub_de_servicos` já migrado e exporte `DATABASE_USERNAME`, `DATABASE_PASSWORD` e `TESTE_DATABASE_URL` com a conexão JDBC da instância de teste:
+`mvn clean verify` compila, executa os testes que independem de PostgreSQL e gera o JAR executável em `target/`. Para executar as quatro suítes de integração, use uma instância de teste com o banco `hub_de_servicos` já migrado e exporte `DATABASE_USERNAME`, `DATABASE_PASSWORD` e `TESTE_DATABASE_URL` com a conexão JDBC da instância de teste:
 
 ```sh
 TESTE_PERSISTENCIA_POSTGRES=true TESTE_AUTENTICACAO_POSTGRES=true \
-  TESTE_ADMINISTRACAO_POSTGRES=true mvn verify
+  TESTE_ADMINISTRACAO_POSTGRES=true TESTE_APP_POSTGRES=true mvn verify
 ```
 
 `TESTE_POSTGRES_SCHEMA` permite indicar um schema de teste já migrado. O padrão é `public`. As suítes gravam registros temporários e a sequência de auditoria pode avançar. Elas verificam persistência, autenticação, renovação concorrente, logout, isolamento e operações administrativas.
