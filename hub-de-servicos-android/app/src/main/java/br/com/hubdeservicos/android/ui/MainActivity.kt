@@ -1,12 +1,15 @@
 package br.com.hubdeservicos.android.ui
 
+import android.animation.ValueAnimator
 import android.app.Activity
+import android.app.AlertDialog
 import android.graphics.Typeface
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.WindowInsets
+import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
@@ -23,6 +26,7 @@ class MainActivity : Activity() {
     private lateinit var conteudo: LinearLayout
     private lateinit var scroll: ScrollView
     private var ultimaTela: Tela? = null
+    private var confirmacaoSaida: AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,12 +74,17 @@ class MainActivity : Activity() {
     }
 
     override fun onStop() {
+        confirmacaoSaida?.dismiss()
         model.observar(null)
+        ultimaTela = null
+        conteudo.animate().cancel()
         super.onStop()
     }
 
     private fun renderizar(estado: Estado) {
-        val mudouTela = ultimaTela != estado.tela
+        val anterior = ultimaTela
+        val mudouTela = anterior != estado.tela
+        val animar = anterior != null && mudouTela && estado.tela != Tela.RESTAURAR
         ultimaTela = estado.tela
         conteudo.removeAllViews()
         if (mudouTela) scroll.scrollTo(0, 0)
@@ -85,9 +94,37 @@ class MainActivity : Activity() {
             Tela.HOME -> {
                 val usuario = requireNotNull(estado.usuario)
                 conteudo.adicionar(marca())
-                conteudo.adicionar(HomeView(this, usuario, estado, model::sair), 22)
+                conteudo.adicionar(HomeView(this, usuario, estado, ::confirmarSaida), 22)
             }
         }
+        if (mudouTela) animarEntrada(animar)
+    }
+
+    private fun animarEntrada(animar: Boolean) {
+        conteudo.animate().cancel()
+        conteudo.alpha = 1f
+        conteudo.translationY = 0f
+        if (animar && ValueAnimator.areAnimatorsEnabled()) {
+            conteudo.alpha = 0.65f
+            conteudo.translationY = dp(8).toFloat()
+            conteudo.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(160)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+        }
+    }
+
+    private fun confirmarSaida() {
+        if (confirmacaoSaida != null) return
+        confirmacaoSaida = AlertDialog.Builder(this)
+            .setTitle(R.string.confirmar_saida_titulo)
+            .setMessage(R.string.confirmar_saida_mensagem)
+            .setNegativeButton(R.string.cancelar, null)
+            .setPositiveButton(R.string.sair) { _, _ -> model.sair() }
+            .setOnDismissListener { confirmacaoSaida = null }
+            .show()
     }
 
     private fun restauracao(estado: Estado) {

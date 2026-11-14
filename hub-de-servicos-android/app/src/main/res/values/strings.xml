@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Conecta Gastro</string>
+    <string name="app_name">Conecta Cheff</string>
     <string name="entrar">Entrar</string>
     <string name="criar_conta">Criar conta</string>
     <string name="voltar_login">Voltar para entrar</string>
@@ -18,6 +18,9 @@
     <string name="senhas_diferentes">As senhas não coincidem.</string>
     <string name="frase_apresentacao">Grandes oportunidades começam com uma boa atitude.</string>
     <string name="sair">Sair</string>
+    <string name="confirmar_saida_titulo">Deseja realmente sair?</string>
+    <string name="confirmar_saida_mensagem">Você precisará entrar novamente para acessar sua conta.</string>
+    <string name="cancelar">Cancelar</string>
     <string name="tentar_novamente">Tentar novamente</string>
     <string name="restaurando">Restaurando sessão…</string>
     <string name="saudacao">Olá, %1$s!</string>

@@ -30,12 +30,16 @@ const campos = computed(() => ({
   permissoesPlataforma: [...permissoes.value].sort(),
 }))
 const original = ref(campos.value)
+const permissoesAlteradas = computed(
+  () =>
+    campos.value.permissoesPlataforma.join(',') !== original.value.permissoesPlataforma.join(','),
+)
 const alterado = computed(
   () =>
     login.value !== original.value.login ||
     email.value !== original.value.email ||
     status.value !== original.value.status ||
-    campos.value.permissoesPlataforma.join(',') !== original.value.permissoesPlataforma.join(',') ||
+    permissoesAlteradas.value ||
     senha.value !== '',
 )
 
@@ -73,7 +77,7 @@ onBeforeRouteUpdate((destino, origem) => destino.params.id === origem.params.id 
 async function salvar() {
   if (salvando.value) return
   erro.value = ''
-  const dados = { ...campos.value, login: login.value.trim(), email: email.value.trim() }
+  const dados = { login: login.value.trim(), email: email.value.trim(), status: status.value }
   if (!dados.login) {
     erro.value = 'Informe o nome de usuário.'
     return
@@ -89,8 +93,17 @@ async function salvar() {
   let usuario: Usuario
   try {
     usuario = props.usuario
-      ? await api.atualizar(props.usuario.id, dados)
-      : await api.criar({ ...dados, senha: senha.value })
+      ? await api.atualizar(props.usuario.id, {
+          ...dados,
+          ...(permissoesAlteradas.value && {
+            permissoesPlataforma: campos.value.permissoesPlataforma,
+          }),
+        })
+      : await api.criar({
+          ...dados,
+          senha: senha.value,
+          permissoesPlataforma: campos.value.permissoesPlataforma,
+        })
   } catch (falha) {
     erro.value = falha instanceof ErroApi ? falha.message : 'Não foi possível salvar o usuário.'
     return

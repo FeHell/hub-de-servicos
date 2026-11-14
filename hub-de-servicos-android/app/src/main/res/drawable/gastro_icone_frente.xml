@@ -1,10 +1,2 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <group android:translateX="30" android:translateY="30">
-        <path android:fillColor="#00000000" android:strokeColor="#FFF4E1"
-            android:strokeWidth="3.5" android:strokeLineCap="round" android:strokeLineJoin="round"
-            android:pathData="M8,25 A11,11 0,0 1,19 14 L25,14 A6,6 0,0 1,31 20 A6,6 0,0 1,25 26 L19,26 M40,23 A11,11 0,0 1,29 34 L23,34 A6,6 0,0 1,17 28 A6,6 0,0 1,23 22 L29,22" />
-        <path android:fillColor="#E2A477"
-            android:pathData="M37,9 A3,3 0,1 0,37 15 A3,3 0,1 0,37 9" />
-    </group>
-</vector>
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/gastro_simbolo" android:inset="23%" />

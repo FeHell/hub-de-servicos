@@ -49,7 +49,8 @@ export interface NovoUsuario {
   permissoesPlataforma: string[]
 }
 
-export type AtualizarUsuario = Pick<Usuario, 'login' | 'email' | 'status' | 'permissoesPlataforma'>
+export type AtualizarUsuario = Pick<Usuario, 'login' | 'email' | 'status'> &
+  Partial<Pick<Usuario, 'permissoesPlataforma'>>
 
 export const opcoesStatus = opcoesEnum('statusUsuario')
 export const opcoesTipo = opcoesEnum('tipoAcesso')

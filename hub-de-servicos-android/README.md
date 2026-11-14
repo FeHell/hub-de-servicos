@@ -1,4 +1,4 @@
-# Conecta Gastro para Android
+# Conecta Cheff para Android
 
 App nativo em Kotlin. Esta primeira versão permite criar conta, entrar com e-mail e senha, consultar a conta conectada, restaurar a sessão após reabrir o app e sair. O cadastro confirma a senha localmente e chama o login existente para abrir a Home. Se o cadastro for concluído e o login automático falhar, o app volta para o login com o e-mail preenchido.
 

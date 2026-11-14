@@ -25,7 +25,7 @@ function prepararApi() {
   const criar = vi
     .fn()
     .mockResolvedValue({ ...conta, permissoesPlataforma: [novaPermissao, visitante] })
-  const atualizar = vi.fn().mockResolvedValue({ ...conta, permissoesPlataforma: [novaPermissao] })
+  const atualizar = vi.fn().mockImplementation(async (_id, dados) => ({ ...conta, ...dados }))
   vi.mocked(useUsuariosApi).mockReturnValue({
     listarPermissoesPlataforma: vi.fn().mockResolvedValue([
       { id: '1', codigo: visitante, nome: 'Visitante', status: 'ATIVO' },
@@ -77,6 +77,48 @@ describe('saída do formulário de usuários', () => {
 })
 
 describe('permissões da plataforma no formulário', () => {
+  it('preserva as concessões no servidor ao salvar apenas os dados do usuário', async () => {
+    const { atualizar } = prepararApi()
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', component: UsuarioFormulario, props: { usuario: conta } }],
+    })
+    await router.push('/')
+    const tela = mount(RouterView, { global: { plugins: [router] } })
+    await flushPromises()
+    await tela.get('#usuario-form-email').setValue('atualizado@example.test')
+    await tela.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(atualizar).toHaveBeenCalledExactlyOnceWith(conta.id, {
+      login: conta.login,
+      email: 'atualizado@example.test',
+      status: conta.status,
+    })
+    expect(tela.find<HTMLInputElement>(`input[value="${visitante}"]`).element.checked).toBe(true)
+    tela.unmount()
+  })
+
+  it('envia uma lista vazia quando o operador remove explicitamente a última concessão', async () => {
+    const { atualizar } = prepararApi()
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', component: UsuarioFormulario, props: { usuario: conta } }],
+    })
+    await router.push('/')
+    const tela = mount(RouterView, { global: { plugins: [router] } })
+    await flushPromises()
+    await tela.get(`input[value="${visitante}"]`).setValue(false)
+    await tela.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(atualizar).toHaveBeenCalledExactlyOnceWith(
+      conta.id,
+      expect.objectContaining({ permissoesPlataforma: [] }),
+    )
+    tela.unmount()
+  })
+
   it.each([false, true])('salva opções do catálogo no cadastro ou edição (%s)', async (edicao) => {
     const { criar, atualizar } = prepararApi()
     const router = createRouter({
