@@ -2,13 +2,17 @@ package br.com.hubdeservicos.service.administracao;
 
 import br.com.hubdeservicos.common.StatusCadastro;
 import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ConfiguracaoInfo;
-import br.com.hubdeservicos.entity.configuracao.ConfiguracaoSistemaEntity;
+import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ServicoInfo;
+import br.com.hubdeservicos.entity.configuracao.ServicoExterno;
+import br.com.hubdeservicos.service.configuracao.ConfiguracoesExternasService;
 import br.com.hubdeservicos.repository.configuracao.ConfiguracaoSistemaRepository;
 import br.com.hubdeservicos.service.sms.SmsProviderResolver;
 import br.com.hubdeservicos.service.sms.SmsProviderResolver.ProvedorSms;
 
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -26,13 +30,15 @@ public class AdministracaoConfiguracaoService {
     private final SmsProviderResolver provedores;
     private final RegistroAdministrativo registro;
     private final Clock relogio;
+    private final ConfiguracoesExternasService externas;
 
     public AdministracaoConfiguracaoService(ConfiguracaoSistemaRepository configuracoes, SmsProviderResolver provedores,
-                                             RegistroAdministrativo registro, Clock relogio) {
+                                             RegistroAdministrativo registro, Clock relogio, ConfiguracoesExternasService externas) {
         this.configuracoes = configuracoes;
         this.provedores = provedores;
         this.registro = registro;
         this.relogio = relogio;
+        this.externas = externas;
     }
 
     public List<ConfiguracaoInfo> listarConfiguracoes() {
@@ -65,6 +71,22 @@ public class AdministracaoConfiguracaoService {
             registro.registrarAlteracaoConfiguracao(configuracao.getId(), SMS_PROVEDOR_ATIVO, valorAnterior, codigo);
         }
         return ConfiguracaoInfo.de(configuracao);
+    }
+
+    public List<ServicoInfo> listarServicos() {
+        return Arrays.stream(ServicoExterno.values()).map(externas::consultar).toList();
+    }
+
+    public ServicoInfo consultarServico(ServicoExterno servico) {
+        return externas.consultarComCredenciais(servico);
+    }
+
+    @Transactional
+    public ServicoInfo atualizarServico(ServicoExterno servico, Map<String, String> valores) {
+        for (var alterada : externas.atualizar(servico, valores)) {
+            registro.registrarAlteracaoServico(alterada.getId(), servico.name(), alterada.getChave());
+        }
+        return externas.consultar(servico);
     }
 
     private static ResponseStatusException configuracaoAusente() {

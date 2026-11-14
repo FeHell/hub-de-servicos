@@ -1,6 +1,15 @@
 package br.com.hubdeservicos.controller.administracao;
 
 import br.com.hubdeservicos.persistencia.ConexaoPostgresTeste;
+import br.com.hubdeservicos.repository.configuracao.ConfiguracaoSistemaRepository;
+import br.com.hubdeservicos.provider.infobip.InfobipTransporteControlado;
+import br.com.hubdeservicos.dto.sms.SmsSendRequest;
+import br.com.hubdeservicos.dto.sms.SmsSendResult.Erro;
+import br.com.hubdeservicos.service.configuracao.ConfiguracoesExternasService;
+import java.security.SecureRandom;
+import java.util.Base64;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
 import br.com.hubdeservicos.service.administracao.AcessoAdministrativo;
 import br.com.hubdeservicos.dto.autenticacao.TokensAutenticacao;
 
@@ -14,9 +23,12 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -30,6 +42,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -38,6 +56,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {
         "spring.liquibase.enabled=false",
+        "INFOBIP_API_KEY=env-legada-ficticia",
+        "INFOBIP_BASE_URL=https://env-legada.api.infobip.com",
         "spring.jpa.hibernate.ddl-auto=validate"
 })
 @AutoConfigureMockMvc
@@ -58,6 +78,11 @@ class AdministracaoPostgresTest {
     @Autowired
     private PasswordEncoder senhas;
 
+    @Autowired
+    private ConfiguracoesExternasService configuracoesExternas;
+    @Autowired
+    private ConfiguracaoSistemaRepository configuracoes;
+
     private final List<UUID> aplicacoes = new ArrayList<>();
     private final List<UUID> usuarios = new ArrayList<>();
     private final List<UUID> permissoes = new ArrayList<>();
@@ -71,6 +96,10 @@ class AdministracaoPostgresTest {
     @DynamicPropertySource
     static void configurar(DynamicPropertyRegistry propriedades) {
         ConexaoPostgresTeste.configurar(propriedades);
+        byte[] chave = new byte[32];
+        new SecureRandom().nextBytes(chave);
+        String chaveProtecao = Base64.getEncoder().encodeToString(chave);
+        propriedades.add("HUB_CONFIGURACAO_CHAVE_MESTRA", () -> chaveProtecao);
         propriedades.add(AcessoAdministrativo.PROPRIEDADE_APLICACAO, ID_PLATAFORMA::toString);
     }
 
@@ -121,6 +150,120 @@ class AdministracaoPostgresTest {
             jdbc.update("delete from usuario where id = ?", usuario);
         }
         permissoes.forEach(id -> jdbc.update("delete from permissao where id = ?", id));
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    void gravaCredenciaisProtegidasERecarregaInfobipPorEnvio(CapturedOutput logs) throws Exception {
+        String base = ADMIN + "/configuracoes/servicos";
+        String infobip = base + "/INFOBIP";
+        String stone = base + "/STONE";
+        String chaveA = "chave-ficticia-infobip-a";
+        String chaveB = "chave-ficticia-infobip-b";
+        String chaveStone = "chave-ficticia-stone";
+        String novaChaveStone = "outra-chave-ficticia-stone";
+        String urlA = "https://conta-a.api.infobip.com";
+        String urlB = "https://conta-b.api.infobip.com";
+        var builder = RestClient.builder();
+        var http = MockRestServiceServer.bindTo(builder).build();
+        var sms = InfobipTransporteControlado.sms(builder.build(), json, configuracoesExternas, configuracoes);
+        var pedido = new SmsSendRequest("+5534999999999", "Código de teste");
+
+        try {
+            chamar(HttpMethod.GET, base, tokenPlataforma, null).andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].servico").value("INFOBIP"))
+                    .andExpect(jsonPath("$[0].configuracoes[0].configurada").value(false))
+                    .andExpect(jsonPath("$[1].servico").value("STONE"));
+            chamar(HttpMethod.GET, stone, tokenPlataforma, null).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.configuracoes[0].configurada").value(false))
+                    .andExpect(jsonPath("$.configuracoes[0].valor").doesNotExist());
+            assertThat(sms.send(pedido).erro()).isEqualTo(Erro.CREDENCIAIS_AUSENTES);
+            chamar(HttpMethod.PUT, infobip, tokenPlataforma, Map.of("valores", Map.of("STONE_API_KEY", chaveStone)))
+                    .andExpect(status().isBadRequest()).andExpect(content().string(not(containsString(chaveStone))));
+            for (String urlInvalida : List.of("", "http://conta.api.infobip.com", urlA + "/sms",
+                    "https://conta.api.infobip.com.example.test", "https://127.0.0.1")) {
+                chamar(HttpMethod.PUT, infobip, tokenPlataforma,
+                        Map.of("valores", Map.of("INFOBIP_BASE_URL", urlInvalida)))
+                        .andExpect(status().isBadRequest());
+            }
+            chamar(HttpMethod.PUT, stone, tokenPlataforma, Map.of("valores", Map.of("STONE_API_KEY", chaveStone)))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.configuracoes[0].configurada").value(true))
+                    .andExpect(jsonPath("$.configuracoes[0].valor").doesNotExist());
+            assertThat(valorExterno("STONE", "STONE_API_KEY")).startsWith("v1:").doesNotContain(chaveStone);
+            chamar(HttpMethod.PUT, stone, tokenPlataforma,
+                    Map.of("valores", Map.of("STONE_API_KEY", novaChaveStone))).andExpect(status().isOk());
+            assertThat(sms.send(pedido).erro()).isEqualTo(Erro.CREDENCIAIS_AUSENTES);
+
+            chamar(HttpMethod.PUT, infobip, tokenPlataforma, Map.of("valores", Map.of("INFOBIP_API_KEY", chaveA)))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.configuracoes[0].valor").doesNotExist());
+            assertThat(sms.send(pedido).erro()).isEqualTo(Erro.URL_BASE_AUSENTE);
+            String protegidaA = valorExterno("INFOBIP", "INFOBIP_API_KEY");
+            assertThat(protegidaA).startsWith("v1:").doesNotContain(chaveA);
+
+            chamar(HttpMethod.PUT, infobip, tokenPlataforma,
+                    Map.of("valores", Map.of("INFOBIP_BASE_URL", urlA, "INFOBIP_API_KEY", "  ")))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.configuracoes[1].valor").value(urlA));
+            assertThat(valorExterno("INFOBIP", "INFOBIP_API_KEY")).isEqualTo(protegidaA);
+            http.expect(requestTo(urlA + "/sms/3/messages")).andExpect(header("Authorization", "App " + chaveA))
+                    .andRespond(withSuccess("{\"messages\":[{\"messageId\":\"a\",\"status\":{\"groupName\":\"PENDING\"}}]}",
+                            MediaType.APPLICATION_JSON));
+            assertThat(sms.send(pedido).aceito()).isTrue();
+            http.verify();
+            http.reset();
+
+            chamar(HttpMethod.PUT, infobip, tokenPlataforma,
+                    Map.of("valores", Map.of("INFOBIP_BASE_URL", urlB, "INFOBIP_API_KEY", chaveB)))
+                    .andExpect(status().isOk()).andExpect(content().string(not(containsString(chaveB))));
+            http.expect(requestTo(urlB + "/sms/3/messages")).andExpect(header("Authorization", "App " + chaveB))
+                    .andRespond(withSuccess("{\"messages\":[{\"messageId\":\"b\",\"status\":{\"groupName\":\"PENDING\"}}]}",
+                            MediaType.APPLICATION_JSON));
+            assertThat(sms.send(pedido).idExterno()).isEqualTo("b");
+            http.verify();
+
+            String protegidaB = valorExterno("INFOBIP", "INFOBIP_API_KEY");
+            var semCache = org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                    .string(HttpHeaders.CACHE_CONTROL, containsString("no-store"));
+            chamar(HttpMethod.GET, infobip, tokenPlataforma, null).andExpect(status().isOk()).andExpect(semCache)
+                    .andExpect(jsonPath("$.configuracoes[0].valor").value(chaveB))
+                    .andExpect(jsonPath("$.configuracoes[1].valor").value(urlB))
+                    .andExpect(content().string(not(containsString(novaChaveStone))))
+                    .andExpect(content().string(not(containsString(protegidaB))));
+            chamar(HttpMethod.GET, stone, tokenPlataforma, null).andExpect(status().isOk()).andExpect(semCache)
+                    .andExpect(jsonPath("$.configuracoes[0].valor").value(novaChaveStone))
+                    .andExpect(jsonPath("$.configuracoes.length()").value(1))
+                    .andExpect(content().string(not(containsString(chaveB))));
+            chamar(HttpMethod.GET, base, tokenPlataforma, null).andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].configuracoes[0].valor").doesNotExist())
+                    .andExpect(jsonPath("$[1].configuracoes[0].valor").doesNotExist());
+            assertThat(configuracoesExternas.consultarComCredenciais(
+                    br.com.hubdeservicos.entity.configuracao.ServicoExterno.INFOBIP).toString())
+                    .doesNotContain(chaveB);
+            jdbc.update("update configuracao_sistema set valor=? where servico='STONE' and chave='STONE_API_KEY'",
+                    protegidaB);
+            chamar(HttpMethod.GET, stone, tokenPlataforma, null).andExpect(status().isServiceUnavailable())
+                    .andExpect(semCache)
+                    .andExpect(jsonPath("$.detail").value("Não foi possível consultar a credencial protegida."))
+                    .andExpect(content().string(not(containsString(protegidaB))));
+            assertThat(logs.getAll()).doesNotContain(chaveA, chaveB, chaveStone, novaChaveStone, protegidaB);
+            assertThat(jdbc.queryForList("select valor_novo::text from auditoria where acao = 'ALTERAR_CONFIGURACAO_SERVICO' "
+                    + "and id_usuario = ?", String.class, operador))
+                    .isNotEmpty().allSatisfy(item -> assertThat(item).doesNotContain(chaveA, chaveB, chaveStone, "v1:"));
+            assertThatThrownBy(() -> jdbc.update("""
+                    insert into configuracao_sistema (id, servico, chave, valor, tipo, status)
+                    values (?, 'INFOBIP', 'INFOBIP_BASE_URL', '', 'URL', 'ATIVO')
+                    """, UUID.randomUUID())).hasMessageContaining("uk_configuracao_sistema_servico_chave");
+            assertThatThrownBy(() -> jdbc.update("""
+                    update configuracao_sistema set valor='texto-plano-ficticio'
+                    where servico='STONE' and chave='STONE_API_KEY'
+                    """)).hasMessageContaining("ck_configuracao_sistema_segredo");
+        } finally {
+            jdbc.update("update configuracao_sistema set valor = '' where servico in ('INFOBIP', 'STONE')");
+        }
+    }
+
+    private String valorExterno(String servico, String chave) {
+        return jdbc.queryForObject("select valor from configuracao_sistema where servico=? and chave=?",
+                String.class, servico, chave);
     }
 
     @Test

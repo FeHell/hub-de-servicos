@@ -25,13 +25,6 @@ internal class HomeView(
             .apply { isAccessibilityHeading = true })
 
         adicionar(LocalizacaoHomeView(context, localizacao, estado.perfil?.municipio, !estado.carregando, atualizarLocalizacao), 14)
-        adicionar(PreferenciasHomeView(context, estado, selecionar), 20)
-        (estado.erroPerfil ?: estado.erro?.let(context::getString))?.let { erro ->
-            adicionar(context.texto(erro, 15, R.color.gastro_erro)
-                .apply { accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }, 12)
-        }
-        adicionar(PendenciasCadastroView(context, estado.perfil, !estado.carregando, abrirPerfil), 16)
-
         val apresentacao = LinearLayout(context).apply {
             orientation = VERTICAL
             clipToOutline = true
@@ -46,6 +39,13 @@ internal class HomeView(
             })
         }
         adicionar(apresentacao, 20)
+        adicionar(PreferenciasHomeView(context, estado, selecionar), 20)
+        (estado.erroPerfil ?: estado.erro?.let(context::getString))?.let { erro ->
+            adicionar(context.texto(erro, 15, R.color.gastro_erro)
+                .apply { accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }, 12)
+        }
+        adicionar(PendenciasCadastroView(context, estado.perfil, !estado.carregando, abrirPerfil), 16)
+
         adicionar(context.texto(context.getString(R.string.home_oportunidades), 23, R.color.gastro_oliva, serifa)
             .apply { isAccessibilityHeading = true }, 24)
 

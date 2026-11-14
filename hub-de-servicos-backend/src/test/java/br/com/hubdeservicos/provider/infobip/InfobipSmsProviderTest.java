@@ -3,6 +3,8 @@ package br.com.hubdeservicos.provider.infobip;
 import br.com.hubdeservicos.dto.sms.SmsSendRequest;
 import br.com.hubdeservicos.dto.sms.SmsSendResult.Erro;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import br.com.hubdeservicos.service.configuracao.ConfiguracoesExternasService;
+import br.com.hubdeservicos.service.configuracao.ConfiguracoesExternasService.Infobip;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -13,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
+import static org.mockito.Mockito.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
@@ -70,6 +73,8 @@ class InfobipSmsProviderTest {
                 .isEqualTo(Erro.URL_BASE_AUSENTE);
         assertThat(provedor("http://example.test", "chave-ficticia", "InfoSMS").send(SMS).erro())
                 .isEqualTo(Erro.URL_BASE_INVALIDA);
+        assertThat(provedor("https://conta.api.infobip.com.evil.test", "chave-ficticia", "InfoSMS")
+                .send(SMS).erro()).isEqualTo(Erro.URL_BASE_INVALIDA);
         assertThat(provedor(ORIGEM + "/sms/3/messages", "chave-ficticia", "InfoSMS").send(SMS).erro())
                 .isEqualTo(Erro.URL_BASE_INVALIDA);
         assertThat(provedor(ORIGEM, "chave-ficticia", "").send(SMS).erro())
@@ -105,6 +110,8 @@ class InfobipSmsProviderTest {
     }
 
     private InfobipSmsProvider provedor(String origem, String chave, String remetente) {
-        return new InfobipSmsProvider(builder.build(), new ObjectMapper(), origem, chave, remetente);
+        var configuracoes = mock(ConfiguracoesExternasService.class);
+        when(configuracoes.lerInfobip()).thenReturn(new Infobip(origem, chave, !chave.isEmpty()));
+        return new InfobipSmsProvider(builder.build(), new ObjectMapper(), configuracoes, remetente);
     }
 }

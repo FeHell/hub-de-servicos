@@ -11,15 +11,38 @@ interface ProvedorSms {
   nome: string
 }
 
-const base = '/admin/configuracoes/sms'
+export interface ConfiguracaoExterna {
+  chave: string
+  configurada: boolean
+  sensivel: boolean
+  status: ValorEnum<'statusCadastro'>
+  valor?: string
+}
+
+export interface ServicoExterno {
+  servico: string
+  configuracoes: ConfiguracaoExterna[]
+}
+
+const base = '/admin/configuracoes'
+const sms = `${base}/sms`
+const servicos = `${base}/servicos`
+const detalheServico = (servico: string) => `${servicos}/${encodeURIComponent(servico)}`
 
 export function useConfiguracaoApi() {
   const { requisitarAutenticado: requisitar } = useAutenticacao()
   return {
-    listarProvedoresSms: () => requisitar<ProvedorSms[]>(`${base}/provedores`),
-    consultarProvedorSms: () => requisitar<ConfiguracaoSms>(`${base}/provedor-ativo`),
+    listarServicos: () => requisitar<ServicoExterno[]>(servicos),
+    consultarServico: (servico: string) => requisitar<ServicoExterno>(detalheServico(servico)),
+    atualizarServico: (servico: string, valores: Record<string, string>) =>
+      requisitar<ServicoExterno>(detalheServico(servico), {
+        metodo: 'PUT',
+        corpo: { valores },
+      }),
+    listarProvedoresSms: () => requisitar<ProvedorSms[]>(`${sms}/provedores`),
+    consultarProvedorSms: () => requisitar<ConfiguracaoSms>(`${sms}/provedor-ativo`),
     alterarProvedorSms: (codigo: string) =>
-      requisitar<ConfiguracaoSms>(`${base}/provedor-ativo`, {
+      requisitar<ConfiguracaoSms>(`${sms}/provedor-ativo`, {
         metodo: 'PUT',
         corpo: { codigo },
       }),

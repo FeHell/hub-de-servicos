@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+    <changeSet id="3-configuracoes-servicos-externos" author="sistema">
+        <addColumn tableName="configuracao_sistema">
+            <column name="servico" type="VARCHAR(50)" defaultValue="SISTEMA"><constraints nullable="false"/></column>
+            <column name="sensivel" type="BOOLEAN" defaultValueBoolean="false"><constraints nullable="false"/></column>
+        </addColumn>
+        <dropUniqueConstraint tableName="configuracao_sistema" constraintName="uk_configuracao_sistema_chave"/>
+        <addUniqueConstraint tableName="configuracao_sistema" columnNames="servico,chave"
+                             constraintName="uk_configuracao_sistema_servico_chave"/>
+        <sql>
+            ALTER TABLE configuracao_sistema ADD CONSTRAINT ck_configuracao_sistema_segredo
+                CHECK (NOT sensivel OR valor = '' OR valor ~ '^v1:[A-Za-z0-9+/]{39,}={0,2}$');
+            INSERT INTO configuracao_sistema (id, servico, chave, valor, descricao, tipo, status, sensivel) VALUES
+                ('cd9d9b90-51a1-4e9e-a788-61c8c44cee71', 'INFOBIP', 'INFOBIP_API_KEY', '', 'Chave de acesso da Infobip', 'SEGREDO', 'ATIVO', true),
+                ('169aa882-56a1-4dc0-8f18-f91f020eae45', 'INFOBIP', 'INFOBIP_BASE_URL', '', 'Origem HTTPS da conta Infobip', 'URL', 'ATIVO', false),
+                ('81caad2e-d957-465d-8b0a-e283b5a7e26c', 'STONE', 'STONE_API_KEY', '', 'Chave de acesso da Stone / Pagar.me', 'SEGREDO', 'ATIVO', true);
+        </sql>
+        <rollback>
+            <sql splitStatements="false">
+                DO $$ BEGIN
+                    IF EXISTS (SELECT 1 FROM configuracao_sistema WHERE servico &lt;&gt; 'SISTEMA' AND valor &lt;&gt; '') THEN
+                        RAISE EXCEPTION 'Preserve as configurações de serviços antes da reversão.';
+                    END IF;
+                END $$;
+            </sql>
+            <sql>
+                DELETE FROM configuracao_sistema WHERE id IN ('cd9d9b90-51a1-4e9e-a788-61c8c44cee71',
+                    '169aa882-56a1-4dc0-8f18-f91f020eae45', '81caad2e-d957-465d-8b0a-e283b5a7e26c');
+                ALTER TABLE configuracao_sistema DROP CONSTRAINT ck_configuracao_sistema_segredo;
+            </sql>
+            <dropUniqueConstraint tableName="configuracao_sistema" constraintName="uk_configuracao_sistema_servico_chave"/>
+            <addUniqueConstraint tableName="configuracao_sistema" columnNames="chave" constraintName="uk_configuracao_sistema_chave"/>
+            <dropColumn tableName="configuracao_sistema" columnName="sensivel"/>
+            <dropColumn tableName="configuracao_sistema" columnName="servico"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

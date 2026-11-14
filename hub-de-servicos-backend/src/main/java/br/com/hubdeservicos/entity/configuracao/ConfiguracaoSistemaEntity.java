@@ -1,6 +1,7 @@
 package br.com.hubdeservicos.entity.configuracao;
 
 import br.com.hubdeservicos.common.StatusCadastro;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -28,6 +29,12 @@ public class ConfiguracaoSistemaEntity {
 
     @Column(name = "chave", nullable = false, updatable = false, length = 100)
     private String chave;
+
+    @Column(name = "servico", nullable = false, updatable = false, length = 50)
+    private String servico;
+
+    @Column(name = "sensivel", nullable = false, updatable = false)
+    private boolean sensivel;
 
     @Column(name = "valor", nullable = false, columnDefinition = "text")
     private String valor;
@@ -61,6 +68,15 @@ public class ConfiguracaoSistemaEntity {
         return chave;
     }
 
+    public String getServico() {
+        return servico;
+    }
+
+    public boolean isSensivel() {
+        return sensivel;
+    }
+
+    @JsonIgnore
     public String getValor() {
         return valor;
     }

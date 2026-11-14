@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
+import br.com.hubdeservicos.service.configuracao.ConfiguracoesExternasService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -79,6 +80,7 @@ class AdministracaoConfiguracaoHttpTest {
     @MockBean private AutorizacaoService autorizacao;
     @MockBean private ConfiguracaoSistemaRepository configuracoes;
     @MockBean private AuditoriaRepository auditoria;
+    @MockBean private ConfiguracoesExternasService externas;
     @Autowired @Qualifier("infobipSmsProvider")
     private SmsProvider infobip;
 
@@ -102,6 +104,17 @@ class AdministracaoConfiguracaoHttpTest {
                 .contentType(MediaType.APPLICATION_JSON).content("""
                         {"codigo":"INFOBIP"}
                         """)).andExpect(status().isForbidden());
+        mvc.perform(get(BASE + "/servicos")).andExpect(status().isUnauthorized());
+        for (String servico : new String[]{"INFOBIP", "STONE"}) {
+            String detalhe = BASE + "/servicos/" + servico;
+            mvc.perform(get(detalhe)).andExpect(status().isUnauthorized());
+            mvc.perform(get(detalhe).header(HttpHeaders.AUTHORIZATION, "Bearer visitante"))
+                    .andExpect(status().isForbidden());
+        }
+        mvc.perform(put(BASE + "/servicos/INFOBIP").header(HttpHeaders.AUTHORIZATION, "Bearer visitante")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"valores\":{}}"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(externas);
         verifyNoInteractions(configuracoes, auditoria);
     }
 

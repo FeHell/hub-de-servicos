@@ -4,10 +4,12 @@ import br.com.hubdeservicos.dto.sms.SmsSendRequest;
 import br.com.hubdeservicos.dto.sms.SmsSendResult;
 import br.com.hubdeservicos.dto.sms.SmsSendResult.Erro;
 import br.com.hubdeservicos.provider.SmsProvider;
+import br.com.hubdeservicos.entity.configuracao.ServicoExterno;
+import br.com.hubdeservicos.service.configuracao.ConfiguracoesExternasService;
+import br.com.hubdeservicos.service.configuracao.CriptografiaCredenciais.CredencialIndisponivel;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
@@ -17,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -31,28 +34,19 @@ public class InfobipSmsProvider implements SmsProvider {
     private static final String CODIGO = "INFOBIP";
     private final RestClient cliente;
     private final ObjectMapper json;
-    private final URI origem;
-    private final boolean origemInformada;
-    private final String chave;
+    private final ConfiguracoesExternasService configuracoes;
     private final String remetente;
 
     @Autowired
-    public InfobipSmsProvider(ObjectMapper json, @Value("${INFOBIP_BASE_URL:}") String origem,
-                              @Value("${INFOBIP_API_KEY:}") String chave,
+    public InfobipSmsProvider(ObjectMapper json, ConfiguracoesExternasService configuracoes,
                               @Value("${INFOBIP_SMS_SENDER:${hub.sms.infobip.remetente-padrao:}}") String remetente) {
-        this(criarCliente(), json, origem, chave, remetente);
-        LOG.info("Infobip SMS: INFOBIP_BASE_URL={}, INFOBIP_API_KEY={}, remetente={}",
-                !origemInformada ? "ausente" : this.origem == null ? "inválida (esperada origem HTTPS)" : "válida",
-                this.chave.isBlank() ? "ausente" : "presente",
-                this.remetente.isBlank() ? "ausente (defina INFOBIP_SMS_SENDER)" : "configurado");
+        this(criarCliente(), json, configuracoes, remetente);
     }
 
-    InfobipSmsProvider(RestClient cliente, ObjectMapper json, String origem, String chave, String remetente) {
+    InfobipSmsProvider(RestClient cliente, ObjectMapper json, ConfiguracoesExternasService configuracoes, String remetente) {
         this.cliente = cliente;
         this.json = json;
-        this.origemInformada = !origem.isBlank();
-        this.origem = origemValida(origem);
-        this.chave = chave.strip();
+        this.configuracoes = configuracoes;
         this.remetente = remetente.strip();
     }
 
@@ -64,18 +58,6 @@ public class InfobipSmsProvider implements SmsProvider {
         return RestClient.builder().requestFactory(factory).build();
     }
 
-    private static URI origemValida(String valor) {
-        try {
-            URI uri = URI.create(valor.strip());
-            if ("https".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null
-                    && uri.getRawUserInfo() == null && uri.getRawQuery() == null && uri.getRawFragment() == null
-                    && (uri.getRawPath().isEmpty() || "/".equals(uri.getRawPath()))) return uri;
-        } catch (IllegalArgumentException erro) {
-            // A URL de configuração pode conter dados sensíveis. Não a registre.
-        }
-        return null;
-    }
-
     @Override
     public String getProviderCode() { return CODIGO; }
 
@@ -84,17 +66,28 @@ public class InfobipSmsProvider implements SmsProvider {
 
     @Override
     public SmsSendResult send(SmsSendRequest pedido) {
-        if (chave.isBlank()) return falha(Erro.CREDENCIAIS_AUSENTES);
-        if (!origemInformada) return falha(Erro.URL_BASE_AUSENTE);
-        if (origem == null) return falha(Erro.URL_BASE_INVALIDA);
+        ConfiguracoesExternasService.Infobip acesso;
+        try {
+            acesso = configuracoes.lerInfobip();
+        } catch (CredencialIndisponivel erro) {
+            LOG.warn("Infobip SMS: não foi possível abrir a credencial protegida. Confira a chave mestra.");
+            return falha(Erro.CONFIGURACAO_INDISPONIVEL);
+        } catch (DataAccessException erro) {
+            LOG.warn("Infobip SMS: falha ao consultar as configurações no banco.");
+            return falha(Erro.CONFIGURACAO_INDISPONIVEL);
+        }
+        if (!acesso.chaveCadastrada()) return falha(Erro.CREDENCIAIS_AUSENTES);
+        if (acesso.url().isBlank()) return falha(Erro.URL_BASE_AUSENTE);
+        var origem = ServicoExterno.origemInfobip(acesso.url());
+        if (origem.isEmpty()) return falha(Erro.URL_BASE_INVALIDA);
         if (remetente.isBlank()) return falha(Erro.REMETENTE_AUSENTE);
         if (!pedido.destinatario().matches("[+]?[1-9][0-9]{7,14}")) return falha(Erro.DESTINATARIO_INVALIDO);
         String numero = pedido.destinatario().replaceFirst("^\\+", "");
         var mensagem = Map.of("sender", remetente, "destinations", List.of(Map.of("to", numero)),
                 "content", Map.of("text", pedido.mensagem()));
         try {
-            return cliente.post().uri(origem.resolve("/sms/3/messages"))
-                    .header(HttpHeaders.AUTHORIZATION, "App " + chave)
+            return cliente.post().uri(origem.get().resolve("/sms/3/messages"))
+                    .header(HttpHeaders.AUTHORIZATION, "App " + acesso.chave())
                     .contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON)
                     .body(Map.of("messages", List.of(mensagem)))
                     .exchange((req, resposta) -> interpretar(resposta.getStatusCode().value(), resposta.getBody()));
@@ -149,8 +142,8 @@ public class InfobipSmsProvider implements SmsProvider {
 
     private static SmsSendResult falha(Erro erro) {
         String diagnostico = switch (erro) {
-            case CREDENCIAIS_AUSENTES -> "INFOBIP_API_KEY ausente";
-            case URL_BASE_AUSENTE -> "INFOBIP_BASE_URL ausente";
+            case CREDENCIAIS_AUSENTES -> "INFOBIP_API_KEY ausente no banco";
+            case URL_BASE_AUSENTE -> "INFOBIP_BASE_URL ausente no banco";
             case URL_BASE_INVALIDA -> "INFOBIP_BASE_URL inválida; use a origem HTTPS da conta, sem caminho";
             case REMETENTE_AUSENTE -> "INFOBIP_SMS_SENDER ausente";
             case AUTENTICACAO_RECUSADA_PELO_PROVEDOR -> "Infobip recusou a autenticação; confira a chave e a URL da mesma conta";

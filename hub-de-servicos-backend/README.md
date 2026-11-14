@@ -149,30 +149,32 @@ Os módulos internos usam `SmsService.send(SmsSendRequest)`. O serviço lê a co
 
 O changeset `2-configuracao-sms-infobip` troca a seleção de TextBee para Infobip no registro existente. As alterações administrativas registram operador, aplicação e valores anterior e novo na tabela `auditoria`.
 
-### Configurar a Infobip
+### Configurar a Infobip e a Stone
 
-No Eclipse, abra **Run Configurations → Environment** da configuração que inicia o backend e mantenha as variáveis abaixo. Reinicie essa execução para carregar as variáveis e o novo adaptador. Variáveis da execução do Eclipse não são automaticamente exportadas para outros processos.
+1. Provisionar `HUB_CONFIGURACAO_CHAVE_MESTRA` com 32 bytes aleatórios codificados em Base64. Em desenvolvimento, **Run Configurations → Environment** no Eclipse aceita essa variável. Gere o valor em um terminal privado com `openssl rand -base64 32` e mantenha uma cópia segura fora do repositório e do banco. Use a mesma chave mestra entre reinicializações e réplicas do mesmo ambiente. A troca isolada da chave impede a leitura dos registros já protegidos.
+2. Iniciar a versão atual com o Liquibase habilitado. A migration `3-configuracoes-servicos-externos` cria os metadados com valores vazios em `configuracao_sistema`. Ela preserva a seleção `SMS_PROVEDOR_ATIVO`. O rollback é bloqueado depois que houver valores cadastrados para os serviços.
+3. No painel **Configurações → Sistema**, cadastrar a API Key e a origem HTTPS da conta Infobip, no formato `https://<conta>.api.infobip.com`. Informe a origem sem caminho, consulta ou fragmento. As antigas variáveis `INFOBIP_API_KEY` e `INFOBIP_BASE_URL` deixam de alimentar o envio. Cadastre ambas no painel ao implantar a versão atual.
+4. Manter `INFOBIP_SMS_SENDER` no ambiente quando a conta exigir um remetente explícito. O perfil `local` preserva o padrão `InfoSMS`. A Stone é cadastrada no painel e fica disponível para configuração futura.
 
-| Variável | Valor esperado |
-| --- | --- |
-| `INFOBIP_BASE_URL` | Origem HTTPS exclusiva da conta, sem caminho |
-| `INFOBIP_API_KEY` | Chave com permissão de envio de SMS |
-| `INFOBIP_SMS_SENDER` | Remetente autorizado pela conta. O perfil `local` usa `InfoSMS` quando a variável é omitida. Nos demais perfis, configure explicitamente. |
+As API Keys usam AES-256-GCM com nonce aleatório a cada gravação. O serviço e a chave de configuração fazem parte dos dados autenticados. O banco guarda só o valor cifrado para campos sensíveis. A URL é armazenada como texto. Cada envio resolve o provedor ativo e lê as configurações atuais. Campo secreto vazio preserva o valor anterior e salvar o formulário não chama provedores externos. A auditoria armazena apenas serviço, identificador da configuração, operador e aplicação.
 
-Na inicialização, procure no Console a linha `Infobip SMS`; ela distingue URL ausente ou inválida e indica a presença da chave e do remetente sem exibir valores. Use a origem HTTPS da conta, sem o caminho `/sms/3/messages` e sem aspas. O adaptador envia por `POST /sms/3/messages`, sem retry automático. O `messageId` identifica a aceitação pela Infobip. Não há webhook de entrega configurado. Para validar a entrega, confirme o recebimento no aparelho ou inspecione o relatório pelo identificador no ambiente da conta. Faça o teste com destinatário verificado e autorizado. [Guia oficial da Infobip](https://www.infobip.com/docs/developer-resources/quickstart).
+Para confirmar envio real, solicite um código com um destinatário autorizado e confirme o recebimento no aparelho. O `messageId` referencia a aceitação da solicitação pela Infobip. A entrega pode ser verificada no aparelho ou pelo relatório da conta. [Guia oficial da Infobip](https://www.infobip.com/docs/developer-resources/quickstart).
 
 ### Administração
 
-A tela **Configurações → Sistema** usa as rotas abaixo, protegidas pela autorização administrativa existente (`PLATAFORMA_ADMINISTRAR` na aplicação reservada).
+A tela **Configurações → Sistema** usa as rotas abaixo. A autorização exige `PLATAFORMA_ADMINISTRAR` na aplicação reservada.
 
 | Método e rota | Resultado |
 | --- | --- |
-| `GET /api/v1/admin/configuracoes` | Lista as configurações permitidas. Atualmente expõe apenas a seleção de SMS. |
-| `GET /api/v1/admin/configuracoes/sms/provedores` | Lista os provedores registrados com código e nome de exibição. |
-| `GET /api/v1/admin/configuracoes/sms/provedor-ativo` | Retorna o registro da configuração de seleção de SMS, incluindo seu status. |
-| `PUT /api/v1/admin/configuracoes/sms/provedor-ativo` | Valida o código enviado em `{"codigo":"INFOBIP"}` e persiste a escolha. |
+| `GET /api/v1/admin/configuracoes` | Lista a configuração da seleção de SMS. |
+| `GET /api/v1/admin/configuracoes/sms/provedores` | Lista os provedores de SMS registrados. |
+| `GET /api/v1/admin/configuracoes/sms/provedor-ativo` | Lê a configuração de seleção de SMS. |
+| `PUT /api/v1/admin/configuracoes/sms/provedor-ativo` | Persiste a seleção de SMS. |
+| `GET /api/v1/admin/configuracoes/servicos` | Lista serviços e metadados de configuração. |
+| `GET /api/v1/admin/configuracoes/servicos/{servico}` | Lê os valores do serviço solicitado, incluindo a API Key descriptografada quando cadastrada. A resposta usa `Cache-Control: no-store`. |
+| `PUT /api/v1/admin/configuracoes/servicos/{servico}` | Atualiza as configurações submetidas no objeto `valores`. A resposta indica credenciais cadastradas, sem expor seus valores. |
 
-Para adicionar um provedor, implemente `SmsProvider` em `provider` e registre-o como bean Spring, com código exclusivo, nome de exibição e configuração externa para seus segredos. O resolver e a tela passam a listar a implementação. Após a implantação do novo bean, a escolha é efetuada no painel e vale para o envio seguinte. Nenhuma credencial faz parte dos contratos administrativos.
+O painel carrega o detalhe de cada serviço e exibe as API Keys em campos selecionáveis. A visualização integral está disponível aos administradores autorizados durante a sessão.
 
 ## Cadastro e sessão do aplicativo
 

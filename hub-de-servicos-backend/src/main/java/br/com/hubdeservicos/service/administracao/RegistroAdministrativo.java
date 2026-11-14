@@ -36,6 +36,14 @@ class RegistroAdministrativo {
                 "ALTERAR_PROVEDOR_SMS", "configuracao_sistema", antes, depois, null));
     }
 
+    void registrarAlteracaoServico(UUID id, String servico, String chave) {
+        var dados = JsonNodeFactory.instance.objectNode().put("idRecurso", id.toString())
+                .put("servico", servico).put("chave", chave);
+        var operador = identidade();
+        auditoria.save(new AuditoriaEntity(operador.idUsuario(), operador.idAplicacao(),
+                "ALTERAR_CONFIGURACAO_SERVICO", "configuracao_sistema", null, dados, null));
+    }
+
     void registrar(String acao, String tabela, UUID idAplicacao, UUID idRecurso) {
         registrar(acao, tabela, idAplicacao, idRecurso, null);
     }

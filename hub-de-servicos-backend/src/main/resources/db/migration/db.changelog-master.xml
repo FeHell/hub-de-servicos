@@ -31,4 +31,5 @@
     <include file="usuario/preferencias-cadastro.xml" relativeToChangelogFile="true"/>
     <include file="usuario/perfis-unificados-cidade-manual.xml" relativeToChangelogFile="true"/>
 
+    <include file="configuracao/servicos-externos.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

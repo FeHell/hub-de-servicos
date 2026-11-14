@@ -5,7 +5,8 @@ import CabecalhoPagina from '@/components/ui/CabecalhoPagina.vue'
 import CampoSelecao from '@/components/ui/CampoSelecao.vue'
 import { ErroApi } from '@/services/clienteHttp'
 import { traduzirEnum } from '@/shared/traducoes/enums'
-import { useConfiguracaoApi } from '../services/configuracaoApi'
+import ServicoExternoFormulario from '../components/ServicoExternoFormulario.vue'
+import { useConfiguracaoApi, type ServicoExterno } from '../services/configuracaoApi'
 
 const api = useConfiguracaoApi()
 const opcoes = ref<{ valor: string; texto: string }[]>([])
@@ -65,11 +66,42 @@ async function salvar() {
   }
 }
 
-onMounted(carregar)
+const servicos = ref<ServicoExterno[]>([])
+const carregandoServicos = ref(false)
+const erroServicos = ref('')
+const titulos: Record<string, string> = {
+  INFOBIP: 'Infobip — Envio de SMS',
+  STONE: 'Stone / Pagar.me — Integração financeira',
+}
+const campos: Record<string, string> = {
+  INFOBIP_API_KEY: 'API Key',
+  INFOBIP_BASE_URL: 'URL Base da API',
+  STONE_API_KEY: 'API Key',
+}
+
+async function carregarServicos() {
+  carregandoServicos.value = true
+  erroServicos.value = ''
+  try {
+    servicos.value = await api.listarServicos()
+  } catch {
+    erroServicos.value = 'Não foi possível carregar os serviços externos.'
+  } finally {
+    carregandoServicos.value = false
+  }
+}
+
+onMounted(() => {
+  void carregar()
+  void carregarServicos()
+})
 </script>
 
 <template>
-  <CabecalhoPagina titulo="Sistema" descricao="Gerencie o provedor de envio de SMS do Hub." />
+  <CabecalhoPagina
+    titulo="Sistema"
+    descricao="Gerencie o provedor de SMS e as configurações dos serviços externos."
+  />
 
   <section class="configuracao" aria-labelledby="titulo-sms" :aria-busy="carregando || salvando">
     <h2 id="titulo-sms">Envio de SMS</h2>
@@ -98,6 +130,21 @@ onMounted(carregar)
       </BotaoBase>
     </form>
   </section>
+  <section class="servicos" aria-labelledby="titulo-servicos" :aria-busy="carregandoServicos">
+    <h2 id="titulo-servicos">Serviços externos</h2>
+    <p v-if="carregandoServicos" role="status">Carregando serviços…</p>
+    <p v-if="erroServicos" class="erro" role="alert">{{ erroServicos }}</p>
+    <BotaoBase v-if="erroServicos" variante="discreto" @click="carregarServicos">
+      Tentar novamente
+    </BotaoBase>
+    <ServicoExternoFormulario
+      v-for="servico in servicos"
+      :key="servico.servico"
+      :servico="servico.servico"
+      :titulo="titulos[servico.servico] ?? 'Serviço externo'"
+      :rotulos="campos"
+    />
+  </section>
 </template>
 
 <style scoped>
@@ -119,6 +166,12 @@ onMounted(carregar)
 }
 .formulario :deep(.campo-selecao) {
   width: 100%;
+}
+.servicos {
+  display: grid;
+  gap: var(--espaco-4);
+  margin-top: var(--espaco-6);
+  max-width: 40rem;
 }
 .erro {
   color: var(--cor-erro);
