@@ -87,6 +87,21 @@ export const gruposMenu: GrupoMenu[] = [
       },
     ],
   },
+  {
+    id: 'configuracoes',
+    titulo: 'Configurações',
+    icone: 'configuracoes',
+    telas: [
+      {
+        nome: 'configuracoes-sistema',
+        caminho: 'configuracoes/sistema',
+        titulo: 'Sistema',
+        icone: 'configuracoes',
+        componente: () => import('@/modules/configuracao/pages/SistemaPagina.vue'),
+        permissao: administrar,
+      },
+    ],
+  },
 ]
 
 export const rotasAdministrativas: RouteRecordRaw[] = [

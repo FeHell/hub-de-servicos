@@ -58,6 +58,7 @@ it('mostra grupos autorizados e mantém o submenu selecionado na edição', asyn
         component: componente,
         meta: { itemMenu: 'usuarios' },
       },
+      { path: '/configuracoes/sistema', name: 'configuracoes-sistema', component: componente },
       { path: '/relatorios/dashboard-usuarios', name: 'dashboard-usuarios', component: componente },
     ],
   })
@@ -68,7 +69,12 @@ it('mostra grupos autorizados e mantém o submenu selecionado na edição', asyn
   })
   const cadastros = '[aria-controls="submenu-cadastros"]'
   expect(painel.find(cadastros).exists()).toBe(false)
+  const configuracoes = '[aria-controls="submenu-configuracoes"]'
+  expect(painel.find(configuracoes).exists()).toBe(false)
+  await painel.setProps({ permissoes: ['PLATAFORMA_VISITANTE'] })
+  expect(painel.find(configuracoes).exists()).toBe(false)
   await painel.setProps({ permissoes: ['PLATAFORMA_ADMINISTRAR'] })
+  expect(painel.get('#submenu-configuracoes a').text()).toBe('Sistema')
   const grupo = painel.get(cadastros)
   await grupo.trigger('click')
   expect(grupo.attributes('aria-expanded')).toBe('true')

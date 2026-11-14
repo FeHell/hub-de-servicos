@@ -11,7 +11,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 
-@RestControllerAdvice(assignableTypes = {AdministracaoPlataformaController.class, AdministracaoAplicacaoController.class})
+@RestControllerAdvice(assignableTypes = {AdministracaoPlataformaController.class,
+        AdministracaoAplicacaoController.class, AdministracaoConfiguracaoController.class})
 public class ErrosAdministracaoController {
 
     @ExceptionHandler(ResponseStatusException.class)

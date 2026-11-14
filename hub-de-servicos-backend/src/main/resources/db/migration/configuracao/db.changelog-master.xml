@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <changeSet id="1-configuracao-sistema" author="sistema">
+        <createTable tableName="configuracao_sistema">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" primaryKeyName="pk_configuracao_sistema" nullable="false"/>
+            </column>
+            <column name="chave" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uk_configuracao_sistema_chave"/>
+            </column>
+            <column name="valor" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="descricao" type="TEXT"/>
+            <column name="tipo" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="data_criacao" type="TIMESTAMPTZ" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="data_atualizacao" type="TIMESTAMPTZ" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <sql>
+            ALTER TABLE configuracao_sistema ADD CONSTRAINT ck_configuracao_sistema_status
+                CHECK (status IN ('ATIVO', 'INATIVO'));
+        </sql>
+        <insert tableName="configuracao_sistema">
+            <column name="id" value="5dd6197c-4521-4bf5-892d-3a29ccd91c9d"/>
+            <column name="chave" value="SMS_PROVEDOR_ATIVO"/>
+            <column name="valor" value="TEXTBEE"/>
+            <column name="descricao" value="Provedor responsável pelo envio dos SMS da plataforma."/>
+            <column name="tipo" value="TEXTO"/>
+            <column name="status" value="ATIVO"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

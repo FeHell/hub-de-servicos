@@ -10,7 +10,7 @@ Monólito modular em Java 21, Spring Boot 3.2.4 e Maven. O pacote `br.com.hubdes
 | `homologacao` | `DATABASE_URL` obrigatória. Use a instância de homologação com o banco `hub_de_servicos`. | Use emissor HTTPS e um par RSA da homologação. O cookie de renovação exige HTTPS. |
 | `producao` | `DATABASE_URL` obrigatória. Use a instância de produção com o banco `hub_de_servicos`. | Use emissor HTTPS e um par RSA da produção. O cookie de renovação exige HTTPS. |
 
-Em todos os ambientes, forneça `DATABASE_USERNAME` e `DATABASE_PASSWORD` por configuração externa. A URL JDBC deve conter o host e o nome do banco. O datasource e o Liquibase verificam o nome `hub_de_servicos`. O Liquibase usa a mesma conexão do datasource e aplica os changesets pendentes. O Hibernate valida o schema com `ddl-auto: validate`.
+Em todos os ambientes, forneça `DATABASE_USERNAME` e `DATABASE_PASSWORD` por configuração externa. A URL JDBC deve conter o host e o nome do banco. O datasource e o Liquibase verificam o nome `hub_de_servicos`. Hikari, Liquibase e Hibernate usam o schema `public`, inclusive para as tabelas de controle do Liquibase. O Liquibase verifica o schema da sessão e aplica os changesets pendentes. O Hibernate valida o schema com `ddl-auto: validate`.
 
 Em homologação e produção, defina `HUB_AUTENTICACAO_EMISSOR`, `HUB_AUTENTICACAO_CHAVEPRIVADA` e `HUB_AUTENTICACAO_CHAVEPUBLICA`. Informe a URL HTTPS do ambiente e os caminhos dos arquivos PEM. Use um par RSA correspondente de pelo menos 2048 bits, com chave privada PKCS#8 e pública X.509. Mantenha os arquivos de chave e as credenciais fora do repositório. A chave temporária do perfil local perde a validade ao reiniciar o processo.
 
@@ -33,16 +33,43 @@ export DATABASE_USERNAME DATABASE_PASSWORD
 export DATABASE_URL='jdbc:postgresql://127.0.0.1:5432/hub_de_servicos'
 PGPASSWORD="$DATABASE_PASSWORD" PGOPTIONS='-c default_transaction_read_only=on' \
   psql -X -w -h 127.0.0.1 -p 5432 -U "$DATABASE_USERNAME" -d hub_de_servicos \
-  -Atc 'select current_database()'
+  -Atc 'select current_database(), current_schema()'
 ```
 
-Quando o resultado for `hub_de_servicos`, inicie o backend para aplicar as migrações:
+Quando o resultado for `hub_de_servicos|public`, inicie o backend para aplicar as migrações:
 
 ```sh
 mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 No Eclipse, importe `hub-de-servicos-backend` como projeto Maven. Use a classe `br.com.hubdeservicos.HubDeServicosApplication` e configure `SPRING_PROFILES_ACTIVE=local` e as mesmas variáveis na execução.
+
+### Aplicação pelo Liquibase CLI
+
+Depois de conferir o schema de destino, consulte as tabelas existentes e os registros de `public.databasechangelog`, se a tabela de controle existir. Se houver tabelas do Hub sem o histórico correspondente, confronte o catálogo com os changesets antes de aplicar a migração. A partir deste diretório, com `DATABASE_USERNAME` e `DATABASE_PASSWORD` definidos no terminal local, o fluxo para o destino local é:
+
+```sh
+export LIQUIBASE_COMMAND_URL='jdbc:postgresql://127.0.0.1:5432/hub_de_servicos?currentSchema=public'
+export LIQUIBASE_COMMAND_USERNAME="$DATABASE_USERNAME"
+export LIQUIBASE_COMMAND_PASSWORD="$DATABASE_PASSWORD"
+export LIQUIBASE_COMMAND_CHANGELOG_FILE='db/migration/db.changelog-master.xml'
+export LIQUIBASE_COMMAND_DEFAULT_SCHEMA_NAME=public
+export LIQUIBASE_LIQUIBASE_SCHEMA_NAME=public
+export LIQUIBASE_SEARCH_PATH=src/main/resources
+export LIQUIBASE_ANALYTICS_ENABLED=false
+liquibase validate
+liquibase update-sql
+```
+
+Depois de conferir a prévia, execute `liquibase update`. Para validar pelo Hibernate com as mesmas credenciais e o perfil `local`, execute `mvn spring-boot:run -Dspring-boot.run.profiles=local -Dspring-boot.run.arguments=--spring.liquibase.enabled=false`. Essa inicialização aplica `ddl-auto: validate` ao schema instalado.
+
+### Reversão de migrações
+
+O changeset `2-tokens-integridade-cadeia` acrescenta o índice único de raiz por família e o check de autorreferência. Sua reversão remove esses dois objetos e conserva todas as linhas. Se houver registros incompatíveis, a aplicação do changeset falha e a transação reverte a alteração. Investigue os registros antes de decidir como tratá-los.
+
+Os rollbacks históricos de criação de tabela removem as respectivas tabelas e seus dados, inclusive o histórico de auditoria. O rollback de `2-usuario-aplicacao-ativo` remove a coluna `ativo`. Reaplicar esse changeset preenche os vínculos existentes com `true`, perdendo o estado inativo anterior. O rollback de `2-usuario-indices` conserva os registros, mas remove a proteção contra login e e-mail duplicados sem distinção de caixa.
+
+O changeset `1-permissoes-diretas-plataforma` não tem rollback suportado. Ele cria a tabela de concessões, cadastra ou atualiza permissões e pode copiar vínculos legados. Uma reversão completa precisa de restauração de backup ou de uma migração corretiva que considere os dados existentes. Use a prévia do Liquibase para inspecionar o SQL antes de qualquer reversão.
 
 ## Primeiro administrador
 
@@ -115,6 +142,32 @@ O catálogo reutiliza a tabela `permissao`. O campo `nome_plataforma` identifica
 - `GET /api/v1/aplicacoes/hub-de-servicos-admin/autenticacao/permissoes` retorna as permissões diretas ativas da conta autenticada. A primeira atribuição ativa cria o vínculo técnico para login. A remoção das atribuições preserva vínculos existentes.
 
 A classificação de visitante ou analista fica disponível na sessão. A autorização das operações administrativas continua exigindo `PLATAFORMA_ADMINISTRAR`. As concessões de perfis antigos da aplicação reservada permanecem no histórico, e o backend consulta as atribuições diretas para decidir o acesso à plataforma.
+
+## Envio de SMS
+
+Os módulos internos usam `SmsService.send(SmsSendRequest)`. O serviço lê a configuração ativa `SMS_PROVEDOR_ATIVO` do banco a cada solicitação. O `SmsProviderResolver` reúne os beans `SmsProvider` por código único e escolhe o delegate. O resultado informa aceitação pelo provedor, identificador externo quando houver e código de erro quando aplicável. O serviço não oferece um endpoint HTTP de envio. Evite reenviar automaticamente após timeout, pois o provedor pode ter aceitado a solicitação antes de a conexão falhar.
+
+O changeset `1-configuracao-sistema` cria `configuracao_sistema` e insere a configuração inicial ativa com valor `TEXTBEE`. A tabela contém `id` UUID, `chave` única, `valor`, `descricao`, `tipo`, `status`, `data_criacao` e `data_atualizacao`. O changeset é aditivo e não define rollback que apague a tabela e suas configurações. As alterações administrativas registram operador, aplicação e valores anterior e novo na tabela `auditoria`.
+
+### Configurar o TextBee
+
+- Defina `TEXTBEE_API_KEY` no ambiente do backend. No Eclipse, configure-a na aba **Environment** da execução local. Em outros ambientes, forneça-a pelo gerenciador de segredos.
+- Defina `TEXTBEE_DEVICE_ID` se precisar usar um dispositivo específico. Sem essa variável, o TextBee seleciona o dispositivo padrão ou um dispositivo habilitado disponível na conta.
+- O envio real precisa de conta configurada e dispositivo Android com SIM e permissão de SMS. Use um destinatário autorizado, preferencialmente em formato internacional. A configuração pode ser consultada sem chave. Uma tentativa interna de envio sem chave retorna `CREDENCIAIS_AUSENTES`.
+- O adaptador usa `POST /api/v1/gateway/send-sms` com `x-api-key`. O `smsBatchId` identifica o lote quando retornado. A aceitação ou o despacho para o dispositivo emissor não confirma entrega ao destinatário. [Documentação oficial do TextBee](https://textbee.dev/docs/sending-sms/sending-sms)
+
+### Administração
+
+A tela **Configurações → Sistema** usa as rotas abaixo, protegidas pela autorização administrativa existente (`PLATAFORMA_ADMINISTRAR` na aplicação reservada).
+
+| Método e rota | Resultado |
+| --- | --- |
+| `GET /api/v1/admin/configuracoes` | Lista as configurações permitidas. Atualmente expõe apenas a seleção de SMS. |
+| `GET /api/v1/admin/configuracoes/sms/provedores` | Lista os provedores registrados com código e nome de exibição. |
+| `GET /api/v1/admin/configuracoes/sms/provedor-ativo` | Retorna o registro da configuração de seleção de SMS, incluindo seu status. |
+| `PUT /api/v1/admin/configuracoes/sms/provedor-ativo` | Valida o código enviado em `{"codigo":"TEXTBEE"}` e persiste a escolha. |
+
+Para adicionar um provedor, implemente `SmsProvider` em `sms/provider` e registre-o como bean Spring, com código exclusivo, nome de exibição e configuração externa para seus segredos. O resolver e a tela passam a listar a implementação. Após a implantação do novo bean, a escolha é efetuada no painel e vale para o envio seguinte. Nenhuma credencial faz parte dos contratos administrativos.
 
 ## Testes
 

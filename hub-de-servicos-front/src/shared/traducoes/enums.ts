@@ -20,6 +20,9 @@ export const rotulosEnum = {
     APLICACAO: 'Administrador de aplicação',
     USUARIO: 'Usuário',
   },
+  provedorSms: {
+    TEXTBEE: 'TextBee',
+  },
   permissao: {
     PLATAFORMA_ADMINISTRAR: 'Administrador da plataforma',
     PLATAFORMA_ANALISTA: 'Analista da plataforma',

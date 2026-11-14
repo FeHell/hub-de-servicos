@@ -6,6 +6,7 @@ spring:
     username: ${DATABASE_USERNAME}
     password: ${DATABASE_PASSWORD}
     hikari:
+      schema: public
       connection-init-sql: >-
         DO $$ BEGIN
           IF current_database() <> 'hub_de_servicos' THEN
@@ -18,12 +19,15 @@ spring:
     show-sql: false
     properties:
       hibernate:
+        default_schema: public
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
   liquibase:
     enabled: true
     change-log: classpath:db/migration/db.changelog-master.xml
+    default-schema: public
+    liquibase-schema: public
 
 server:
   port: 8080

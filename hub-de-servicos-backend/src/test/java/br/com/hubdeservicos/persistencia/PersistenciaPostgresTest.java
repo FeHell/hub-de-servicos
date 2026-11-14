@@ -41,6 +41,7 @@ import org.springframework.test.context.DynamicPropertySource;
 
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -193,6 +194,39 @@ class PersistenciaPostgresTest {
                 predecessor.getId(), sessao.getExpiracaoAbsoluta());
 
         verificarViolacao(() -> tokens.saveAndFlush(token), "23503", "fk_token_anterior");
+    }
+
+    @Test
+    void rejeitaSegundaRaizDaMesmaFamilia() {
+        UsuarioEntity usuario = criarUsuario();
+        AplicacaoEntity aplicacao = criarAplicacao();
+        entidades.persist(new UsuarioAplicacaoEntity(new UsuarioAplicacaoId(usuario.getId(), aplicacao.getId())));
+        SessaoEntity sessao = criarSessao(usuario, aplicacao);
+        criarToken(sessao, null);
+        entidades.flush();
+
+        var segundaRaiz = new TokenAtualizacaoEntity(
+                sessao.getId(), sessao.getIdFamilia(), UUID.randomUUID().toString(),
+                null, sessao.getExpiracaoAbsoluta());
+
+        verificarViolacao(() -> tokens.saveAndFlush(segundaRaiz), "23505", "uk_token_raiz_familia");
+    }
+
+    @Test
+    void rejeitaTokenQueReferenciaSeuProprioId() {
+        UsuarioEntity usuario = criarUsuario();
+        AplicacaoEntity aplicacao = criarAplicacao();
+        entidades.persist(new UsuarioAplicacaoEntity(new UsuarioAplicacaoId(usuario.getId(), aplicacao.getId())));
+        SessaoEntity sessao = criarSessao(usuario, aplicacao);
+        UUID id = UUID.randomUUID();
+        entidades.flush();
+
+        verificarViolacao(() -> jdbc.update("""
+                insert into tokens_atualizacao (id, id_sessao, id_familia, hash_token, id_anterior, expiracao_absoluta)
+                values (?, ?, ?, ?, ?, ?)
+                """, id, sessao.getId(), sessao.getIdFamilia(), UUID.randomUUID().toString(), id,
+                sessao.getExpiracaoAbsoluta().atOffset(ZoneOffset.UTC)),
+                "23514", "ck_token_sem_autorreferencia");
     }
 
     private UsuarioEntity criarUsuario() {

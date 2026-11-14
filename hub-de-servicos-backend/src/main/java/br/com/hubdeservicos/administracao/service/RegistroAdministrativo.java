@@ -20,8 +20,20 @@ class RegistroAdministrativo {
     }
 
     UUID idOperador() {
-        var identidade = (IdentidadeJwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return identidade.idUsuario();
+        return identidade().idUsuario();
+    }
+
+    private IdentidadeJwt identidade() {
+        return (IdentidadeJwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    }
+
+    void registrarAlteracaoConfiguracao(UUID idConfiguracao, String chave, String anterior, String novo) {
+        var antes = JsonNodeFactory.instance.objectNode().put("chave", chave).put("valor", anterior);
+        var depois = JsonNodeFactory.instance.objectNode().put("chave", chave).put("valor", novo)
+                .put("idRecurso", idConfiguracao.toString());
+        var operador = identidade();
+        auditoria.save(new AuditoriaEntity(operador.idUsuario(), operador.idAplicacao(),
+                "ALTERAR_PROVEDOR_SMS", "configuracao_sistema", antes, depois, null));
     }
 
     void registrar(String acao, String tabela, UUID idAplicacao, UUID idRecurso) {

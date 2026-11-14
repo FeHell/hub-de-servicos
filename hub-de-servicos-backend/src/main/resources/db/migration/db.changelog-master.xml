@@ -7,6 +7,7 @@
     <preConditions>
         <dbms type="postgresql"/>
         <sqlCheck expectedResult="hub_de_servicos">SELECT current_database()</sqlCheck>
+        <sqlCheck expectedResult="public">SELECT current_schema()</sqlCheck>
     </preConditions>
 
     <include file="aplicacao/db.changelog-master.xml" relativeToChangelogFile="true"/>
@@ -21,4 +22,6 @@
     <include file="tokens_atualizacao/db.changelog-master.xml" relativeToChangelogFile="true"/>
     <include file="auditoria/db.changelog-master.xml" relativeToChangelogFile="true"/>
     <include file="permissao/plataforma.xml" relativeToChangelogFile="true"/>
+    <include file="tokens_atualizacao/integridade-cadeia.xml" relativeToChangelogFile="true"/>
+    <include file="configuracao/db.changelog-master.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

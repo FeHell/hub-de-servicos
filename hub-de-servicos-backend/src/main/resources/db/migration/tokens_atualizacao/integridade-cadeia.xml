@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd"
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <changeSet id="2-tokens-integridade-cadeia" author="sistema">
+        <sql>
+            ALTER TABLE public.tokens_atualizacao
+                ADD CONSTRAINT ck_token_sem_autorreferencia
+                CHECK (id_anterior IS NULL OR id_anterior &lt;&gt; id);
+
+            CREATE UNIQUE INDEX uk_token_raiz_familia
+                ON public.tokens_atualizacao (id_familia) WHERE id_anterior IS NULL;
+        </sql>
+        <rollback>
+            <dropIndex schemaName="public" tableName="tokens_atualizacao" indexName="uk_token_raiz_familia"/>
+            <sql>
+                ALTER TABLE public.tokens_atualizacao DROP CONSTRAINT ck_token_sem_autorreferencia;
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

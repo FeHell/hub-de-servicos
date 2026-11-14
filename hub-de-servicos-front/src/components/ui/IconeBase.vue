@@ -21,6 +21,7 @@ const caminhos = {
   editar: 'M4 20l4-1 12-12-3-3L5 16z M14 7l3 3',
   paleta:
     'M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1.5-3.3 1.6 1.6 0 0 1 1.2-2.7H18a3 3 0 0 0 3-3c0-5-4-9-9-9z M7 11h.01 M9 7h.01 M14 6h.01 M17 9h.01',
+  configuracoes: 'M4 6h6m4 0h6M4 12h10m4 0h2M4 18h2m4 0h10M10 4v4m8 2v4M6 16v4',
   lixeira: 'M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v5 M14 11v5',
 } as const
 
