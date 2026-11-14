@@ -48,7 +48,9 @@ class ApiAutenticacaoTest {
                         }
                         assertEquals(caso.rota, rota)
                         caso.campo?.let { (nome, valor) ->
-                            assertEquals(valor, JSONObject(String(corpo)).getString(nome))
+                            val json = JSONObject(String(corpo))
+                            assertEquals(valor, json.getString(nome))
+                            if (rota.endsWith("/cadastro")) assertEquals(setOf("email", "senha"), json.keys().asSequence().toSet())
                         }
                         if (caso.autenticado) assertEquals("Bearer jwt", cabecalhos["authorization"])
                     }

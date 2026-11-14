@@ -30,6 +30,18 @@ class SessaoAppTest {
     }
 
     @Test
+    fun reabrirComTokenExpiradoRenovaSessao() {
+        val api = ApiDeTeste()
+        val armazenamento = Memoria()
+        val sessao = SessaoApp(api, armazenamento)
+        sessao.entrar(api.usuario.email, "senha")
+        api.acessoExpirado = "jwt-login"
+        assertEquals(api.usuario, sessao.restaurar())
+        assertEquals("refresh-login", api.refreshRecebido)
+        assertEquals("refresh-novo", armazenamento.token)
+    }
+
+    @Test
     fun refreshRevogadoRetornaAoLoginELimpaPersistencia() {
         val api = ApiDeTeste().apply { erroRenovacao = FalhaApi(401) }
         val armazenamento = Memoria("revogado")
@@ -79,6 +91,7 @@ class SessaoAppTest {
             return Tokens("jwt-novo", "refresh-novo")
         }
         override fun consultar(acesso: String): Usuario {
+            if (acesso == acessoExpirado) throw FalhaApi(401)
             acessoConsultado = acesso
             return usuario
         }

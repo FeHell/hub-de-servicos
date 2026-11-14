@@ -2,6 +2,7 @@ package br.com.hubdeservicos.android.ui
 
 import android.os.Handler
 import android.os.Looper
+import br.com.hubdeservicos.android.R
 import br.com.hubdeservicos.android.auth.FalhaApi
 import br.com.hubdeservicos.android.auth.SessaoApp
 import br.com.hubdeservicos.android.auth.Usuario
@@ -9,15 +10,15 @@ import java.io.IOException
 import java.util.concurrent.Executors
 import org.json.JSONException
 
-enum class Tela { RESTAURAR, LOGIN, CADASTRO, CONTA }
+enum class Tela { RESTAURAR, LOGIN, CADASTRO, HOME }
 
 data class Estado(
     val tela: Tela = Tela.RESTAURAR,
     val email: String = "",
     val usuario: Usuario? = null,
     val carregando: Boolean = false,
-    val mensagem: String? = null,
-    val erro: String? = null
+    val mensagem: Int? = null,
+    val erro: Int? = null
 )
 
 class AutenticacaoModel(private val sessao: SessaoApp) {
@@ -43,24 +44,43 @@ class AutenticacaoModel(private val sessao: SessaoApp) {
         if (!estado.carregando) atualizar(Estado(tela, email = estado.email))
     }
 
+    fun revalidarAoAbrir() {
+        if (estado.tela == Tela.HOME && !estado.carregando) {
+            atualizar(Estado())
+            restaurar()
+        }
+    }
+
     fun restaurar() = executar {
-        val usuario = sessao.restaurar()
-        if (usuario == null) Estado(Tela.LOGIN) else Estado(Tela.CONTA, usuario = usuario)
+        sessao.restaurar()?.let(::home) ?: Estado(Tela.LOGIN)
     }
 
     fun entrar(email: String, senha: String) = executar {
-        Estado(Tela.CONTA, usuario = sessao.entrar(email, senha))
+        home(sessao.entrar(email, senha))
     }
 
     fun cadastrar(email: String, senha: String) = executar {
-        val usuario = sessao.cadastrar(email, senha)
-        Estado(Tela.LOGIN, email = usuario.email, mensagem = "Conta criada. Entre com seu e-mail e senha.")
+        val conta = sessao.cadastrar(email, senha)
+        try {
+            home(sessao.entrar(conta.email, senha))
+        } catch (falha: FalhaApi) {
+            contaCriada(conta.email, quandoFalha(falha, Tela.LOGIN))
+        } catch (_: IOException) {
+            contaCriada(conta.email, R.string.erro_conexao)
+        } catch (_: JSONException) {
+            contaCriada(conta.email, R.string.erro_resposta)
+        }
     }
 
     fun sair() = executar {
         sessao.sair()
         Estado(Tela.LOGIN)
     }
+
+    private fun home(usuario: Usuario) = Estado(Tela.HOME, usuario = usuario)
+
+    private fun contaCriada(email: String, erro: Int) =
+        Estado(Tela.LOGIN, email = email, mensagem = R.string.conta_criada_login, erro = erro)
 
     private fun executar(operacao: () -> Estado) {
         if (estado.carregando) return
@@ -70,13 +90,13 @@ class AutenticacaoModel(private val sessao: SessaoApp) {
             val novoEstado = try {
                 operacao()
             } catch (falha: FalhaApi) {
-                anterior.copy(mensagem = null, erro = quandoFalha(falha, anterior.tela))
+                anterior.copy(erro = quandoFalha(falha, anterior.tela))
             } catch (_: IOException) {
-                anterior.copy(mensagem = null, erro = "Não foi possível concluir. Verifique a conexão e tente novamente.")
+                anterior.copy(erro = R.string.erro_conexao)
             } catch (_: JSONException) {
-                anterior.copy(mensagem = null, erro = "O serviço retornou uma resposta inesperada.")
+                anterior.copy(erro = R.string.erro_resposta)
             } catch (_: IllegalStateException) {
-                anterior.copy(mensagem = null, erro = "Confira o endereço da API nesta versão do app.")
+                anterior.copy(erro = R.string.erro_configuracao)
             }
             principal.post { atualizar(novoEstado) }
         }
@@ -87,11 +107,15 @@ class AutenticacaoModel(private val sessao: SessaoApp) {
         observador?.invoke(novoEstado)
     }
 
-    private fun quandoFalha(falha: FalhaApi, tela: Tela): String = when (falha.status) {
-        400 -> if (tela == Tela.CADASTRO) "Confira o e-mail e os requisitos da senha." else "Confira os dados informados."
-        401 -> "E-mail ou senha inválidos."
-        409 -> "Não foi possível criar a conta com esses dados. Se já tiver uma conta, tente entrar."
-        429 -> "Muitas tentativas. Aguarde um minuto e tente novamente."
-        else -> "O serviço está indisponível no momento. Tente novamente."
+    private fun quandoFalha(falha: FalhaApi, tela: Tela): Int = when (falha.status) {
+        400 -> when {
+            falha.senhaForaDoLimite -> R.string.senha_regras
+            tela == Tela.CADASTRO -> R.string.erro_dados_cadastro
+            else -> R.string.erro_dados_login
+        }
+        401 -> if (tela == Tela.LOGIN) R.string.erro_credenciais else R.string.erro_sessao
+        409 -> R.string.erro_cadastro_conflito
+        429 -> R.string.erro_limite
+        else -> R.string.erro_servico
     }
 }

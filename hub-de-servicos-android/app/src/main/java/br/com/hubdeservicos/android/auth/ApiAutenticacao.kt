@@ -11,7 +11,7 @@ data class Usuario(val id: String, val email: String)
 class Tokens(val acesso: String, val atualizacao: String)
 class Acesso(val tokens: Tokens, val usuario: Usuario)
 
-class FalhaApi(val status: Int) : IOException()
+class FalhaApi(val status: Int, val senhaForaDoLimite: Boolean = false) : IOException()
 
 interface AutenticacaoApi {
     fun cadastrar(email: String, senha: String): Usuario
@@ -65,7 +65,15 @@ class ApiAutenticacao(origem: String) : AutenticacaoApi {
                 conexao.outputStream.use { it.write(bytes) }
             }
             val status = conexao.responseCode
-            if (status !in 200..299) throw FalhaApi(status)
+            if (status !in 200..299) {
+                val senhaForaDoLimite = status == 400 && rota == "/cadastro" && runCatching {
+                    conexao.errorStream?.bufferedReader(Charsets.UTF_8)?.use { reader ->
+                        val detalhe = JSONObject(reader.readText()).optString("detail")
+                        detalhe.contains("72 bytes", ignoreCase = true)
+                    } ?: false
+                }.getOrDefault(false)
+                throw FalhaApi(status, senhaForaDoLimite)
+            }
             if (status == HttpURLConnection.HTTP_NO_CONTENT) return JSONObject()
             return conexao.inputStream.bufferedReader(Charsets.UTF_8).use { JSONObject(it.readText()) }
         } finally {

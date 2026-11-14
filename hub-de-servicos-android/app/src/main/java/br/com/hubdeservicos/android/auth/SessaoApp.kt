@@ -21,7 +21,15 @@ class SessaoApp(private val api: AutenticacaoApi, private val armazenamento: Arm
     }
 
     fun restaurar(): Usuario? {
-        val acesso = tokenAcesso ?: renovar() ?: return null
+        tokenAcesso?.let { atual ->
+            try {
+                return api.consultar(atual)
+            } catch (falha: FalhaApi) {
+                if (falha.status != 401) throw falha
+                tokenAcesso = null
+            }
+        }
+        val acesso = renovar() ?: return null
         return try {
             api.consultar(acesso)
         } catch (falha: FalhaApi) {

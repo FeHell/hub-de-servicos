@@ -1,0 +1,13 @@
+<resources>
+    <color name="gastro_fundo">#F8F3EB</color>
+    <color name="gastro_papel">#FFFCF6</color>
+    <color name="gastro_oliva">#253A2E</color>
+    <color name="gastro_oliva_escuro">#202F26</color>
+    <color name="gastro_texto">#252A23</color>
+    <color name="gastro_texto_suave">#565B4E</color>
+    <color name="gastro_terracota">#9F492F</color>
+    <color name="gastro_terracota_clara">#F3E3D6</color>
+    <color name="gastro_campo_borda">#8A887C</color>
+    <color name="gastro_linha">#DED5C6</color>
+    <color name="gastro_erro">#982D28</color>
+</resources>

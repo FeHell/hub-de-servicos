@@ -1,10 +1,10 @@
 <resources>
     <style name="Theme.Hub" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#12624E</item>
-        <item name="android:windowBackground">#F5F8F6</item>
-        <item name="android:statusBarColor">#F5F8F6</item>
-        <item name="android:navigationBarColor">#F5F8F6</item>
+        <item name="android:colorAccent">@color/gastro_terracota</item>
+        <item name="android:windowBackground">@color/gastro_fundo</item>
+        <item name="android:statusBarColor">@color/gastro_fundo</item>
+        <item name="android:navigationBarColor">@color/gastro_fundo</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
     </style>
