@@ -6,7 +6,9 @@ import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HexFormat;
 import javax.crypto.Cipher;
+import javax.crypto.Mac;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -53,6 +55,23 @@ public class CriptografiaCredenciais {
                 Arrays.fill(aberto, (byte) 0);
             }
         } catch (GeneralSecurityException | IllegalArgumentException erro) {
+            throw new CredencialIndisponivel();
+        }
+    }
+
+    public String identificadorProtegido(String contexto, String valor) {
+        if (chave == null) throw new CredencialIndisponivel();
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(chave.getEncoded(), mac.getAlgorithm()));
+            byte[] derivada = mac.doFinal(("identificador:v1:" + contexto).getBytes(StandardCharsets.UTF_8));
+            try {
+                mac.init(new SecretKeySpec(derivada, mac.getAlgorithm()));
+                return HexFormat.of().formatHex(mac.doFinal(valor.getBytes(StandardCharsets.UTF_8)));
+            } finally {
+                Arrays.fill(derivada, (byte) 0);
+            }
+        } catch (GeneralSecurityException erro) {
             throw new CredencialIndisponivel();
         }
     }

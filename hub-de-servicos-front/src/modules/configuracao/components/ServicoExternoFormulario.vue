@@ -15,13 +15,27 @@ const detalhe = ref<ServicoExterno>()
 const campos = computed(
   () => detalhe.value?.configuracoes.filter(({ chave }) => props.rotulos[chave]) ?? [],
 )
+const grupos = computed(() =>
+  props.servico === 'STONE'
+    ? [
+        {
+          titulo: 'Desenvolvimento (DEV)',
+          campos: campos.value.filter(({ chave }) => chave.startsWith('stone.dev.')),
+        },
+        {
+          titulo: 'Produção (PROD)',
+          campos: campos.value.filter(({ chave }) => chave.startsWith('stone.prod.')),
+        },
+      ]
+    : [{ titulo: '', campos: campos.value }],
+)
 const entradas = ref<Record<string, string>>({})
 const carregando = ref(false)
 const erroConsulta = ref('')
 const salvando = ref(false)
 const erro = ref('')
 const aviso = ref('')
-const id = (chave: string) => `servico-${chave.toLowerCase().replaceAll('_', '-')}`
+const id = (chave: string) => `servico-${chave.toLowerCase().replace(/[_.]/g, '-')}`
 
 async function carregar() {
   carregando.value = true
@@ -69,7 +83,9 @@ async function salvar() {
       falha instanceof ErroApi && falha.status === 503
         ? 'Configure a chave mestra no backend antes de salvar a credencial.'
         : falha instanceof ErroApi && falha.status === 400
-          ? 'Confira os dados informados. Para a Infobip, use a URL HTTPS da conta, sem caminho.'
+          ? props.servico === 'INFOBIP'
+            ? 'Confira os dados informados. Use a URL HTTPS da conta, sem caminho.'
+            : 'Confira os dados informados para este ambiente.'
           : 'Não foi possível salvar as configurações do serviço.'
   } finally {
     salvando.value = false
@@ -90,25 +106,42 @@ async function salvar() {
     <div v-if="erroConsulta">
       <BotaoBase variante="discreto" @click="carregar">Tentar novamente</BotaoBase>
     </div>
-    <div v-for="campo in campos" :key="campo.chave" class="configuracao-campo">
-      <CampoTexto
-        :id="id(campo.chave)"
-        v-model="entradas[campo.chave]"
-        :rotulo="rotulos[campo.chave] ?? 'Configuração'"
-        tipo="text"
-        autocomplete="off"
-        autocapitalize="off"
-        autocorrect="off"
-        :descricao="campo.sensivel ? id(campo.chave) + '-estado' : undefined"
-        :disabled="salvando"
-        :readonly="campo.status !== 'ATIVO'"
-        maxlength="2048"
-        spellcheck="false"
-      />
-      <p v-if="campo.sensivel" :id="id(campo.chave) + '-estado'" class="estado">
-        {{ campo.configurada ? 'Credencial configurada' : 'Credencial não configurada' }}
-      </p>
+    <div v-for="grupo in grupos" v-show="grupo.campos.length" :key="grupo.titulo" class="grupo">
+      <h4 v-if="grupo.titulo">{{ grupo.titulo }}</h4>
+      <div v-for="campo in grupo.campos" :key="campo.chave" class="configuracao-campo">
+        <CampoTexto
+          :id="id(campo.chave)"
+          v-model="entradas[campo.chave]"
+          :rotulo="rotulos[campo.chave] ?? 'Configuração'"
+          tipo="text"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          :descricao="campo.sensivel ? id(campo.chave) + '-estado' : undefined"
+          :disabled="salvando"
+          :readonly="campo.status !== 'ATIVO'"
+          maxlength="2048"
+          spellcheck="false"
+        />
+        <p v-if="campo.sensivel" :id="id(campo.chave) + '-estado'" class="estado">
+          {{ campo.configurada ? 'Credencial configurada' : 'Credencial não configurada' }}
+        </p>
+      </div>
     </div>
+    <p
+      v-if="
+        servico === 'STONE' &&
+        detalhe &&
+        !campos.some(({ chave }) => chave === 'stone.prod.secretKey')
+      "
+      class="estado"
+    >
+      A chave secreta de produção ficará disponível quando o servidor liberar essa configuração.
+    </p>
+    <p v-if="servico === 'STONE' && detalhe" class="estado">
+      Para substituir uma chave secreta, informe a nova chave. Deixar o campo vazio mantém a chave
+      salva.
+    </p>
     <p v-if="erro" class="erro" role="alert">{{ erro }}</p>
     <p v-if="aviso" role="status">{{ aviso }}</p>
     <div v-if="detalhe">
@@ -125,6 +158,7 @@ async function salvar() {
 
 <style scoped>
 .servico,
+.grupo,
 .configuracao-campo {
   display: grid;
   gap: var(--espaco-2);

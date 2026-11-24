@@ -33,6 +33,7 @@ class MainActivity : Activity() {
     private lateinit var conteudo: LinearLayout
     private lateinit var scroll: ScrollView
     private var ultimaTela: Tela? = null
+    private var ultimaEtapa: Int? = null
     private var callbackVoltar: OnBackInvokedCallback? = null
     private var confirmacaoSaida: AlertDialog? = null
 
@@ -97,7 +98,8 @@ class MainActivity : Activity() {
 
     private fun atualizarBotaoVoltar(tela: Tela?) {
         if (Build.VERSION.SDK_INT < 33) return
-        val secundaria = tela == Tela.CADASTRO || tela == Tela.PERFIL || tela == Tela.CONFIRMACAO
+        val secundaria = tela == Tela.CADASTRO || tela == Tela.PERFIL || tela == Tela.CONFIRMACAO ||
+            tela?.papelNecessario != null
         if (secundaria && callbackVoltar == null) {
             val callback = OnBackInvokedCallback { model.voltar() }
             onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, callback)
@@ -135,11 +137,13 @@ class MainActivity : Activity() {
         if (estado.tela == Tela.LOGIN || estado.tela == Tela.CADASTRO) localizacao.encerrarSessao()
         val anterior = ultimaTela
         val mudouTela = anterior != estado.tela
+        val mudouEtapa = anterior == Tela.CREDENCIAMENTO && ultimaEtapa != estado.etapaCredenciamento
+        ultimaEtapa = estado.etapaCredenciamento
         val animar = anterior != null && mudouTela && estado.tela != Tela.RESTAURAR
         ultimaTela = estado.tela
         atualizarBotaoVoltar(estado.tela)
         conteudo.removeAllViews()
-        if (mudouTela) scroll.scrollTo(0, 0)
+        if (mudouTela || mudouEtapa) scroll.scrollTo(0, 0)
         when (estado.tela) {
             Tela.RESTAURAR -> restauracao(estado)
             Tela.LOGIN, Tela.CADASTRO -> formulario(estado)
@@ -147,12 +151,20 @@ class MainActivity : Activity() {
                 val usuario = requireNotNull(estado.usuario)
                 conteudo.adicionar(marca())
                 conteudo.adicionar(HomeView(this, usuario, estado, model::abrirPerfil, ::confirmarSaida,
-                    model::selecionarPapel, situacaoLocalizacao, localizacao::atualizar), 22)
+                    model::selecionarPapel, situacaoLocalizacao, localizacao::atualizar, model::mudarTela), 22)
                 if (mudouTela) conteudo.post {
                     val atual = estadoExibido
                     if (visivel && atual?.tela == Tela.HOME && atual.usuario?.id == usuario.id)
                         localizacao.exibir(usuario.id, atual.perfil?.municipio)
                 }
+            }
+            Tela.CREDENCIAMENTO -> {
+                conteudo.adicionar(marca())
+                conteudo.adicionar(CredenciamentoView(this, estado, model), 22)
+            }
+            Tela.CARTAO_CREDITO -> {
+                conteudo.adicionar(marca())
+                conteudo.adicionar(CartaoCreditoView(this, voltar = model::fecharCartaoCredito), 22)
             }
             Tela.PERFIL, Tela.CONFIRMACAO -> {
                 conteudo.adicionar(marca())

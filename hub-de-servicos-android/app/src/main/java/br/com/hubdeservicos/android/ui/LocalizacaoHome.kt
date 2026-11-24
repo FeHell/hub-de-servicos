@@ -87,10 +87,17 @@ internal class LocalizacaoHome(
             cancelar()
             mostrar(if (municipio == null) LocalizacaoUi.Indisponivel else LocalizacaoUi.Identificada)
         }
-        selecao = SelecaoMunicipioDialogo(activity, model, id, ::usarLocalizacao,
-            aoSalvar = { salvo ->
-                municipio = salvo
-                mostrar(LocalizacaoUi.Identificada, forcar = true)
+        selecao = SelecaoMunicipioDialogo(activity,
+            pesquisarMunicipios = { termo, receber -> model.pesquisarMunicipios(id, termo, receber) },
+            usarLocalizacao = ::usarLocalizacao,
+            confirmarMunicipio = { selecionado, concluir ->
+                model.selecionarMunicipio(id, selecionado) { salvo ->
+                    if (salvo != null) {
+                        municipio = salvo
+                        mostrar(LocalizacaoUi.Identificada, forcar = true)
+                    }
+                    concluir(salvo != null)
+                }
             }, aoFechar = { selecao = null })
     }
 

@@ -24,16 +24,24 @@ import org.springframework.web.server.ResponseStatusException;
 public class ConfiguracoesExternasService {
     private static final String INFOBIP_API_KEY = "INFOBIP_API_KEY";
     private static final String INFOBIP_BASE_URL = "INFOBIP_BASE_URL";
-    private static final String STONE_API_KEY = "STONE_API_KEY";
+    private static final String STONE_SECRET_DEV = "stone.dev.secretKey";
+    private static final String STONE_SECRET_PROD = "stone.prod.secretKey";
+    private static final List<String> STONE_DEV = List.of("stone.dev.accountId", "stone.dev.publicKey",
+            STONE_SECRET_DEV, "stone.dev.recipientMaster");
+    private static final List<String> STONE_PROD = List.of("stone.prod.accountId", "stone.prod.publicKey",
+            STONE_SECRET_PROD, "stone.prod.recipientMaster");
+    private final AmbienteServicosService ambientes;
     private final ConfiguracaoSistemaRepository repositorio;
     private final CriptografiaCredenciais criptografia;
     private final Clock relogio;
 
     public ConfiguracoesExternasService(ConfiguracaoSistemaRepository repositorio,
-                                         CriptografiaCredenciais criptografia, Clock relogio) {
+                                         CriptografiaCredenciais criptografia, Clock relogio,
+                                         AmbienteServicosService ambientes) {
         this.repositorio = repositorio;
         this.criptografia = criptografia;
         this.relogio = relogio;
+        this.ambientes = ambientes;
     }
 
     public ServicoInfo consultar(ServicoExterno servico) {
@@ -61,7 +69,7 @@ public class ConfiguracoesExternasService {
             if (!chaves(servico).contains(chave) || entrada == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Configuração inválida para este serviço.");
             }
-            boolean sensivel = !INFOBIP_BASE_URL.equals(chave);
+            boolean sensivel = sensivel(chave);
             if (entrada.isSensivel() != sensivel || entrada.getStatus() != StatusCadastro.ATIVO) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "A configuração solicitada está indisponível.");
             }
@@ -77,9 +85,11 @@ public class ConfiguracoesExternasService {
                     throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                             "Proteção de credenciais indisponível. Verifique a chave mestra do backend.");
                 }
-            } else {
+            } else if (INFOBIP_BASE_URL.equals(chave)) {
                 valor = ServicoExterno.origemInfobip(valor).orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.BAD_REQUEST, "Informe a URL HTTPS da conta Infobip, sem caminho.")).toString();
+            } else if (valor.chars().anyMatch(Character::isISOControl)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Configuração contém caracteres inválidos.");
             }
             if (!entrada.getValor().equals(valor)) {
                 entrada.atualizarValor(valor, relogio.instant());
@@ -108,7 +118,7 @@ public class ConfiguracoesExternasService {
         var configuracoes = repositorio.findByServicoOrderByChave(servico.name()).stream()
                 .filter(e -> chaves(servico).contains(e.getChave()))
                 .map(e -> {
-                    boolean sensivel = e.isSensivel() || !INFOBIP_BASE_URL.equals(e.getChave());
+                    boolean sensivel = e.isSensivel() || sensivel(e.getChave());
                     boolean cadastrada = !e.getValor().isBlank();
                     String valor = null;
                     if (cadastrada && !sensivel) {
@@ -121,10 +131,40 @@ public class ConfiguracoesExternasService {
         return new ServicoInfo(servico, configuracoes);
     }
 
+    public Stone lerStone() {
+        var ambiente = ambientes.atual();
+        var chaves = ambiente == AmbienteServicosService.Ambiente.DEV ? STONE_DEV : STONE_PROD;
+        var entradas = repositorio.findByServicoOrderByChave(ServicoExterno.STONE.name());
+        var valores = chaves.stream().map(chave -> valorAtivo(entradas, chave, sensivel(chave))).toList();
+        var faltantes = java.util.stream.IntStream.of(0, 2)
+                .filter(i -> valores.get(i).isBlank()).mapToObj(chaves::get).toList();
+        if (!faltantes.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Configuração Stone " + ambiente + " incompleta. Preencha " + String.join(", ", faltantes) + ".");
+        }
+        try {
+            String chave = ambiente == AmbienteServicosService.Ambiente.DEV ? STONE_SECRET_DEV : STONE_SECRET_PROD;
+            return new Stone(ambiente, valores.get(0), valores.get(1), valores.get(3),
+                    criptografia.descriptografar(contexto(ServicoExterno.STONE, chave), valores.get(2)));
+        } catch (CredencialIndisponivel erro) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Credencial Stone indisponível no ambiente selecionado.");
+        }
+    }
+
+    private static boolean sensivel(String chave) {
+        return INFOBIP_API_KEY.equals(chave) || STONE_SECRET_DEV.equals(chave) || STONE_SECRET_PROD.equals(chave);
+    }
+
+    @com.fasterxml.jackson.annotation.JsonIgnoreType
+    public record Stone(AmbienteServicosService.Ambiente ambiente, String accountId, String publicKey,
+                        String recipientMaster, @com.fasterxml.jackson.annotation.JsonIgnore String secretKey) {
+        @Override public String toString() { return "Stone"; }
+    }
+
     private static List<String> chaves(ServicoExterno servico) {
         return switch (servico) {
             case INFOBIP -> List.of(INFOBIP_API_KEY, INFOBIP_BASE_URL);
-            case STONE -> List.of(STONE_API_KEY);
+            case STONE -> java.util.stream.Stream.concat(STONE_DEV.stream(), STONE_PROD.stream()).toList();
         };
     }
 

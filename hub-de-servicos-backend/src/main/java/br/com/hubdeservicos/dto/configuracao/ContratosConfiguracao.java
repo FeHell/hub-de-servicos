@@ -27,6 +27,9 @@ public final class ContratosConfiguracao {
         }
     }
 
+    public record ModoDesenvolvimento(@NotNull Boolean devMode) {
+    }
+
     public record AlterarProvedorSms(@NotBlank @Size(max = 100) String codigo) {
     }
 

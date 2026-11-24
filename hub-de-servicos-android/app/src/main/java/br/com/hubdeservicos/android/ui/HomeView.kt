@@ -14,7 +14,7 @@ import br.com.hubdeservicos.android.auth.Usuario
 internal class HomeView(
     context: Context, usuario: Usuario, estado: Estado, abrirPerfil: () -> Unit, sair: () -> Unit,
     selecionar: (PapelUsuario, Boolean) -> Unit,
-    localizacao: LocalizacaoUi, atualizarLocalizacao: () -> Unit
+    localizacao: LocalizacaoUi, atualizarLocalizacao: () -> Unit, abrirTela: (Tela) -> Unit
 ) :
     LinearLayout(context) {
 
@@ -40,6 +40,16 @@ internal class HomeView(
         }
         adicionar(apresentacao, 20)
         adicionar(PreferenciasHomeView(context, estado, selecionar), 20)
+        if (estado.podeAcessar(Tela.CREDENCIAMENTO)) {
+            adicionar(context.botaoCadastro(R.string.credenciamento_titulo, !estado.carregando, false) {
+                abrirTela(Tela.CREDENCIAMENTO)
+            }, 12)
+        }
+        if (estado.podeAcessar(Tela.CARTAO_CREDITO)) {
+            adicionar(context.botaoCadastro(R.string.cartao_credito_titulo, !estado.carregando, false) {
+                abrirTela(Tela.CARTAO_CREDITO)
+            }, 12)
+        }
         (estado.erroPerfil ?: estado.erro?.let(context::getString))?.let { erro ->
             adicionar(context.texto(erro, 15, R.color.gastro_erro)
                 .apply { accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE }, 12)

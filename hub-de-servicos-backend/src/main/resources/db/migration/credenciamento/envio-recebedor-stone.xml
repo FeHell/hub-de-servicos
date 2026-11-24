@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+    <changeSet id="3-credenciamento-envio-recebedor-stone" author="sistema">
+        <sql>
+            ALTER TABLE credenciamento_recebedor_externo
+                ADD COLUMN conta_digest VARCHAR(64) CHECK (conta_digest ~ '^[0-9a-f]{64}$'),
+                ADD COLUMN tentativa_ref UUID,
+                ADD COLUMN status_provedor VARCHAR(20),
+                ADD COLUMN campos_recusados VARCHAR(1400);
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE credenciamento_recebedor_externo
+                    DROP COLUMN campos_recusados, DROP COLUMN status_provedor,
+                    DROP COLUMN tentativa_ref, DROP COLUMN conta_digest;
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

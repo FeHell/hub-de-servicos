@@ -9,15 +9,16 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.ErrorResponseException;
 
 @RestControllerAdvice(assignableTypes = {AdministracaoPlataformaController.class,
-        AdministracaoAplicacaoController.class, AdministracaoConfiguracaoController.class})
+        AdministracaoAplicacaoController.class, AdministracaoConfiguracaoController.class,
+        AdministracaoCredenciamentoController.class})
 public class ErrosAdministracaoController {
 
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<ProblemDetail> erroDeOperacao(ResponseStatusException erro) {
-        return ResponseEntity.status(erro.getStatusCode()).body(erro.getBody());
+    @ExceptionHandler(ErrorResponseException.class)
+    public ResponseEntity<ProblemDetail> erroDeOperacao(ErrorResponseException erro) {
+        return ResponseEntity.status(erro.getStatusCode()).cacheControl(org.springframework.http.CacheControl.noStore()).body(erro.getBody());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -26,7 +27,8 @@ public class ErrosAdministracaoController {
     }
 
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
-            MethodArgumentTypeMismatchException.class})
+            MethodArgumentTypeMismatchException.class,
+            org.springframework.web.bind.MissingServletRequestParameterException.class})
     public ProblemDetail dadosInvalidos() {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Dados da operação inválidos.");
     }

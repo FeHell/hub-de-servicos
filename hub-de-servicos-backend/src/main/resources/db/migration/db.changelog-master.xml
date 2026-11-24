@@ -32,4 +32,12 @@
     <include file="usuario/perfis-unificados-cidade-manual.xml" relativeToChangelogFile="true"/>
 
     <include file="configuracao/servicos-externos.xml" relativeToChangelogFile="true"/>
+    <include file="configuracao/stone-ambientes.xml" relativeToChangelogFile="true"/>
+    <include file="credenciamento/credenciamento-empresarial.xml" relativeToChangelogFile="true"/>
+    <include file="configuracao/stone-chave-producao.xml" relativeToChangelogFile="true"/>
+    <include file="credenciamento/recebedor-externo.xml" relativeToChangelogFile="true"/>
+    <include file="credenciamento/envio-recebedor-stone.xml" relativeToChangelogFile="true"/>
+    <include file="credenciamento/diagnostico-recebedor-stone.xml" relativeToChangelogFile="true"/>
+    <include file="credenciamento/revisoes-recebedor-stone.xml" relativeToChangelogFile="true"/>
+    <include file="credenciamento/exclusao-formulario.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

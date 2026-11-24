@@ -5,14 +5,16 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.ErrorResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
-@RestControllerAdvice(assignableTypes = {AutenticacaoAppController.class, PerfilAppController.class})
+@RestControllerAdvice(assignableTypes = {AutenticacaoAppController.class, PerfilAppController.class, CredenciamentoController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ErrosAutenticacaoAppController {
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -23,9 +25,20 @@ public class ErrosAutenticacaoAppController {
         return problema;
     }
 
+    @ExceptionHandler({org.springframework.http.converter.HttpMessageNotReadableException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
+    public ProblemDetail formatoInvalido() {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Confira o formato dos dados informados.");
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ProblemDetail> falhaConhecida(ResponseStatusException erro) {
-        return ResponseEntity.status(erro.getStatusCode()).body(erro.getBody());
+        return ResponseEntity.status(erro.getStatusCode()).cacheControl(CacheControl.noStore()).body(erro.getBody());
+    }
+
+    @ExceptionHandler(ErrorResponseException.class)
+    public ResponseEntity<ProblemDetail> respostaComPendencias(ErrorResponseException erro) {
+        return ResponseEntity.status(erro.getStatusCode()).cacheControl(CacheControl.noStore()).body(erro.getBody());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

@@ -5,6 +5,7 @@ import CabecalhoPagina from '@/components/ui/CabecalhoPagina.vue'
 import CampoSelecao from '@/components/ui/CampoSelecao.vue'
 import { ErroApi } from '@/services/clienteHttp'
 import { traduzirEnum } from '@/shared/traducoes/enums'
+import AmbienteGlobalFormulario from '../components/AmbienteGlobalFormulario.vue'
 import ServicoExternoFormulario from '../components/ServicoExternoFormulario.vue'
 import { useConfiguracaoApi, type ServicoExterno } from '../services/configuracaoApi'
 
@@ -76,7 +77,14 @@ const titulos: Record<string, string> = {
 const campos: Record<string, string> = {
   INFOBIP_API_KEY: 'API Key',
   INFOBIP_BASE_URL: 'URL Base da API',
-  STONE_API_KEY: 'API Key',
+  'stone.dev.accountId': 'ID da conta',
+  'stone.dev.publicKey': 'Chave pública',
+  'stone.dev.secretKey': 'Chave secreta de testes',
+  'stone.dev.recipientMaster': 'ID do recebedor principal',
+  'stone.prod.accountId': 'ID da conta',
+  'stone.prod.publicKey': 'Chave pública',
+  'stone.prod.secretKey': 'Chave secreta',
+  'stone.prod.recipientMaster': 'ID do recebedor principal',
 }
 
 async function carregarServicos() {
@@ -102,6 +110,8 @@ onMounted(() => {
     titulo="Sistema"
     descricao="Gerencie o provedor de SMS e as configurações dos serviços externos."
   />
+
+  <AmbienteGlobalFormulario />
 
   <section class="configuracao" aria-labelledby="titulo-sms" :aria-busy="carregando || salvando">
     <h2 id="titulo-sms">Envio de SMS</h2>

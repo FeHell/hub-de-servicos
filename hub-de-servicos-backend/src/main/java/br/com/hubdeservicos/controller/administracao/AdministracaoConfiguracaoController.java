@@ -5,6 +5,7 @@ import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.AlterarProved
 import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ConfiguracaoInfo;
 import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.AtualizarServico;
 import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ServicoInfo;
+import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ModoDesenvolvimento;
 import br.com.hubdeservicos.entity.configuracao.ServicoExterno;
 import br.com.hubdeservicos.service.sms.SmsProviderResolver.ProvedorSms;
 
@@ -51,6 +52,16 @@ public class AdministracaoConfiguracaoController {
     @PutMapping("/sms/provedor-ativo")
     public ConfiguracaoInfo alterarProvedorSms(@Valid @RequestBody AlterarProvedorSms dados) {
         return administracao.alterarProvedorSms(dados.codigo());
+    }
+
+    @GetMapping("/dev-mode")
+    public ResponseEntity<ModoDesenvolvimento> consultarModoDesenvolvimento() {
+        return semCache(administracao.consultarModoDesenvolvimento());
+    }
+
+    @PutMapping("/dev-mode")
+    public ResponseEntity<ModoDesenvolvimento> alterarModoDesenvolvimento(@Valid @RequestBody ModoDesenvolvimento dados) {
+        return semCache(administracao.alterarModoDesenvolvimento(dados.devMode()));
     }
 
     @GetMapping("/servicos")

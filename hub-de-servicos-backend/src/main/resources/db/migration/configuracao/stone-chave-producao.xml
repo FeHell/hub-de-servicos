@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+    <changeSet id="5-stone-chave-producao" author="sistema">
+        <sql>
+            INSERT INTO configuracao_sistema (id, servico, chave, valor, tipo, status, sensivel)
+            VALUES ('a628aa7e-c23d-4849-b90f-086a75700008', 'STONE', 'stone.prod.secretKey', '', 'TEXTO', 'ATIVO', true);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

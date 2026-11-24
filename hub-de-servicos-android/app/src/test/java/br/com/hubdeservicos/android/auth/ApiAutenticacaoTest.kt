@@ -21,13 +21,36 @@ class ApiAutenticacaoTest {
             val tokens = """{"tokenAcesso":"jwt","tokenAtualizacao":"refresh"}"""
             val login = """{"tokenAcesso":"jwt","tokenAtualizacao":"refresh","usuario":$usuario}"""
             val prefixo = "/api/v1/app/autenticacao"
+            val recebedor = "/api/v1/app/credenciamentos/STONE/recebedor"
             val casos = listOf(
                 Caso("POST $prefixo/cadastro", 201, usuario, campo = "email" to "pessoa@example.test"),
                 Caso("POST $prefixo/login", 200, login, campo = "senha" to "senha-de-teste"),
                 Caso("POST $prefixo/login", 401, "{}"),
                 Caso("POST $prefixo/renovar", 200, tokens, campo = "tokenAtualizacao" to "refresh"),
                 Caso("GET $prefixo/eu", 200, usuario, autenticado = true),
-                Caso("POST $prefixo/logout", 204, "", autenticado = true)
+                Caso("POST $prefixo/logout", 204, "", autenticado = true),
+                Caso("GET $recebedor", 200, """{"ambiente":"DEV","situacao":"NAO_ENVIADO","pendencias":[]}""",
+                    autenticado = true),
+                Caso("POST $recebedor", 422, """{"detail":"Resolva as pendências do credenciamento.","completude":{
+                    "apto":false,"faltantes":[{"campo":"pessoaFisica.tipoTelefone","mensagem":"Selecione o tipo de telefone."}],
+                    "invalidos":[],"confirmacoes":[]}}""", autenticado = true, validarCorpo = { corpo ->
+                        assertEquals("DEV", corpo.getString("ambiente"))
+                        val dados = corpo.getJSONObject("dados")
+                        assertEquals("INDIVIDUAL", dados.getString("modalidade"))
+                        assertEquals("001", dados.getJSONObject("contaBancaria").get("banco"))
+                    }),
+                Caso("POST $recebedor/consulta", 200, """{"ambiente":"DEV","situacao":"CRIADO",
+                    "statusProvedor":"REGISTRATION","pendencias":[]}""", autenticado = true),
+                Caso("POST $recebedor/reenvio", 200, """{"ambiente":"DEV","situacao":"EM_ANALISE",
+                    "pendencias":[],"tentativa":"atual","versao":3,"emProcessamento":true,"podeReenviar":false,
+                    "envioAceito":false}""", autenticado = true, validarCorpo = { corpo ->
+                        assertEquals(setOf("ambiente", "versao", "tentativa"), corpo.keys().asSequence().toSet())
+                        assertEquals("DEV", corpo.getString("ambiente"))
+                        assertEquals(3L, corpo.getLong("versao"))
+                        assertEquals("anterior", corpo.getString("tentativa"))
+                    }),
+                Caso("DELETE /api/v1/app/credenciamentos/STONE", 204, "", autenticado = true,
+                    cabecalhosEsperados = mapOf("x-credenciamento-id" to "formulario-local", "x-versao-credenciamento" to "3"))
             )
             val requisicoes = executor.submit {
                 for (caso in casos) {
@@ -53,7 +76,9 @@ class ApiAutenticacaoTest {
                             assertEquals(valor, json.getString(nome))
                             if (rota.endsWith("/cadastro")) assertEquals(setOf("email", "senha"), json.keys().asSequence().toSet())
                         }
+                        caso.validarCorpo?.invoke(JSONObject(String(corpo)))
                         if (caso.autenticado) assertEquals("Bearer jwt", cabecalhos["authorization"])
+                        caso.cabecalhosEsperados.forEach { (nome, valor) -> assertEquals(valor, cabecalhos[nome]) }
                     }
                 }
             }
@@ -66,6 +91,24 @@ class ApiAutenticacaoTest {
                 assertEquals("jwt", api.renovar("refresh").acesso)
                 assertEquals(email, api.consultar("jwt").email)
                 api.sair("jwt")
+                val provedor = ProvedorCredenciamento.STONE
+                assertEquals(AmbienteRecebedor.DEV, api.consultarRecebedor("jwt", provedor).ambiente)
+                val dados = RascunhoCredenciamento(mapOf("modalidade" to "INDIVIDUAL", "contaBancaria.banco" to "001"))
+                val falha = assertThrows(FalhaApi::class.java) {
+                    api.enviarRecebedor("jwt", provedor, AmbienteRecebedor.DEV, dados)
+                }
+                assertEquals("pessoaFisica.tipoTelefone", falha.completude?.pendencias?.single()?.campo)
+                val criado = api.atualizarRecebedor("jwt", provedor)
+                assertEquals(SituacaoRecebedor.CRIADO, criado.situacao)
+                assertEquals("REGISTRATION", criado.statusProvedor)
+                val reenviado = api.reenviarRecebedor("jwt", provedor, criado.copy(versao = 3, tentativa = "anterior"))
+                assertEquals(SituacaoRecebedor.EM_ANALISE, reenviado.situacao)
+                assertEquals("atual", reenviado.tentativa)
+                assertEquals(true, reenviado.emProcessamento)
+                assertEquals(false, reenviado.envioAceito)
+                assertEquals(false, reenviado.podeReenviar)
+                api.excluirCredenciamento("jwt", provedor, RascunhoCredenciamento(
+                    mapOf("modalidade" to "INDIVIDUAL"), versao = 3, id = "formulario-local"))
                 requisicoes.get(5, TimeUnit.SECONDS)
             } finally {
                 servidor.close()
@@ -130,6 +173,62 @@ class ApiAutenticacaoTest {
             api.registrarMunicipio(it, "Uberaba", "MG")
         }.municipio)
         assertEquals(manual.municipio, sessaoRestaurada.autenticado(::perfil).municipio)
+        val provedor = ProvedorCredenciamento.STONE
+        assertEquals(SituacaoRecebedor.NAO_ENVIADO, sessaoRestaurada.autenticado { api.consultarRecebedor(it, provedor) }.situacao)
+        assertEquals(null, sessaoRestaurada.autenticado { api.consultarCredenciamento(it, provedor) })
+        val rascunhoPf = RascunhoCredenciamento(mapOf("modalidade" to "INDIVIDUAL", "pessoaFisica.nome" to "Pessoa de teste",
+            "contaBancaria.agencia" to "0001"))
+        val salvoPf = sessaoRestaurada.autenticado { api.salvarCredenciamento(it, provedor, true, rascunhoPf) }
+        assertEquals(ModalidadeCredenciamento.INDIVIDUAL, salvoPf.modalidade)
+        assertEquals(false, salvoPf.completude?.apto)
+        assertEquals(0L, salvoPf.versao)
+        assertEquals(SituacaoRecebedor.NAO_ENVIADO, salvoPf.recebedor?.situacao)
+        assertEquals("Pessoa de teste", sessaoRestaurada.autenticado {
+            api.consultarCredenciamento(it, provedor)
+        }?.get("pessoaFisica.nome"))
+        assertEquals(false, sessaoRestaurada.autenticado { api.validarCredenciamento(it, provedor, rascunhoPf) }.apto)
+        val rascunhoEditado = salvoPf.atualizar(mapOf("pessoaFisica.nome" to "Nome revisado"))
+        val pfEditado = sessaoRestaurada.autenticado { api.salvarCredenciamento(it, provedor, false, rascunhoEditado) }
+        assertEquals(1L, pfEditado.versao)
+        val conflito = assertThrows(FalhaApi::class.java) {
+            sessaoRestaurada.autenticado { api.salvarCredenciamento(it, provedor, false, salvoPf) }
+        }
+        assertEquals(409, conflito.status)
+        assertEquals("VERSAO_CREDENCIAMENTO_DESATUALIZADA", conflito.codigo)
+        sessaoRestaurada.autenticado { api.selecionarPapel(it, PapelUsuario.EMPRESA, true) }
+
+        val endereco = JSONObject("""{"cep":"00000000","logradouro":"Teste","numero":"0","bairro":"Teste","cidade":"Teste","uf":"MG"}""")
+        val cpf = StringBuilder("900000001")
+        for (tamanho in listOf(9, 10)) {
+            val resto = (0 until tamanho).sumOf { (cpf[it] - '0') * (tamanho + 1 - it) } % 11
+            cpf.append(if (resto < 2) 0 else 11 - resto)
+        }
+        val empresa = JSONObject("""{"razaoSocial":"Teste","cnpj":"12.ABC.345/01DE-35","email":"empresa@example.test","telefone":"34999999999","faturamento":"100.00"}""")
+            .put("endereco", endereco)
+        val representante = JSONObject("""{"nome":"Teste","nascimento":"2000-01-01","profissao":"Teste","renda":"1.00"}""")
+            .put("cpf", cpf.toString()).put("endereco", endereco)
+        val conta = JSONObject("""{"titular":"Teste","tipo":"CORRENTE","banco":"001","agencia":"0007","conta":"0000123"}""")
+            .put("documento", cpf.toString())
+        val dados = RascunhoCredenciamento.de(JSONObject().put("dados",
+            JSONObject().put("empresa", empresa).put("representante", representante).put("contaBancaria", conta)))
+        val gravado = sessaoRestaurada.autenticado { api.salvarCredenciamento(it, provedor, false, dados) }
+        assertEquals(ModalidadeCredenciamento.CORPORATION, gravado.modalidade)
+        assertEquals("0007", gravado["contaBancaria.agencia"])
+        val editado = gravado.atualizar(mapOf("contaBancaria.conta" to "0000654"))
+        sessaoRestaurada.autenticado { api.salvarCredenciamento(it, provedor, false, editado) }
+        val lido = sessaoRestaurada.autenticado { api.consultarCredenciamento(it, provedor) }
+        assertEquals("0000654", lido?.get("contaBancaria.conta"))
+        requireNotNull(lido)
+        sessaoRestaurada.autenticado { api.excluirCredenciamento(it, provedor, lido) }
+        assertEquals(null, sessaoRestaurada.autenticado { api.consultarCredenciamento(it, provedor) })
+        sessaoRestaurada.autenticado { api.excluirCredenciamento(it, provedor, lido) }
+        val novo = sessaoRestaurada.autenticado { api.salvarCredenciamento(it, provedor, true,
+            RascunhoCredenciamento(mapOf("modalidade" to "INDIVIDUAL", "pessoaFisica.nome" to "Novo processo"))) }
+        org.junit.Assert.assertNotEquals(lido.id, novo.id)
+        assertEquals("", novo["contaBancaria.conta"])
+        assertEquals(409, assertThrows(FalhaApi::class.java) {
+            sessaoRestaurada.autenticado { api.salvarCredenciamento(it, provedor, false, lido) }
+        }.status)
         sessaoRestaurada.sair()
         assertEquals(null, SessaoApp(api, armazenamento).restaurar())
     }
@@ -139,6 +238,8 @@ class ApiAutenticacaoTest {
         val status: Int,
         val resposta: String,
         val campo: Pair<String, String>? = null,
-        val autenticado: Boolean = false
+        val autenticado: Boolean = false,
+        val validarCorpo: ((JSONObject) -> Unit)? = null,
+        val cabecalhosEsperados: Map<String, String> = emptyMap()
     )
 }

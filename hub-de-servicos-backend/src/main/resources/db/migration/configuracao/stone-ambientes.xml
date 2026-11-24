@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+    <changeSet id="4-ambiente-global-e-stone" author="sistema">
+        <sql>
+            INSERT INTO configuracao_sistema (id, servico, chave, valor, tipo, status, sensivel) VALUES
+                ('a628aa7e-c23d-4849-b90f-086a75700000', 'SISTEMA', 'DEV_MODE', 'true', 'BOOLEANO', 'ATIVO', false),
+                ('a628aa7e-c23d-4849-b90f-086a75700001', 'STONE', 'stone.dev.accountId', '', 'TEXTO', 'ATIVO', false),
+                ('a628aa7e-c23d-4849-b90f-086a75700002', 'STONE', 'stone.dev.publicKey', '', 'TEXTO', 'ATIVO', false),
+                ('a628aa7e-c23d-4849-b90f-086a75700003', 'STONE', 'stone.dev.secretKey', '', 'SEGREDO', 'ATIVO', true),
+                ('a628aa7e-c23d-4849-b90f-086a75700004', 'STONE', 'stone.dev.recipientMaster', '', 'TEXTO', 'ATIVO', false),
+                ('a628aa7e-c23d-4849-b90f-086a75700005', 'STONE', 'stone.prod.accountId', '', 'TEXTO', 'ATIVO', false),
+                ('a628aa7e-c23d-4849-b90f-086a75700006', 'STONE', 'stone.prod.publicKey', '', 'TEXTO', 'ATIVO', false),
+                ('a628aa7e-c23d-4849-b90f-086a75700007', 'STONE', 'stone.prod.recipientMaster', '', 'TEXTO', 'ATIVO', false);
+            UPDATE configuracao_sistema SET status = 'INATIVO', data_atualizacao = now()
+                WHERE servico = 'STONE' AND chave = 'STONE_API_KEY';
+            ALTER TABLE configuracao_sistema ADD CONSTRAINT ck_configuracao_dev_mode
+                CHECK (servico &lt;&gt; 'SISTEMA' OR chave &lt;&gt; 'DEV_MODE' OR valor IN ('true', 'false'));
+        </sql>
+    </changeSet>
+</databaseChangeLog>

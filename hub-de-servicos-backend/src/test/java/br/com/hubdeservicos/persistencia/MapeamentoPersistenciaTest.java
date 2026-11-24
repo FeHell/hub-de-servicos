@@ -3,6 +3,7 @@ package br.com.hubdeservicos.persistencia;
 import br.com.hubdeservicos.HubDeServicosApplication;
 import br.com.hubdeservicos.entity.aplicacao.AplicacaoPermissaoEntity;
 import br.com.hubdeservicos.entity.aplicacao.AplicacaoPermissaoId;
+import br.com.hubdeservicos.entity.credenciamento.RecebedorExternoEntity;
 import br.com.hubdeservicos.entity.perfil.PerfilPermissaoEntity;
 import br.com.hubdeservicos.entity.perfil.PerfilPermissaoId;
 import br.com.hubdeservicos.entity.usuario.MunicipioEntity;
@@ -45,7 +46,9 @@ class MapeamentoPersistenciaTest {
                 .run(contexto -> {
                     assertThat(contexto).hasNotFailed();
                     var metamodelo = contexto.getBean(EntityManagerFactory.class).getMetamodel();
-                    assertThat(metamodelo.getEntities()).hasSize(15);
+                    assertThat(metamodelo.getEntities()).hasSize(19);
+                    assertThat(metamodelo.entity(RecebedorExternoEntity.class).getIdType().getJavaType())
+                            .isEqualTo(RecebedorExternoEntity.Chave.class);
                     assertThat(metamodelo.entity(MunicipioEntity.class).getIdType().getJavaType())
                             .isEqualTo(Integer.class);
                     assertThat(metamodelo.getEntities()).allSatisfy(entidade ->

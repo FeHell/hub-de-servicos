@@ -32,6 +32,9 @@ const detalheServico = (servico: string) => `${servicos}/${encodeURIComponent(se
 export function useConfiguracaoApi() {
   const { requisitarAutenticado: requisitar } = useAutenticacao()
   return {
+    consultarDevMode: () => requisitar<{ devMode: boolean }>(`${base}/dev-mode`),
+    alterarDevMode: (devMode: boolean) =>
+      requisitar<{ devMode: boolean }>(`${base}/dev-mode`, { metodo: 'PUT', corpo: { devMode } }),
     listarServicos: () => requisitar<ServicoExterno[]>(servicos),
     consultarServico: (servico: string) => requisitar<ServicoExterno>(detalheServico(servico)),
     atualizarServico: (servico: string, valores: Record<string, string>) =>

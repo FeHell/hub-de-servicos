@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+    <changeSet id="6-credenciamento-exclusao-formulario" author="sistema">
+        <sql>
+            ALTER TABLE credenciamento_empresarial ADD COLUMN excluido_em TIMESTAMPTZ;
+            ALTER TABLE credenciamento_empresarial DROP CONSTRAINT uk_credenciamento_solicitante_provedor;
+            CREATE UNIQUE INDEX uk_credenciamento_solicitante_provedor
+                ON credenciamento_empresarial (id_solicitante, provedor) WHERE excluido_em IS NULL;
+        </sql>
+        <rollback>
+            <sql>
+                DO $$ BEGIN
+                    IF EXISTS (SELECT 1 FROM credenciamento_empresarial WHERE excluido_em IS NOT NULL) THEN
+                        RAISE EXCEPTION 'Existem formulários excluídos. Preserve o histórico antes de reverter esta migração.';
+                    END IF;
+                END; $$;
+                DROP INDEX uk_credenciamento_solicitante_provedor;
+                ALTER TABLE credenciamento_empresarial
+                    ADD CONSTRAINT uk_credenciamento_solicitante_provedor UNIQUE (id_solicitante, provedor);
+                ALTER TABLE credenciamento_empresarial DROP COLUMN excluido_em;
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

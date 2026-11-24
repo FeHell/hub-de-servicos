@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+    <changeSet id="5-credenciamento-revisoes-recebedor-stone" author="sistema">
+        <sql>
+            ALTER TABLE credenciamento_empresarial ADD COLUMN versao BIGINT NOT NULL DEFAULT 0;
+            ALTER TABLE credenciamento_recebedor_externo ADD COLUMN versao_submetida BIGINT;
+            ALTER TABLE credenciamento_recebedor_externo DROP CONSTRAINT credenciamento_recebedor_externo_check;
+            ALTER TABLE credenciamento_recebedor_externo ADD CONSTRAINT ck_recebedor_confirmacao
+                CHECK ((id_recebedor IS NULL) = (confirmado_em IS NULL)
+                    AND (situacao &lt;> 'CRIADO' OR id_recebedor IS NOT NULL));
+
+            CREATE TABLE credenciamento_recebedor_tentativa (
+                tentativa_ref UUID PRIMARY KEY,
+                id_credenciamento UUID NOT NULL,
+                provedor VARCHAR(50) NOT NULL,
+                ambiente VARCHAR(4) NOT NULL,
+                versao_submetida BIGINT,
+                operacao VARCHAR(32) NOT NULL CHECK (operacao IN ('CRIACAO', 'ATUALIZACAO_CADASTRAL', 'ATUALIZACAO_BANCARIA')),
+                tentativa_em TIMESTAMPTZ NOT NULL,
+                dados_protegidos TEXT,
+                situacao VARCHAR(16) NOT NULL,
+                id_recebedor VARCHAR(128),
+                confirmado_em TIMESTAMPTZ,
+                status_provedor VARCHAR(20),
+                erro_sanitizado VARCHAR(250),
+                campos_recusados VARCHAR(1400),
+                passou_por_analise BOOLEAN NOT NULL DEFAULT FALSE,
+                FOREIGN KEY (id_credenciamento, provedor, ambiente)
+                    REFERENCES credenciamento_recebedor_externo (id_credenciamento, provedor, ambiente) ON DELETE CASCADE
+            );
+            CREATE INDEX idx_cred_tentativa_historico
+                ON credenciamento_recebedor_tentativa (id_credenciamento, provedor, ambiente, tentativa_em DESC);
+
+            UPDATE credenciamento_recebedor_externo e SET versao_submetida = c.versao
+                FROM credenciamento_empresarial c
+                WHERE c.id = e.id_credenciamento AND c.data_atualizacao &lt;= e.tentativa_em;
+
+            INSERT INTO credenciamento_recebedor_tentativa (
+                tentativa_ref, id_credenciamento, provedor, ambiente, versao_submetida, operacao, tentativa_em,
+                dados_protegidos, situacao, id_recebedor, confirmado_em, status_provedor, erro_sanitizado, campos_recusados)
+            SELECT e.tentativa_ref, e.id_credenciamento, e.provedor, e.ambiente, e.versao_submetida, 'CRIACAO', e.tentativa_em,
+                CASE WHEN e.versao_submetida IS NOT NULL THEN c.dados_protegidos END,
+                e.situacao, e.id_recebedor, e.confirmado_em, e.status_provedor, e.erro_sanitizado, e.campos_recusados
+            FROM credenciamento_recebedor_externo e
+            JOIN credenciamento_empresarial c ON c.id = e.id_credenciamento
+            WHERE e.tentativa_ref IS NOT NULL;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

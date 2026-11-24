@@ -10,4 +10,15 @@
     <color name="gastro_campo_borda">#8A887C</color>
     <color name="gastro_linha">#DED5C6</color>
     <color name="gastro_erro">#982D28</color>
+    <color name="cred_status_neutro_fundo">#F1EFEB</color>
+    <color name="cred_status_neutro_texto">#474941</color>
+    <color name="cred_status_espera_fundo">#FFF0CB</color>
+    <color name="cred_status_espera_texto">#694B15</color>
+    <color name="cred_status_processando_fundo">#E7F0FB</color>
+    <color name="cred_status_processando_texto">#234B75</color>
+    <color name="cred_status_aprovado_fundo">#E4F2E6</color>
+    <color name="cred_status_aprovado_texto">#255636</color>
+    <color name="cred_status_erro_fundo">#FCEBE7</color>
+    <color name="cred_status_reenvio_fundo">#FCECDC</color>
+    <color name="cred_status_reenvio_texto">#85431D</color>
 </resources>

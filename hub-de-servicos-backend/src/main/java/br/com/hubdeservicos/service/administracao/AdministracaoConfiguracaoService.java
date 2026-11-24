@@ -3,6 +3,9 @@ package br.com.hubdeservicos.service.administracao;
 import br.com.hubdeservicos.common.StatusCadastro;
 import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ConfiguracaoInfo;
 import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ServicoInfo;
+import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ModoDesenvolvimento;
+import br.com.hubdeservicos.service.configuracao.AmbienteServicosService;
+import static br.com.hubdeservicos.service.configuracao.AmbienteServicosService.DEV_MODE;
 import br.com.hubdeservicos.entity.configuracao.ServicoExterno;
 import br.com.hubdeservicos.service.configuracao.ConfiguracoesExternasService;
 import br.com.hubdeservicos.repository.configuracao.ConfiguracaoSistemaRepository;
@@ -71,6 +74,24 @@ public class AdministracaoConfiguracaoService {
             registro.registrarAlteracaoConfiguracao(configuracao.getId(), SMS_PROVEDOR_ATIVO, valorAnterior, codigo);
         }
         return ConfiguracaoInfo.de(configuracao);
+    }
+
+    public ModoDesenvolvimento consultarModoDesenvolvimento() {
+        String valor = configuracoes.buscarValor(DEV_MODE, StatusCadastro.ATIVO).orElse("");
+        return new ModoDesenvolvimento(AmbienteServicosService.interpretar(valor) == AmbienteServicosService.Ambiente.DEV);
+    }
+
+    @Transactional
+    public ModoDesenvolvimento alterarModoDesenvolvimento(boolean dev) {
+        var entrada = configuracoes.findForUpdateByChave(DEV_MODE)
+                .filter(item -> item.getStatus() == StatusCadastro.ATIVO)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "DEV_MODE indisponível."));
+        String valor = Boolean.toString(dev);
+        if (!valor.equals(entrada.getValor())) {
+            entrada.atualizarValor(valor, relogio.instant());
+            registro.registrarAlteracaoServico(entrada.getId(), "SISTEMA", DEV_MODE);
+        }
+        return new ModoDesenvolvimento(dev);
     }
 
     public List<ServicoInfo> listarServicos() {

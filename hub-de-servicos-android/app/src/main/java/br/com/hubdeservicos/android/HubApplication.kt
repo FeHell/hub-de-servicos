@@ -10,6 +10,6 @@ class HubApplication : Application() {
     val autenticacao by lazy {
         val origem = BuildConfig.API_ORIGEM.trimEnd('/')
         val api = ApiAutenticacao(origem)
-        AutenticacaoModel(SessaoApp(api, SessaoKeystore(this, origem)), api)
+        AutenticacaoModel(SessaoApp(api, SessaoKeystore(this, origem)), api, api)
     }
 }

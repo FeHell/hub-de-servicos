@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+    <changeSet id="4-credenciamento-diagnostico-recebedor-stone" author="sistema">
+        <createTable tableName="credenciamento_recebedor_diagnostico">
+            <column name="tentativa_ref" type="uuid">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="id_credenciamento" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ambiente" type="varchar(4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="capturado_em" type="timestamp with time zone">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resposta_protegida" type="text">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="credenciamento_recebedor_diagnostico" baseColumnNames="id_credenciamento"
+            constraintName="fk_cred_diag_credenciamento" referencedTableName="credenciamento_empresarial"
+            referencedColumnNames="id" onDelete="CASCADE"/>
+        <createIndex tableName="credenciamento_recebedor_diagnostico" indexName="idx_cred_diag_credenciamento">
+            <column name="id_credenciamento"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="credenciamento_recebedor_diagnostico"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

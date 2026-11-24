@@ -53,7 +53,7 @@ public class ConfiguracaoSistemaEntity {
     @Column(name = "data_criacao", nullable = false, insertable = false, updatable = false)
     private Instant dataCriacao;
 
-    @Generated(event = EventType.INSERT)
+    @Generated(event = EventType.INSERT, writable = true)
     @Column(name = "data_atualizacao", nullable = false, insertable = false)
     private Instant dataAtualizacao;
 

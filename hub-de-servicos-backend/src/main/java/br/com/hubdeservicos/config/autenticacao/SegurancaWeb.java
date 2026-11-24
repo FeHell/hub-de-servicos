@@ -3,6 +3,7 @@ package br.com.hubdeservicos.config.autenticacao;
 import br.com.hubdeservicos.service.autenticacao.TokenJwt;
 import br.com.hubdeservicos.controller.app.AutenticacaoAppController;
 import br.com.hubdeservicos.controller.app.PerfilAppController;
+import br.com.hubdeservicos.controller.app.CredenciamentoController;
 import br.com.hubdeservicos.service.app.AutenticacaoAppService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,6 +15,9 @@ import java.io.IOException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.authorization.AuthenticatedAuthorizationManager;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -34,7 +38,10 @@ public class SegurancaWeb {
     private static final String AUTENTICACAO = "/api/v1/aplicacoes/*/autenticacao";
 
     @Bean
-    SecurityFilterChain api(HttpSecurity http, TokenJwt jwt, ObjectMapper json) throws Exception {
+    SecurityFilterChain api(HttpSecurity http, TokenJwt jwt, ObjectMapper json, Environment ambiente) throws Exception {
+        boolean local = ambiente.matchesProfiles("local & !homologacao & !producao");
+        var autenticado = AuthenticatedAuthorizationManager
+                .<org.springframework.security.web.access.intercept.RequestAuthorizationContext>authenticated();
         return http
                 // Só as rotas de sessão do navegador leem cookie. Elas exigem um cabeçalho
                 // não permitido em requisições simples de outra origem; não habilitar CORS nelas.
@@ -58,6 +65,12 @@ public class SegurancaWeb {
                         .requestMatchers(PerfilAppController.ROTA, PerfilAppController.ROTA + "/telefone/confirmacao",
                                 PerfilAppController.ROTA + "/telefone/confirmacao/reenviar",
                                 PerfilAppController.ROTA + "/telefone/confirmacao/validar").authenticated()
+                        .requestMatchers(CredenciamentoController.ROTA + "/{provedor}",
+                                CredenciamentoController.ROTA + "/{provedor}/completude",
+                                CredenciamentoController.ROTA + "/{provedor}/validacao",
+                                CredenciamentoController.ROTA + "/{provedor}/recebedor",
+                                CredenciamentoController.ROTA + "/{provedor}/recebedor/consulta").authenticated()
+                        .requestMatchers(HttpMethod.POST, CredenciamentoController.ROTA + "/{provedor}/recebedor/reenvio").authenticated()
                         .requestMatchers(HttpMethod.GET, AutenticacaoAppController.ROTA + "/eu").authenticated()
                         .requestMatchers(HttpMethod.POST, AutenticacaoAppController.ROTA + "/logout").authenticated()
                         .requestMatchers(HttpMethod.POST, AUTENTICACAO + "/login", AUTENTICACAO + "/renovar").permitAll()
@@ -66,6 +79,17 @@ public class SegurancaWeb {
                         .requestMatchers(HttpMethod.GET, AUTENTICACAO + "/eu",
                                 AUTENTICACAO + "/permissoes").authenticated()
                         .requestMatchers(HttpMethod.POST, AUTENTICACAO + "/logout").authenticated()
+                        .requestMatchers("/api/v1/admin/configuracoes/servicos/{servico}",
+                                "/api/v1/admin/credenciamentos/{id}/payload",
+                                "/api/v1/admin/credenciamentos/tentativas/{tentativa}/diagnostico")
+                        .access((identidade, contexto) -> {
+                            var acesso = autenticado.check(identidade, contexto);
+                            var requisicao = contexto.getRequest();
+                            boolean localSeguro = local && java.util.Set.of("127.0.0.1", "::1", "0:0:0:0:0:0:0:1")
+                                    .contains(requisicao.getRemoteAddr());
+                            return new AuthorizationDecision(acesso != null && acesso.isGranted()
+                                    && (localSeguro || requisicao.isSecure()));
+                        })
                         .requestMatchers("/api/v1/admin/**", "/api/v1/aplicacoes/*/admin/**").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(erros -> erros
