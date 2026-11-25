@@ -1,8 +1,7 @@
 package br.com.hubdeservicos.entity.usuario;
 
 public enum PapelUsuario {
-    EMPRESA("PLATAFORMA_EMPRESA"),
-    TRABALHADOR("PLATAFORMA_TRABALHADOR");
+    EMPRESA("PLATAFORMA_EMPRESA"), TRABALHADOR("PLATAFORMA_TRABALHADOR");
 
     private final String codigoPermissao;
 

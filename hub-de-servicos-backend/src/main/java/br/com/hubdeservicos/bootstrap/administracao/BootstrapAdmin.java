@@ -1,6 +1,8 @@
 package br.com.hubdeservicos.bootstrap.administracao;
 
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovoUsuario;
+import br.com.hubdeservicos.entity.usuario.StatusUsuario;
+
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovoUsuarioBean;
 import br.com.hubdeservicos.service.administracao.AcessoAdministrativo;
 
 import java.util.UUID;
@@ -35,14 +37,18 @@ class BootstrapAdmin implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments argumentos) {
         UUID idAplicacao = ambiente.getRequiredProperty(AcessoAdministrativo.PROPRIEDADE_APLICACAO, UUID.class);
-        var dados = new NovoUsuario(ambiente.getRequiredProperty("HUB_BOOTSTRAP_LOGIN"),
-                ambiente.getRequiredProperty("HUB_BOOTSTRAP_EMAIL"),
-                ambiente.getRequiredProperty("HUB_BOOTSTRAP_SENHA"));
+        NovoUsuarioBean novoUsuarioPreparado = new NovoUsuarioBean();
+        novoUsuarioPreparado.setLogin(ambiente.getRequiredProperty("HUB_BOOTSTRAP_LOGIN"));
+        novoUsuarioPreparado.setEmail(ambiente.getRequiredProperty("HUB_BOOTSTRAP_EMAIL"));
+        novoUsuarioPreparado.setSenha(ambiente.getRequiredProperty("HUB_BOOTSTRAP_SENHA"));
+        novoUsuarioPreparado.setStatus(StatusUsuario.ATIVO);
+
         String banco = jdbc.queryForObject("select current_database()", String.class);
         if (!"hub_de_servicos".equals(banco)) {
             throw new IllegalStateException("O bootstrap exige uma conexão ao banco hub_de_servicos.");
         }
-        inicializacao.criarPrimeiroAdministrador(idAplicacao, dados);
-        log.info("Primeiro administrador criado. Aplicação: {}. UUID: {}.", InicializacaoAdministrativa.SLUG, idAplicacao);
+        inicializacao.criarPrimeiroAdministrador(idAplicacao, novoUsuarioPreparado);
+        log.info("Primeiro administrador criado. Aplicação: {}. UUID: {}.", InicializacaoAdministrativa.SLUG,
+                idAplicacao);
     }
 }

@@ -37,7 +37,8 @@ public class DesafioTelefoneEntity {
     protected DesafioTelefoneEntity() {
     }
 
-    public DesafioTelefoneEntity(UUID id, UUID idUsuario, String telefone, String codigoHash, Instant criadoEm, Instant expiraEm) {
+    public DesafioTelefoneEntity(UUID id, UUID idUsuario, String telefone, String codigoHash, Instant criadoEm,
+            Instant expiraEm) {
         this.id = id;
         this.idUsuario = idUsuario;
         this.telefone = telefone;
@@ -46,15 +47,43 @@ public class DesafioTelefoneEntity {
         this.expiraEm = expiraEm;
     }
 
-    public UUID getId() { return id; }
-    public UUID getIdUsuario() { return idUsuario; }
-    public String getTelefone() { return telefone; }
-    public String getCodigoHash() { return codigoHash; }
-    public Instant getExpiraEm() { return expiraEm; }
-    public boolean isEnviado() { return enviado; }
-    public int getTentativas() { return tentativas; }
+    public UUID getId() {
+        return id;
+    }
 
-    public void registrarEnvio() { enviado = true; }
-    public void consumir() { codigoHash = null; }
-    public void registrarErro() { tentativas++; }
+    public UUID getIdUsuario() {
+        return idUsuario;
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public String getCodigoHash() {
+        return codigoHash;
+    }
+
+    public Instant getExpiraEm() {
+        return expiraEm;
+    }
+
+    public boolean isEnviado() {
+        return enviado;
+    }
+
+    public int getTentativas() {
+        return tentativas;
+    }
+
+    public void registrarEnvio() {
+        enviado = true;
+    }
+
+    public void consumir() {
+        codigoHash = null;
+    }
+
+    public void registrarErro() {
+        tentativas++;
+    }
 }

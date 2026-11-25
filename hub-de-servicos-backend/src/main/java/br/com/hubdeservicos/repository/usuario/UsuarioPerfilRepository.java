@@ -42,6 +42,5 @@ public interface UsuarioPerfilRepository extends JpaRepository<UsuarioPerfilEnti
                and vinculoPerfil.id.idAplicacao = :idAplicacao
              order by permissao.codigo
             """)
-    List<String> buscarPermissoesEfetivas(@Param("idUsuario") UUID idUsuario,
-                                         @Param("idAplicacao") UUID idAplicacao);
+    List<String> buscarPermissoesEfetivas(@Param("idUsuario") UUID idUsuario, @Param("idAplicacao") UUID idAplicacao);
 }

@@ -88,8 +88,8 @@ public interface ConsultaUsuariosRepository extends Repository<UsuarioEntity, UU
             where u.dataCriacao >= :inicio and u.dataCriacao <= :fim
             group by 1
             """)
-    List<ContagemTipo> contarPorTipo(Instant inicio, Instant fim, UUID administracao,
-                                     String permissaoPlataforma, String permissaoAplicacao);
+    List<ContagemTipo> contarPorTipo(Instant inicio, Instant fim, UUID administracao, String permissaoPlataforma,
+            String permissaoAplicacao);
 
     @Query("""
             select aplicacao.slug as aplicacao, permissao.codigo as codigo, count(distinct usuario.id) as total
@@ -119,28 +119,37 @@ public interface ConsultaUsuariosRepository extends Repository<UsuarioEntity, UU
 
     interface PermissaoDoUsuario {
         UUID getIdUsuario();
+
         UUID getIdAplicacao();
+
         String getAplicacao();
+
         String getCodigo();
     }
 
     interface ContagemStatus {
         StatusUsuario getStatus();
+
         long getTotal();
     }
 
     interface ContagemMes {
         String getMes();
+
         long getTotal();
     }
+
     interface ContagemTipo {
         String getTipo();
+
         long getTotal();
     }
 
     interface ContagemPermissao {
         String getAplicacao();
+
         String getCodigo();
+
         long getTotal();
     }
 }

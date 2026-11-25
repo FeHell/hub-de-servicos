@@ -46,8 +46,7 @@ public class UsuarioPerfilId implements Serializable {
         if (!(outro instanceof UsuarioPerfilId chave)) {
             return false;
         }
-        return Objects.equals(idUsuario, chave.idUsuario)
-                && Objects.equals(idAplicacao, chave.idAplicacao)
+        return Objects.equals(idUsuario, chave.idUsuario) && Objects.equals(idAplicacao, chave.idAplicacao)
                 && Objects.equals(idPerfil, chave.idPerfil);
     }
 

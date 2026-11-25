@@ -24,9 +24,18 @@ public class MunicipioEntity {
     @Column(name = "uf_busca", nullable = false, length = 40)
     private String ufBusca;
 
-    protected MunicipioEntity() {}
+    protected MunicipioEntity() {
+    }
 
-    public Integer getCodigoIbge() { return codigoIbge; }
-    public String getNome() { return nome; }
-    public String getUf() { return uf; }
+    public Integer getCodigoIbge() {
+        return codigoIbge;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public String getUf() {
+        return uf;
+    }
 }

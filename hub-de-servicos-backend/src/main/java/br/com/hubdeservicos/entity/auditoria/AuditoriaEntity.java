@@ -67,14 +67,8 @@ public class AuditoriaEntity {
     protected AuditoriaEntity() {
     }
 
-    public AuditoriaEntity(
-            UUID idUsuario,
-            UUID idAplicacao,
-            String acao,
-            String tabelaAfetada,
-            JsonNode valorAntigo,
-            JsonNode valorNovo,
-            String ipOrigem) {
+    public AuditoriaEntity(UUID idUsuario, UUID idAplicacao, String acao, String tabelaAfetada, JsonNode valorAntigo,
+            JsonNode valorNovo, String ipOrigem) {
         this.idUsuario = idUsuario;
         this.idAplicacao = idAplicacao;
         this.acao = Objects.requireNonNull(acao, "acao");

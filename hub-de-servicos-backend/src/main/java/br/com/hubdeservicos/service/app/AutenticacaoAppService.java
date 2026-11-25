@@ -1,10 +1,10 @@
 package br.com.hubdeservicos.service.app;
 
 import br.com.hubdeservicos.common.StatusCadastro;
-import br.com.hubdeservicos.dto.app.ContratosApp.AcessoApp;
-import br.com.hubdeservicos.dto.app.ContratosApp.CadastroEntrada;
-import br.com.hubdeservicos.dto.app.ContratosApp.ContaApp;
-import br.com.hubdeservicos.dto.app.ContratosApp.LoginAppEntrada;
+import br.com.hubdeservicos.dto.app.ContratosApp.AcessoAppBean;
+import br.com.hubdeservicos.dto.app.ContratosApp.CadastroEntradaBean;
+import br.com.hubdeservicos.dto.app.ContratosApp.ContaAppBean;
+import br.com.hubdeservicos.dto.app.ContratosApp.LoginAppEntradaBean;
 import br.com.hubdeservicos.entity.aplicacao.TipoAplicacao;
 import br.com.hubdeservicos.entity.auditoria.AuditoriaEntity;
 import br.com.hubdeservicos.entity.usuario.StatusUsuario;
@@ -38,9 +38,8 @@ public class AutenticacaoAppService {
     private final AutenticacaoService autenticacao;
 
     public AutenticacaoAppService(UsuarioRepository usuarios, AplicacaoRepository aplicacoes,
-                                  UsuarioAplicacaoRepository vinculos, AuditoriaRepository auditoria,
-                                  SenhasAdministrativas senhas, CadastroUsuarioService cadastro,
-                                  AutenticacaoService autenticacao) {
+            UsuarioAplicacaoRepository vinculos, AuditoriaRepository auditoria, SenhasAdministrativas senhas,
+            CadastroUsuarioService cadastro, AutenticacaoService autenticacao) {
         this.usuarios = usuarios;
         this.aplicacoes = aplicacoes;
         this.vinculos = vinculos;
@@ -51,25 +50,35 @@ public class AutenticacaoAppService {
     }
 
     @Transactional
-    public ContaApp cadastrar(CadastroEntrada entrada, String ip) {
-        String email = entrada.email().strip();
-        String hash = senhas.gerarHash(entrada.senha());
+    public ContaAppBean cadastrar(CadastroEntradaBean entrada, String ip) {
+        String email = entrada.getEmail().strip();
+        String hash = senhas.gerarHash(entrada.getSenha());
         if (usuarios.buscarPorEmail(email).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Não foi possível concluir o cadastro.");
         }
         var aplicacao = aplicacoes.buscarSlugParaLogin(SLUG)
                 .filter(app -> app.getTipo() == TipoAplicacao.PUBLICO && app.getStatus() == StatusCadastro.ATIVO)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                        "Cadastro temporariamente indisponível."));
+                .orElseThrow(() -> {
+                    var responseStatusExceptionPreparado = new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                            "Cadastro temporariamente indisponível.");
+                    return responseStatusExceptionPreparado;
+                });
         var usuario = cadastro.salvar("app-" + UUID.randomUUID(), hash, email, StatusUsuario.ATIVO);
-        vinculos.save(new UsuarioAplicacaoEntity(new UsuarioAplicacaoId(usuario.getId(), aplicacao.getId())));
-        auditoria.save(new AuditoriaEntity(usuario.getId(), aplicacao.getId(), "CADASTRAR_USUARIO_APP",
-                "usuario", null, null, ip != null && ip.length() <= 45 ? ip : null));
-        return new ContaApp(usuario.getId(), usuario.getEmail());
+        var usuarioAplicacaoIdPreparado = new UsuarioAplicacaoId(usuario.getId(), aplicacao.getId());
+
+        var usuarioAplicacaoEntityPreparado = new UsuarioAplicacaoEntity(usuarioAplicacaoIdPreparado);
+        vinculos.save(usuarioAplicacaoEntityPreparado);
+        var auditoriaEntityPreparado = new AuditoriaEntity(usuario.getId(), aplicacao.getId(), "CADASTRAR_USUARIO_APP",
+                "usuario", null, null, ip != null && ip.length() <= 45 ? ip : null);
+        auditoria.save(auditoriaEntityPreparado);
+        ContaAppBean contaAppPreparado = new ContaAppBean();
+        contaAppPreparado.setId(usuario.getId());
+        contaAppPreparado.setEmail(usuario.getEmail());
+        return contaAppPreparado;
     }
 
-    public AcessoApp login(LoginAppEntrada entrada, String ip) {
-        var sessao = autenticacao.loginPorEmail(SLUG, entrada.email().strip(), entrada.senha(), ip);
-        return AcessoApp.de(sessao.tokens(), sessao.usuario());
+    public AcessoAppBean login(LoginAppEntradaBean entrada, String ip) {
+        var sessao = autenticacao.loginPorEmail(SLUG, entrada.getEmail().strip(), entrada.getSenha(), ip);
+        return AcessoAppBean.de(sessao.getTokens(), sessao.getUsuario());
     }
 }

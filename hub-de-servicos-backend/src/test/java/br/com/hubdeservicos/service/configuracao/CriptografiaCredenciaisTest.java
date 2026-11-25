@@ -19,25 +19,31 @@ class CriptografiaCredenciaisTest {
         assertThat(protecao.descriptografar(CONTEXTO, selado)).isEqualTo(SEGREDO);
         assertThatThrownBy(() -> protecao.descriptografar("STONE:STONE_API_KEY", selado))
                 .isInstanceOf(CredencialIndisponivel.class).hasMessageNotContaining(selado);
-        assertThatThrownBy(() -> new CriptografiaCredenciais(novaChave()).descriptografar(CONTEXTO, selado))
-                .isInstanceOf(CredencialIndisponivel.class);
+        assertThatThrownBy(() -> {
+            var criptografiaCredenciaisPreparado = new CriptografiaCredenciais(novaChave());
+            criptografiaCredenciaisPreparado.descriptografar(CONTEXTO, selado);
+        }).isInstanceOf(CredencialIndisponivel.class);
         byte[] alterado = Base64.getDecoder().decode(selado.substring(3));
         alterado[alterado.length - 1] ^= 1;
-        assertThatThrownBy(() -> protecao.descriptografar(CONTEXTO, "v1:" + Base64.getEncoder().encodeToString(alterado)))
+        assertThatThrownBy(
+                () -> protecao.descriptografar(CONTEXTO, "v1:" + Base64.getEncoder().encodeToString(alterado)))
                 .isInstanceOf(CredencialIndisponivel.class);
     }
 
     @Test
     void falhaComSegurancaQuandoAChaveMestraNaoFoiConfigurada() {
-        for (String ausente : new String[]{"", "chave-invalida"}) {
-            assertThatThrownBy(() -> new CriptografiaCredenciais(ausente).criptografar(CONTEXTO, SEGREDO))
-                    .isInstanceOf(CredencialIndisponivel.class).hasMessageNotContaining(SEGREDO);
+        for (String ausente : new String[] { "", "chave-invalida" }) {
+            assertThatThrownBy(() -> {
+                var criptografiaCredenciaisPreparado2 = new CriptografiaCredenciais(ausente);
+                criptografiaCredenciaisPreparado2.criptografar(CONTEXTO, SEGREDO);
+            }).isInstanceOf(CredencialIndisponivel.class).hasMessageNotContaining(SEGREDO);
         }
     }
 
     private static String novaChave() {
         byte[] chave = new byte[32];
-        new SecureRandom().nextBytes(chave);
+        var secureRandomPreparado = new SecureRandom();
+        secureRandomPreparado.nextBytes(chave);
         return Base64.getEncoder().encodeToString(chave);
     }
 }

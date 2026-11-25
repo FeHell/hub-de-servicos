@@ -27,7 +27,8 @@ public class RecebedorExternoEntity {
         @Column(name = "ambiente")
         private Ambiente ambiente;
 
-        protected Chave() {}
+        protected Chave() {
+        }
 
         public Chave(UUID credenciamento, ProvedorCredenciamento provedor, Ambiente ambiente) {
             this.credenciamento = credenciamento;
@@ -35,9 +36,17 @@ public class RecebedorExternoEntity {
             this.ambiente = ambiente;
         }
 
-        public Ambiente ambiente() { return ambiente; }
-        public UUID credenciamento() { return credenciamento; }
-        public String codigo() { return credenciamento.toString(); }
+        public Ambiente ambiente() {
+            return ambiente;
+        }
+
+        public UUID credenciamento() {
+            return credenciamento;
+        }
+
+        public String codigo() {
+            return credenciamento.toString();
+        }
 
         @Override
         public boolean equals(Object outro) {
@@ -46,7 +55,9 @@ public class RecebedorExternoEntity {
         }
 
         @Override
-        public int hashCode() { return Objects.hash(credenciamento, provedor, ambiente); }
+        public int hashCode() {
+            return Objects.hash(credenciamento, provedor, ambiente);
+        }
     }
 
     @Enumerated(EnumType.STRING)
@@ -89,7 +100,8 @@ public class RecebedorExternoEntity {
     @Column(name = "campos_recusados")
     private String camposRecusados;
 
-    protected RecebedorExternoEntity() {}
+    protected RecebedorExternoEntity() {
+    }
 
     public RecebedorExternoEntity(Chave id, String contaDigest) {
         this.id = id;
@@ -125,14 +137,43 @@ public class RecebedorExternoEntity {
         camposRecusados = campos;
     }
 
-    public Chave chave() { return id; }
-    public boolean daConta(String digest) { return Objects.equals(contaDigest, digest); }
-    public UUID tentativa() { return tentativa; }
-    public Instant tentativaEm() { return tentativaEm; }
-    public boolean representa(long versao) { return Objects.equals(versaoSubmetida, versao); }
-    public String idRecebedor() { return idRecebedor; }
-    public SituacaoRecebedor situacao() { return situacao; }
-    public StatusPagarme statusProvedor() { return statusProvedor; }
-    public ErroRecebedor erro() { return erro; }
-    public String camposRecusados() { return camposRecusados; }
+    public Chave chave() {
+        return id;
+    }
+
+    public boolean daConta(String digest) {
+        return Objects.equals(contaDigest, digest);
+    }
+
+    public UUID tentativa() {
+        return tentativa;
+    }
+
+    public Instant tentativaEm() {
+        return tentativaEm;
+    }
+
+    public boolean representa(long versao) {
+        return Objects.equals(versaoSubmetida, versao);
+    }
+
+    public String idRecebedor() {
+        return idRecebedor;
+    }
+
+    public SituacaoRecebedor situacao() {
+        return situacao;
+    }
+
+    public StatusPagarme statusProvedor() {
+        return statusProvedor;
+    }
+
+    public ErroRecebedor erro() {
+        return erro;
+    }
+
+    public String camposRecusados() {
+        return camposRecusados;
+    }
 }

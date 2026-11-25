@@ -1,13 +1,17 @@
 package br.com.hubdeservicos.service.credenciamento;
 
-import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.Credenciamento;
-import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.Dados;
-import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.Recebedor;
-import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.Completude;
+import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.util.Objects;
+
+import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.CredenciamentoBean;
+import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.DadosBean;
+import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.RecebedorBean;
+import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.CompletudeBean;
 import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.ConfirmacaoAlteracao;
 import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.StatusPagarme;
-import br.com.hubdeservicos.dto.credenciamento.PagarmeRecebedor;
-import br.com.hubdeservicos.dto.credenciamento.PagarmeRecebedor.UnidadeMonetaria;
+import br.com.hubdeservicos.dto.credenciamento.PagarmeRecebedorBean;
+import br.com.hubdeservicos.dto.credenciamento.PagarmeRecebedorBean.UnidadeMonetaria;
 import br.com.hubdeservicos.service.configuracao.AmbienteServicosService.Ambiente;
 import br.com.hubdeservicos.entity.auditoria.AuditoriaEntity;
 import br.com.hubdeservicos.entity.credenciamento.CredenciamentoEntity;
@@ -22,7 +26,7 @@ import br.com.hubdeservicos.repository.usuario.UsuarioPermissaoPlataformaReposit
 import br.com.hubdeservicos.repository.usuario.UsuarioRepository;
 import br.com.hubdeservicos.service.app.AutenticacaoAppService;
 import br.com.hubdeservicos.service.autenticacao.AutenticacaoService;
-import br.com.hubdeservicos.service.autenticacao.IdentidadeJwt;
+import br.com.hubdeservicos.service.autenticacao.IdentidadeJwtVO;
 import br.com.hubdeservicos.service.configuracao.CriptografiaCredenciais;
 import br.com.hubdeservicos.service.configuracao.AmbienteServicosService;
 import br.com.hubdeservicos.service.configuracao.CriptografiaCredenciais.CredencialIndisponivel;
@@ -81,64 +85,140 @@ public class CredenciamentoService {
     }
 
     @Transactional(readOnly = true)
-    public Credenciamento consultar(IdentidadeJwt identidade, ProvedorCredenciamento provedor) {
+    public CredenciamentoBean consultar(IdentidadeJwtVO identidade, ProvedorCredenciamento provedor) {
         UUID usuario = autorizar(identidade, false);
-        var registro = registros.findBySolicitanteAndProvedor(usuario, provedor).orElseThrow(CredenciamentoService::ausente);
+        var registro = registros.findBySolicitanteAndProvedor(usuario, provedor)
+                .orElseThrow(CredenciamentoService::ausente);
         return resposta(registro, ler(registro));
     }
 
     @Transactional(readOnly = true)
-    public Completude validar(IdentidadeJwt identidade, Dados dados) {
+    public CompletudeBean validar(IdentidadeJwtVO identidade, DadosBean dados) {
         autorizar(identidade, false);
         return validacao.avaliar(dados);
     }
 
     @PreAuthorize("@acessoAdministrativo.plataforma(authentication)")
     @Transactional(readOnly = true)
-    public Previa preparar(UUID id, UnidadeMonetaria unidade) {
-        var registro = registros.findById(id).filter(cadastro -> !cadastro.excluido()).orElseThrow(CredenciamentoService::ausente);
-        var ambiente = pagarme.selecionarConta().ambiente();
+    public PreviaBean preparar(UUID id, UnidadeMonetaria unidade) {
+        var registro = registros.findById(id).filter(cadastro -> !cadastro.excluido())
+                .orElseThrow(CredenciamentoService::ausente);
+        var ambiente = pagarme.selecionarConta().getAmbiente();
         var chave = new RecebedorExternoEntity.Chave(registro.getId(), registro.getProvedor(), ambiente);
         var payload = mapeador.preparar(ler(registro), unidade, registro.getSolicitante(), chave.codigo());
-        return new Previa(ambiente, unidade, payload);
+        PreviaBean previaPreparado = new PreviaBean();
+        previaPreparado.setAmbiente(ambiente);
+        previaPreparado.setUnidadeMonetaria(unidade);
+        previaPreparado.setPayload(payload);
+        return previaPreparado;
     }
 
-    public record Previa(Ambiente ambiente, UnidadeMonetaria unidadeMonetaria, PagarmeRecebedor payload) {}
+    @Schema(name = "Previa")
+    public static final class PreviaBean {
+        private Ambiente ambiente;
 
-    Dados ler(CredenciamentoEntity registro) {
+        private UnidadeMonetaria unidadeMonetaria;
+
+        private PagarmeRecebedorBean payload;
+
+        public PreviaBean() {
+        }
+
+        public Ambiente getAmbiente() {
+            return ambiente;
+        }
+
+        public void setAmbiente(Ambiente ambiente) {
+            this.ambiente = ambiente;
+        }
+
+        public UnidadeMonetaria getUnidadeMonetaria() {
+            return unidadeMonetaria;
+        }
+
+        public void setUnidadeMonetaria(UnidadeMonetaria unidadeMonetaria) {
+            this.unidadeMonetaria = unidadeMonetaria;
+        }
+
+        public PagarmeRecebedorBean getPayload() {
+            return payload;
+        }
+
+        public void setPayload(PagarmeRecebedorBean payload) {
+            this.payload = payload;
+        }
+
+        @Override
+        public boolean equals(Object objeto) {
+            if (this == objeto) {
+                return true;
+            }
+            if (!(objeto instanceof PreviaBean outro)) {
+                return false;
+            }
+            return Objects.equals(ambiente, outro.ambiente) && Objects.equals(unidadeMonetaria, outro.unidadeMonetaria)
+                    && Objects.equals(payload, outro.payload);
+        }
+
+        @Override
+        public int hashCode() {
+            int resultado = 0;
+            resultado = 31 * resultado + Objects.hashCode(ambiente);
+            resultado = 31 * resultado + Objects.hashCode(unidadeMonetaria);
+            resultado = 31 * resultado + Objects.hashCode(payload);
+            return resultado;
+        }
+
+        @Override
+        public String toString() {
+            return "Previa[" + "ambiente=" + ambiente + ", unidadeMonetaria=" + unidadeMonetaria + ", payload="
+                    + payload + "]";
+        }
+    }
+
+    DadosBean ler(CredenciamentoEntity registro) {
         return lerProtegidos(registro, registro.getDadosProtegidos());
     }
 
-    Dados lerProtegidos(CredenciamentoEntity registro, String protegido) {
+    DadosBean lerProtegidos(CredenciamentoEntity registro, String protegido) {
         try {
-            return json.readValue(criptografia.descriptografar(
-                    contexto(registro.getId(), registro.getSolicitante()), protegido), Dados.class);
+            return json.readValue(
+                    criptografia.descriptografar(contexto(registro.getId(), registro.getSolicitante()), protegido),
+                    DadosBean.class);
         } catch (JsonProcessingException | CredencialIndisponivel erro) {
             throw dadosIndisponiveis();
         }
     }
 
     @Transactional
-    public Credenciamento salvar(IdentidadeJwt identidade, ProvedorCredenciamento provedor, Dados dados, boolean criar,
-            Long versaoEsperada, ConfirmacaoAlteracao confirmacao, UUID idEsperado) {
+    public CredenciamentoBean salvar(IdentidadeJwtVO identidade, ProvedorCredenciamento provedor, DadosBean dados,
+            boolean criar, Long versaoEsperada, ConfirmacaoAlteracao confirmacao, UUID idEsperado) {
         UUID usuario = autorizar(identidade, true);
         var atual = registros.findBySolicitanteAndProvedor(usuario, provedor);
         if (criar && atual.isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe um credenciamento para este provedor.");
         }
-        if (!criar && atual.isEmpty()) throw ausente();
+        if (!criar && atual.isEmpty()) {
+            throw ausente();
+        }
         if (atual.isPresent()) {
             var cadastro = atual.get();
             conferirIdentidade(cadastro, idEsperado);
             conferirVersao(cadastro, versaoEsperada);
             var anterior = ler(cadastro);
-            if (comparacao.iguais(anterior, dados)) return resposta(cadastro, anterior);
+            if (comparacao.iguais(anterior, dados)) {
+                return resposta(cadastro, anterior);
+            }
             var historico = recebedores.findByIdCredenciamentoOrderByIdAmbiente(cadastro.getId());
-            if (!historico.isEmpty() && versaoEsperada == null) throw conflitoVersao();
-            var protegidos = historico.stream().filter(r -> SituacaoCredenciamento.requerConfirmacao(r, cadastro.versao())).toList();
-            boolean aprovado = protegidos.stream().anyMatch(r -> r.statusProvedor() == StatusPagarme.ACTIVE
-                    && situacoes.aprovacaoConfirmada(r));
-            if (!protegidos.isEmpty() && (confirmacao == null || aprovado && confirmacao != ConfirmacaoAlteracao.APROVACAO)) {
+            if (!historico.isEmpty() && versaoEsperada == null) {
+                throw conflitoVersao();
+            }
+            var protegidos = historico.stream()
+                    .filter(r -> SituacaoCredenciamento.requerConfirmacao(r, cadastro.versao())).toList();
+            boolean aprovado = protegidos.stream()
+                    .anyMatch(r -> r.statusProvedor() == StatusPagarme.ACTIVE && situacoes.aprovacaoConfirmada(r));
+            if (!protegidos.isEmpty()
+                    && (confirmacao == null || aprovado && confirmacao != ConfirmacaoAlteracao.APROVACAO)) {
                 var status = HttpStatus.CONFLICT;
                 var problema = ProblemDetail.forStatusAndDetail(status,
                         "Confirme a alteração dos dados já submetidos à Stone.");
@@ -152,42 +232,58 @@ public class CredenciamentoService {
     }
 
     @Transactional
-    public void excluir(IdentidadeJwt identidade, ProvedorCredenciamento provedor, UUID idEsperado, Long versaoEsperada) {
+    public void excluir(IdentidadeJwtVO identidade, ProvedorCredenciamento provedor, UUID idEsperado,
+            Long versaoEsperada) {
         UUID usuario = autorizar(identidade, true);
         var cadastro = registros.findBySolicitanteAndProvedor(usuario, provedor).orElse(null);
-        if (cadastro == null) return;
-        if (idEsperado == null || versaoEsperada == null) throw conflitoVersao();
+        if (cadastro == null) {
+            return;
+        }
+        if (idEsperado == null || versaoEsperada == null) {
+            throw conflitoVersao();
+        }
         if (!idEsperado.equals(cadastro.getId())) {
             boolean jaExcluido = registros.findById(idEsperado)
                     .filter(registro -> usuario.equals(registro.getSolicitante()) && provedor == registro.getProvedor()
-                            && registro.excluido()).isPresent();
-            if (jaExcluido) return;
+                            && registro.excluido())
+                    .isPresent();
+            if (jaExcluido) {
+                return;
+            }
             throw conflitoVersao();
         }
         conferirVersao(cadastro, versaoEsperada);
         recebedores.findByIdCredenciamentoOrderByIdAmbiente(cadastro.getId());
         boolean preservarHistorico = registros.possuiHistorico(cadastro.getId());
-        if (!preservarHistorico) registros.delete(cadastro);
-        else {
+        if (!preservarHistorico) {
+            registros.delete(cadastro);
+        } else {
             try {
-                cadastro.excluir(criptografia.criptografar(contexto(cadastro.getId(), usuario), "{}"), relogio.instant());
+                cadastro.excluir(criptografia.criptografar(contexto(cadastro.getId(), usuario), "{}"),
+                        relogio.instant());
             } catch (CredencialIndisponivel erro) {
                 throw dadosIndisponiveis();
             }
         }
-        auditoria.save(new AuditoriaEntity(usuario, identidade.idAplicacao(), "EXCLUIR_CREDENCIAMENTO",
-                "credenciamento_empresarial", null, json.createObjectNode().put("idRecurso", cadastro.getId().toString())
-                        .put("historicoPreservado", preservarHistorico), null));
+        var auditoriaEntityPreparado = new AuditoriaEntity(usuario, identidade.getIdAplicacao(),
+                "EXCLUIR_CREDENCIAMENTO", "credenciamento_empresarial", null, json.createObjectNode()
+                        .put("idRecurso", cadastro.getId().toString()).put("historicoPreservado", preservarHistorico),
+                null);
+        auditoria.save(auditoriaEntityPreparado);
         registros.flush();
     }
 
     static void conferirIdentidade(CredenciamentoEntity cadastro, UUID idEsperado) {
-        if (idEsperado != null && !idEsperado.equals(cadastro.getId())) throw conflitoVersao();
+        if (idEsperado != null && !idEsperado.equals(cadastro.getId())) {
+            throw conflitoVersao();
+        }
     }
 
-    CredenciamentoEntity gravar(IdentidadeJwt identidade, ProvedorCredenciamento provedor, Dados dados,
+    CredenciamentoEntity gravar(IdentidadeJwtVO identidade, ProvedorCredenciamento provedor, DadosBean dados,
             UUID usuario, UUID id, Optional<CredenciamentoEntity> atual) {
-        if (atual.isPresent() && iguais(atual.get(), dados)) return atual.get();
+        if (atual.isPresent() && iguais(atual.get(), dados)) {
+            return atual.get();
+        }
         String protegido;
         try {
             protegido = criptografia.criptografar(contexto(id, usuario), json.writeValueAsString(dados));
@@ -195,64 +291,90 @@ public class CredenciamentoService {
             throw dadosIndisponiveis();
         }
         var agora = relogio.instant();
-        var registro = atual.orElseGet(() -> new CredenciamentoEntity(id, usuario, provedor, protegido, agora));
-        if (atual.isEmpty()) registros.save(registro);
-        else registro.atualizar(protegido, agora);
+        var registro = atual.orElseGet(() -> {
+            var credenciamentoEntityPreparado = new CredenciamentoEntity(id, usuario, provedor, protegido, agora);
+            return credenciamentoEntityPreparado;
+        });
+        if (atual.isEmpty()) {
+            registros.save(registro);
+        } else {
+            registro.atualizar(protegido, agora);
+        }
         var metadados = json.createObjectNode().put("idRecurso", id.toString()).put("provedor", provedor.name());
-        auditoria.save(new AuditoriaEntity(usuario, identidade.idAplicacao(),
-                atual.isEmpty() ? "CRIAR_CREDENCIAMENTO" : "ATUALIZAR_CREDENCIAMENTO",
-                "credenciamento_empresarial", null, metadados, null));
+        var auditoriaEntityPreparado2 = new AuditoriaEntity(usuario, identidade.getIdAplicacao(),
+                atual.isEmpty() ? "CRIAR_CREDENCIAMENTO" : "ATUALIZAR_CREDENCIAMENTO", "credenciamento_empresarial",
+                null, metadados, null);
+        auditoria.save(auditoriaEntityPreparado2);
         return registro;
     }
 
-    boolean iguais(CredenciamentoEntity registro, Dados novos) { return comparacao.iguais(ler(registro), novos); }
+    boolean iguais(CredenciamentoEntity registro, DadosBean novos) {
+        return comparacao.iguais(ler(registro), novos);
+    }
 
     static void conferirVersao(CredenciamentoEntity cadastro, Long versaoEsperada) {
-        if (versaoEsperada != null && cadastro.versao() != versaoEsperada) throw conflitoVersao();
+        if (versaoEsperada != null && cadastro.versao() != versaoEsperada) {
+            throw conflitoVersao();
+        }
     }
 
     static ErrorResponseException conflitoVersao() {
         var status = HttpStatus.CONFLICT;
-        var problema = ProblemDetail.forStatusAndDetail(status, "Os dados do credenciamento mudaram. Recarregue o formulário.");
+        var problema = ProblemDetail.forStatusAndDetail(status,
+                "Os dados do credenciamento mudaram. Recarregue o formulário.");
         problema.setProperty("codigo", "VERSAO_CREDENCIAMENTO_DESATUALIZADA");
-        return new ErrorResponseException(status, problema, null);
+        var errorResponseExceptionPreparado = new ErrorResponseException(status, problema, null);
+        return errorResponseExceptionPreparado;
     }
 
-    private UUID autorizar(IdentidadeJwt identidade, boolean escrita) {
+    private UUID autorizar(IdentidadeJwtVO identidade, boolean escrita) {
         return autorizar(identidade, escrita, false);
     }
 
-    UUID autorizarTrabalhador(IdentidadeJwt identidade, boolean escrita) {
+    UUID autorizarTrabalhador(IdentidadeJwtVO identidade, boolean escrita) {
         return autorizar(identidade, escrita, true);
     }
 
-    private UUID autorizar(IdentidadeJwt identidade, boolean escrita, boolean somenteTrabalhador) {
-        UUID id = autenticacao.consultarUsuario(AutenticacaoAppService.SLUG, identidade).id();
-        if (escrita) usuarios.bloquearPorId(id).orElseThrow(CredenciamentoService::ausente);
+    private UUID autorizar(IdentidadeJwtVO identidade, boolean escrita, boolean somenteTrabalhador) {
+        UUID id = autenticacao.consultarUsuario(AutenticacaoAppService.SLUG, identidade).getId();
+        if (escrita) {
+            usuarios.bloquearPorId(id).orElseThrow(CredenciamentoService::ausente);
+        }
         var codigos = permissoes.listarCodigosAtivos(id);
         if (!codigos.contains(PapelUsuario.EMPRESA.codigoPermissao())
                 && !codigos.contains(PapelUsuario.TRABALHADOR.codigoPermissao())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Habilite o perfil Empresa ou Trabalhador para acessar o credenciamento.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Habilite o perfil Empresa ou Trabalhador para acessar o credenciamento.");
         }
         if (somenteTrabalhador && !codigos.contains(PapelUsuario.TRABALHADOR.codigoPermissao())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Habilite o perfil Trabalhador para enviar o credenciamento.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Habilite o perfil Trabalhador para enviar o credenciamento.");
         }
         return id;
     }
 
-    private Credenciamento resposta(CredenciamentoEntity registro, Dados dados) {
+    private CredenciamentoBean resposta(CredenciamentoEntity registro, DadosBean dados) {
         var ambiente = ambientes.atual();
-        var estado = recebedores.findById(new Chave(registro.getId(), registro.getProvedor(), ambiente))
+        var chavePreparado = new Chave(registro.getId(), registro.getProvedor(), ambiente);
+        var estado = recebedores.findById(chavePreparado)
                 .map(recebedor -> respostaRecebedor(recebedor, registro, dados))
                 .orElseGet(() -> SituacaoCredenciamento.naoEnviado(ambiente, registro.versao()));
-        return new Credenciamento(registro.getId(), registro.getProvedor(), dados, registro.getAtualizadoEm(),
-                validacao.avaliar(dados), registro.versao(), estado);
+        CredenciamentoBean credenciamentoPreparado = new CredenciamentoBean();
+        credenciamentoPreparado.setId(registro.getId());
+        credenciamentoPreparado.setProvedor(registro.getProvedor());
+        credenciamentoPreparado.setDados(dados);
+        credenciamentoPreparado.setAtualizadoEm(registro.getAtualizadoEm());
+        credenciamentoPreparado.setCompletude(validacao.avaliar(dados));
+        credenciamentoPreparado.setVersao(registro.versao());
+        credenciamentoPreparado.setRecebedor(estado);
+        return credenciamentoPreparado;
     }
 
-    Recebedor respostaRecebedor(RecebedorExternoEntity recebedor, CredenciamentoEntity cadastro, Dados dados) {
+    RecebedorBean respostaRecebedor(RecebedorExternoEntity recebedor, CredenciamentoEntity cadastro, DadosBean dados) {
         var operacao = situacoes.operacaoDeReenvio(recebedor, cadastro.versao(), dados,
                 protegido -> lerProtegidos(cadastro, protegido));
-        return situacoes.resposta(recebedor, cadastro.versao(), operacao, operacao != null && validacao.avaliar(dados).apto());
+        return situacoes.resposta(recebedor, cadastro.versao(), operacao,
+                operacao != null && validacao.avaliar(dados).getApto());
     }
 
     private static String contexto(UUID id, UUID usuario) {
@@ -260,10 +382,14 @@ public class CredenciamentoService {
     }
 
     private static ResponseStatusException ausente() {
-        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Credenciamento ainda não cadastrado.");
+        var responseStatusExceptionPreparado = new ResponseStatusException(HttpStatus.NOT_FOUND,
+                "Credenciamento ainda não cadastrado.");
+        return responseStatusExceptionPreparado;
     }
 
     private static ResponseStatusException dadosIndisponiveis() {
-        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Dados protegidos do credenciamento indisponíveis.");
+        var responseStatusExceptionPreparado2 = new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                "Dados protegidos do credenciamento indisponíveis.");
+        return responseStatusExceptionPreparado2;
     }
 }

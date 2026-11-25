@@ -2,7 +2,7 @@ package br.com.hubdeservicos.service.credenciamento;
 
 import br.com.hubdeservicos.service.configuracao.AmbienteServicosService.Ambiente;
 import br.com.hubdeservicos.service.configuracao.ConfiguracoesExternasService;
-import br.com.hubdeservicos.service.configuracao.ConfiguracoesExternasService.Stone;
+import br.com.hubdeservicos.service.configuracao.ConfiguracoesExternasService.StoneVO;
 import java.nio.charset.StandardCharsets;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -17,30 +17,43 @@ public class AutenticacaoPagarme {
         this.configuracoes = configuracoes;
     }
 
-    public Conta selecionarConta() {
-        Stone stone = configuracoes.lerStone();
-        String segredo = stone.secretKey();
+    public ContaVO selecionarConta() {
+        StoneVO stone = configuracoes.lerStone();
+        String segredo = stone.getSecretKey();
         if (segredo == null || segredo.isBlank()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Preencha a chave secreta Stone do ambiente " + stone.ambiente() + ".");
+                    "Preencha a chave secreta Stone do ambiente " + stone.getAmbiente() + ".");
         }
         boolean chaveDev = segredo.startsWith("sk_test_") && segredo.length() > "sk_test_".length();
-        boolean chaveProd = segredo.startsWith("sk_") && segredo.length() > "sk_".length() && !segredo.startsWith("sk_test_");
-        if (segredo.contains(":") || segredo.codePoints().anyMatch(c -> Character.isWhitespace(c) || Character.isISOControl(c))
-                || (stone.ambiente() == Ambiente.DEV ? !chaveDev : !chaveProd)) {
+        boolean chaveProd = segredo.startsWith("sk_") && segredo.length() > "sk_".length()
+                && !segredo.startsWith("sk_test_");
+        if (segredo.contains(":")
+                || segredo.codePoints().anyMatch(c -> Character.isWhitespace(c) || Character.isISOControl(c))
+                || (stone.getAmbiente() == Ambiente.DEV ? !chaveDev : !chaveProd)) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "A chave secreta Stone é incompatível com o ambiente selecionado.");
         }
-        return new Conta(stone);
+        var contaPreparado = new ContaVO(stone);
+        return contaPreparado;
     }
 
-    public static final class Conta {
-        private final Stone stone;
+    public static final class ContaVO {
+        private final StoneVO stone;
 
-        private Conta(Stone stone) { this.stone = stone; }
+        private ContaVO(StoneVO stone) {
+            this.stone = stone;
+        }
 
-        public Ambiente ambiente() { return stone.ambiente(); }
-        public String accountId() { return stone.accountId(); }
-        public void aplicarAutenticacao(HttpHeaders cabecalhos) { cabecalhos.setBasicAuth(stone.secretKey(), "", StandardCharsets.UTF_8); }
+        public Ambiente getAmbiente() {
+            return stone.getAmbiente();
+        }
+
+        public String getAccountId() {
+            return stone.getAccountId();
+        }
+
+        public void aplicarAutenticacao(HttpHeaders cabecalhos) {
+            cabecalhos.setBasicAuth(stone.getSecretKey(), "", StandardCharsets.UTF_8);
+        }
     }
 }

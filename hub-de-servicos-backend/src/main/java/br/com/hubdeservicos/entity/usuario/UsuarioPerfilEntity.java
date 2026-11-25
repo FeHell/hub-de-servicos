@@ -19,16 +19,14 @@ public class UsuarioPerfilEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumns({
-        @JoinColumn(name = "id_usuario", referencedColumnName = "id_usuario", insertable = false, updatable = false),
-        @JoinColumn(name = "id_aplicacao", referencedColumnName = "id_aplicacao", insertable = false, updatable = false)
-    })
+            @JoinColumn(name = "id_usuario", referencedColumnName = "id_usuario", insertable = false, updatable = false),
+            @JoinColumn(name = "id_aplicacao", referencedColumnName = "id_aplicacao", insertable = false, updatable = false) })
     private UsuarioAplicacaoEntity usuarioAplicacao;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumns({
-        @JoinColumn(name = "id_aplicacao", referencedColumnName = "id_aplicacao", insertable = false, updatable = false),
-        @JoinColumn(name = "id_perfil", referencedColumnName = "id_perfil", insertable = false, updatable = false)
-    })
+            @JoinColumn(name = "id_aplicacao", referencedColumnName = "id_aplicacao", insertable = false, updatable = false),
+            @JoinColumn(name = "id_perfil", referencedColumnName = "id_perfil", insertable = false, updatable = false) })
     private PerfilEntity perfil;
 
     protected UsuarioPerfilEntity() {

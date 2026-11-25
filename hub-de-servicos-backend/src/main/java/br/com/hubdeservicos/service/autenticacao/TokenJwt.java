@@ -60,40 +60,32 @@ public class TokenJwt {
         try {
             KeyPair par = carregarChaves(configuracao, local);
             if (!(par.getPrivate() instanceof RSAPrivateCrtKey privada)
-                    || !(par.getPublic() instanceof RSAPublicKey publica)
-                    || publica.getModulus().bitLength() < 2048
+                    || !(par.getPublic() instanceof RSAPublicKey publica) || publica.getModulus().bitLength() < 2048
                     || !publica.getModulus().equals(privada.getModulus())
                     || !publica.getPublicExponent().equals(privada.getPublicExponent())) {
                 throw new IllegalArgumentException("Configure um par RSA correspondente de, no mínimo, 2048 bits.");
             }
 
-            chave = new RSAKey.Builder(publica)
-                    .keyUse(KeyUse.SIGNATURE)
-                    .algorithm(JWSAlgorithm.RS256)
-                    .keyIDFromThumbprint()
+            var builderPreparado = new RSAKey.Builder(publica);
+            chave = builderPreparado.keyUse(KeyUse.SIGNATURE).algorithm(JWSAlgorithm.RS256).keyIDFromThumbprint()
                     .build();
-            assinador = new RSASSASigner(privada);
-            verificador = new RSASSAVerifier(publica);
+            var rSASSASignerPreparado = new RSASSASigner(privada);
+            assinador = rSASSASignerPreparado;
+            var rSASSAVerifierPreparado = new RSASSAVerifier(publica);
+            verificador = rSASSAVerifierPreparado;
         } catch (IOException | GeneralSecurityException | JOSEException | IllegalArgumentException erro) {
-            throw new IllegalStateException("Não foi possível inicializar a assinatura JWT. Confira o par de chaves RSA.");
+            throw new IllegalStateException(
+                    "Não foi possível inicializar a assinatura JWT. Confira o par de chaves RSA.");
         }
     }
 
     String emitir(SessaoEntity sessao, String audiencia, Instant agora, Instant expiracao) {
-        var cabecalho = new JWSHeader.Builder(JWSAlgorithm.RS256)
-                .type(TIPO)
-                .keyID(chave.getKeyID())
-                .build();
-        var claims = new JWTClaimsSet.Builder()
-                .issuer(emissor)
-                .subject(sessao.getIdUsuario().toString())
-                .audience(audiencia)
-                .issueTime(Date.from(agora))
-                .expirationTime(Date.from(expiracao))
-                .jwtID(UUID.randomUUID().toString())
-                .claim("client_id", sessao.getIdAplicacao().toString())
-                .claim("sid", sessao.getId().toString())
-                .build();
+        var builderPreparado2 = new JWSHeader.Builder(JWSAlgorithm.RS256);
+        var cabecalho = builderPreparado2.type(TIPO).keyID(chave.getKeyID()).build();
+        var builderPreparado3 = new JWTClaimsSet.Builder();
+        var claims = builderPreparado3.issuer(emissor).subject(sessao.getIdUsuario().toString()).audience(audiencia)
+                .issueTime(Date.from(agora)).expirationTime(Date.from(expiracao)).jwtID(UUID.randomUUID().toString())
+                .claim("client_id", sessao.getIdAplicacao().toString()).claim("sid", sessao.getId().toString()).build();
         var jwt = new SignedJWT(cabecalho, claims);
         try {
             jwt.sign(assinador);
@@ -103,17 +95,15 @@ public class TokenJwt {
         }
     }
 
-    public IdentidadeJwt validar(String token) {
+    public IdentidadeJwtVO validar(String token) {
         if (token.length() > 4096) {
             throw new AutenticacaoNegadaException();
         }
         try {
             SignedJWT jwt = SignedJWT.parse(token);
             JWSHeader cabecalho = jwt.getHeader();
-            if (!JWSAlgorithm.RS256.equals(cabecalho.getAlgorithm())
-                    || !TIPO.equals(cabecalho.getType())
-                    || !chave.getKeyID().equals(cabecalho.getKeyID())
-                    || !jwt.verify(verificador)) {
+            if (!JWSAlgorithm.RS256.equals(cabecalho.getAlgorithm()) || !TIPO.equals(cabecalho.getType())
+                    || !chave.getKeyID().equals(cabecalho.getKeyID()) || !jwt.verify(verificador)) {
                 throw new AutenticacaoNegadaException();
             }
             JWTClaimsSet claims = jwt.getJWTClaimsSet();
@@ -121,27 +111,26 @@ public class TokenJwt {
             Date emitido = claims.getIssueTime();
             Date expira = claims.getExpirationTime();
             Date inicio = claims.getNotBeforeTime();
-            if (!emissor.equals(claims.getIssuer())
-                    || claims.getAudience().size() != 1 || claims.getAudience().getFirst().isBlank()
-                    || emitido == null || expira == null || !expira.after(emitido)
-                    || emitido.toInstant().isAfter(agora)
+            if (!emissor.equals(claims.getIssuer()) || claims.getAudience().size() != 1
+                    || claims.getAudience().getFirst().isBlank() || emitido == null || expira == null
+                    || !expira.after(emitido) || emitido.toInstant().isAfter(agora)
                     || !expira.toInstant().isAfter(agora)
                     || expira.toInstant().isAfter(emitido.toInstant().plus(VALIDADE))
                     || (inicio != null && inicio.toInstant().isAfter(agora))) {
                 throw new AutenticacaoNegadaException();
             }
-            return new IdentidadeJwt(
-                    lerUuid(claims.getSubject()),
-                    lerUuid(claims.getStringClaim("client_id")),
-                    lerUuid(claims.getStringClaim("sid")),
+            var identidadeJwtPreparado = new IdentidadeJwtVO(lerUuid(claims.getSubject()),
+                    lerUuid(claims.getStringClaim("client_id")), lerUuid(claims.getStringClaim("sid")),
                     claims.getAudience().getFirst());
+            return identidadeJwtPreparado;
         } catch (ParseException | JOSEException | IllegalArgumentException erro) {
             throw new AutenticacaoNegadaException();
         }
     }
 
     public Map<String, Object> chavesPublicas() {
-        return new JWKSet(chave).toJSONObject();
+        var jWKSetPreparado = new JWKSet(chave);
+        return jWKSetPreparado.toJSONObject();
     }
 
     private static UUID lerUuid(String valor) {
@@ -153,9 +142,9 @@ public class TokenJwt {
 
     private static String validarEmissor(URI valor, boolean local) {
         URI uri = valor == null && local ? URI.create("http://localhost:8080") : valor;
-        if (uri == null || uri.getHost() == null || uri.getUserInfo() != null
-                || uri.getRawQuery() != null || uri.getRawFragment() != null
-                || (!"https".equalsIgnoreCase(uri.getScheme()) && !(local && "http".equalsIgnoreCase(uri.getScheme())))) {
+        if (uri == null || uri.getHost() == null || uri.getUserInfo() != null || uri.getRawQuery() != null
+                || uri.getRawFragment() != null || (!"https".equalsIgnoreCase(uri.getScheme())
+                        && !(local && "http".equalsIgnoreCase(uri.getScheme())))) {
             throw new IllegalStateException("Configure hub.autenticacao.emissor com a URL HTTPS do Hub de Serviços.");
         }
         return uri.toString();
@@ -174,9 +163,13 @@ public class TokenJwt {
             throw new IllegalStateException("Configure os arquivos PEM de chave privada e chave pública do JWT.");
         }
         KeyFactory fabrica = KeyFactory.getInstance("RSA");
-        return new KeyPair(
-                fabrica.generatePublic(new X509EncodedKeySpec(lerPem(publica, "PUBLIC KEY"))),
-                fabrica.generatePrivate(new PKCS8EncodedKeySpec(lerPem(privada, "PRIVATE KEY"))));
+        var especificacaoPublica = new X509EncodedKeySpec(lerPem(publica, "PUBLIC KEY"));
+        var chavePublica = fabrica.generatePublic(especificacaoPublica);
+        var especificacaoPrivada = new PKCS8EncodedKeySpec(lerPem(privada, "PRIVATE KEY"));
+        var chavePrivada = fabrica.generatePrivate(especificacaoPrivada);
+        var parDeChaves = new KeyPair(chavePublica, chavePrivada);
+
+        return parDeChaves;
     }
 
     private static byte[] lerPem(Path arquivo, String tipo) throws IOException {

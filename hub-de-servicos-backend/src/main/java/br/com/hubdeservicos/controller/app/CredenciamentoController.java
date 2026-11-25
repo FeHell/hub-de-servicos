@@ -1,14 +1,14 @@
 package br.com.hubdeservicos.controller.app;
 
-import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.Credenciamento;
-import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.Dados;
-import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.Completude;
+import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.CredenciamentoBean;
+import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.DadosBean;
+import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.CompletudeBean;
 import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.ConfirmacaoAlteracao;
-import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.EnviarRecebedor;
-import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.Recebedor;
-import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.ReenviarRecebedor;
+import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.EnviarRecebedorBean;
+import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.RecebedorBean;
+import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.ReenviarRecebedorBean;
 import br.com.hubdeservicos.entity.credenciamento.ProvedorCredenciamento;
-import br.com.hubdeservicos.service.autenticacao.IdentidadeJwt;
+import br.com.hubdeservicos.service.autenticacao.IdentidadeJwtVO;
 import br.com.hubdeservicos.service.credenciamento.CredenciamentoService;
 import br.com.hubdeservicos.service.credenciamento.RecebedorStoneService;
 import java.util.UUID;
@@ -32,34 +32,36 @@ public class CredenciamentoController {
     }
 
     @GetMapping("/{provedor}")
-    public ResponseEntity<Credenciamento> consultar(@AuthenticationPrincipal IdentidadeJwt identidade,
-                                                    @PathVariable ProvedorCredenciamento provedor) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(credenciamentos.consultar(identidade, provedor));
+    public ResponseEntity<CredenciamentoBean> consultar(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            @PathVariable ProvedorCredenciamento provedor) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(credenciamentos.consultar(identidade, provedor));
     }
 
     @GetMapping("/{provedor}/completude")
-    public ResponseEntity<Completude> completude(@AuthenticationPrincipal IdentidadeJwt identidade,
-                                                 @PathVariable ProvedorCredenciamento provedor) {
+    public ResponseEntity<CompletudeBean> completude(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            @PathVariable ProvedorCredenciamento provedor) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(credenciamentos.consultar(identidade, provedor).completude());
+                .body(credenciamentos.consultar(identidade, provedor).getCompletude());
     }
 
     @PostMapping("/{provedor}/validacao")
-    public ResponseEntity<Completude> validar(@AuthenticationPrincipal IdentidadeJwt identidade,
-            @PathVariable ProvedorCredenciamento provedor, @RequestBody Dados dados) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(credenciamentos.validar(identidade, dados));
+    public ResponseEntity<CompletudeBean> validar(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            @PathVariable ProvedorCredenciamento provedor, @RequestBody DadosBean dados) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(credenciamentos.validar(identidade, dados));
     }
 
     @PostMapping("/{provedor}")
-    public ResponseEntity<Credenciamento> criar(@AuthenticationPrincipal IdentidadeJwt identidade,
-            @PathVariable ProvedorCredenciamento provedor, @Valid @RequestBody Dados dados) {
+    public ResponseEntity<CredenciamentoBean> criar(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            @PathVariable ProvedorCredenciamento provedor, @Valid @RequestBody DadosBean dados) {
         return ResponseEntity.status(HttpStatus.CREATED).cacheControl(CacheControl.noStore())
                 .body(credenciamentos.salvar(identidade, provedor, dados, true, null, null, null));
     }
 
     @PutMapping("/{provedor}")
-    public ResponseEntity<Credenciamento> atualizar(@AuthenticationPrincipal IdentidadeJwt identidade,
-            @PathVariable ProvedorCredenciamento provedor, @Valid @RequestBody Dados dados,
+    public ResponseEntity<CredenciamentoBean> atualizar(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            @PathVariable ProvedorCredenciamento provedor, @Valid @RequestBody DadosBean dados,
             @RequestHeader(name = "X-Versao-Credenciamento", required = false) Long versao,
             @RequestHeader(name = "X-Confirmar-Alteracao-Credenciamento", required = false) ConfirmacaoAlteracao confirmar,
             @RequestHeader(name = "X-Credenciamento-Id", required = false) UUID id) {
@@ -68,7 +70,7 @@ public class CredenciamentoController {
     }
 
     @DeleteMapping("/{provedor}")
-    public ResponseEntity<Void> excluir(@AuthenticationPrincipal IdentidadeJwt identidade,
+    public ResponseEntity<Void> excluir(@AuthenticationPrincipal IdentidadeJwtVO identidade,
             @PathVariable ProvedorCredenciamento provedor,
             @RequestHeader(name = "X-Credenciamento-Id", required = false) UUID id,
             @RequestHeader(name = "X-Versao-Credenciamento", required = false) Long versao) {
@@ -77,28 +79,32 @@ public class CredenciamentoController {
     }
 
     @GetMapping("/{provedor}/recebedor")
-    public ResponseEntity<Recebedor> consultarRecebedor(@AuthenticationPrincipal IdentidadeJwt identidade,
+    public ResponseEntity<RecebedorBean> consultarRecebedor(@AuthenticationPrincipal IdentidadeJwtVO identidade,
             @PathVariable ProvedorCredenciamento provedor) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(recebedores.consultar(identidade, provedor));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(recebedores.consultar(identidade, provedor));
     }
 
     @PostMapping("/{provedor}/recebedor")
-    public ResponseEntity<Recebedor> enviarRecebedor(@AuthenticationPrincipal IdentidadeJwt identidade,
-            @PathVariable ProvedorCredenciamento provedor, @RequestBody EnviarRecebedor pedido,
+    public ResponseEntity<RecebedorBean> enviarRecebedor(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            @PathVariable ProvedorCredenciamento provedor, @RequestBody EnviarRecebedorBean pedido,
             @RequestHeader(name = "X-Versao-Credenciamento", required = false) Long versao,
             @RequestHeader(name = "X-Credenciamento-Id", required = false) UUID id) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(recebedores.enviar(identidade, provedor, pedido, versao, id));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(recebedores.enviar(identidade, provedor, pedido, versao, id));
     }
 
     @PostMapping("/{provedor}/recebedor/reenvio")
-    public ResponseEntity<Recebedor> reenviarRecebedor(@AuthenticationPrincipal IdentidadeJwt identidade,
-            @PathVariable ProvedorCredenciamento provedor, @Valid @RequestBody ReenviarRecebedor pedido) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(recebedores.reenviar(identidade, provedor, pedido));
+    public ResponseEntity<RecebedorBean> reenviarRecebedor(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            @PathVariable ProvedorCredenciamento provedor, @Valid @RequestBody ReenviarRecebedorBean pedido) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(recebedores.reenviar(identidade, provedor, pedido));
     }
 
     @PostMapping("/{provedor}/recebedor/consulta")
-    public ResponseEntity<Recebedor> atualizarRecebedor(@AuthenticationPrincipal IdentidadeJwt identidade,
+    public ResponseEntity<RecebedorBean> atualizarRecebedor(@AuthenticationPrincipal IdentidadeJwtVO identidade,
             @PathVariable ProvedorCredenciamento provedor) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(recebedores.reconciliar(identidade, provedor));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(recebedores.reconciliar(identidade, provedor));
     }
 }

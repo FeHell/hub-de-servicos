@@ -18,6 +18,7 @@ public class CadastroUsuarioService {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public UsuarioEntity salvar(String login, String senhaHash, String email, StatusUsuario status) {
-        return usuarios.saveAndFlush(new UsuarioEntity(login.strip(), senhaHash, email.strip(), status));
+        var usuarioEntityPreparado = new UsuarioEntity(login.strip(), senhaHash, email.strip(), status);
+        return usuarios.saveAndFlush(usuarioEntityPreparado);
     }
 }

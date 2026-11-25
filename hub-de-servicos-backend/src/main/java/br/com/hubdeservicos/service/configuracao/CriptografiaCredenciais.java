@@ -32,8 +32,8 @@ public class CriptografiaCredenciais {
         byte[] aberto = valor.getBytes(StandardCharsets.UTF_8);
         try {
             byte[] selado = cifra(Cipher.ENCRYPT_MODE, contexto, nonce).doFinal(aberto);
-            return VERSAO + Base64.getEncoder().encodeToString(ByteBuffer.allocate(nonce.length + selado.length)
-                    .put(nonce).put(selado).array());
+            return VERSAO + Base64.getEncoder()
+                    .encodeToString(ByteBuffer.allocate(nonce.length + selado.length).put(nonce).put(selado).array());
         } catch (GeneralSecurityException erro) {
             throw new CredencialIndisponivel();
         } finally {
@@ -42,15 +42,20 @@ public class CriptografiaCredenciais {
     }
 
     public String descriptografar(String contexto, String valor) {
-        if (!valor.startsWith(VERSAO)) throw new CredencialIndisponivel();
+        if (!valor.startsWith(VERSAO)) {
+            throw new CredencialIndisponivel();
+        }
         try {
             byte[] dados = Base64.getDecoder().decode(valor.substring(VERSAO.length()));
-            if (dados.length <= NONCE_BYTES + TAG_BITS / 8) throw new CredencialIndisponivel();
+            if (dados.length <= NONCE_BYTES + TAG_BITS / 8) {
+                throw new CredencialIndisponivel();
+            }
             byte[] nonce = Arrays.copyOf(dados, NONCE_BYTES);
-            byte[] aberto = cifra(Cipher.DECRYPT_MODE, contexto, nonce)
-                    .doFinal(dados, NONCE_BYTES, dados.length - NONCE_BYTES);
+            byte[] aberto = cifra(Cipher.DECRYPT_MODE, contexto, nonce).doFinal(dados, NONCE_BYTES,
+                    dados.length - NONCE_BYTES);
             try {
-                return new String(aberto, StandardCharsets.UTF_8);
+                var stringPreparado = new String(aberto, StandardCharsets.UTF_8);
+                return stringPreparado;
             } finally {
                 Arrays.fill(aberto, (byte) 0);
             }
@@ -60,13 +65,17 @@ public class CriptografiaCredenciais {
     }
 
     public String identificadorProtegido(String contexto, String valor) {
-        if (chave == null) throw new CredencialIndisponivel();
+        if (chave == null) {
+            throw new CredencialIndisponivel();
+        }
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(chave.getEncoded(), mac.getAlgorithm()));
+            SecretKeySpec chaveDeIdentificacao = new SecretKeySpec(chave.getEncoded(), mac.getAlgorithm());
+            mac.init(chaveDeIdentificacao);
             byte[] derivada = mac.doFinal(("identificador:v1:" + contexto).getBytes(StandardCharsets.UTF_8));
             try {
-                mac.init(new SecretKeySpec(derivada, mac.getAlgorithm()));
+                SecretKeySpec chaveDerivada = new SecretKeySpec(derivada, mac.getAlgorithm());
+                mac.init(chaveDerivada);
                 return HexFormat.of().formatHex(mac.doFinal(valor.getBytes(StandardCharsets.UTF_8)));
             } finally {
                 Arrays.fill(derivada, (byte) 0);
@@ -77,9 +86,12 @@ public class CriptografiaCredenciais {
     }
 
     private Cipher cifra(int modo, String contexto, byte[] nonce) throws GeneralSecurityException {
-        if (chave == null) throw new CredencialIndisponivel();
+        if (chave == null) {
+            throw new CredencialIndisponivel();
+        }
         Cipher cifra = Cipher.getInstance("AES/GCM/NoPadding");
-        cifra.init(modo, chave, new GCMParameterSpec(TAG_BITS, nonce));
+        GCMParameterSpec parametros = new GCMParameterSpec(TAG_BITS, nonce);
+        cifra.init(modo, chave, parametros);
         cifra.updateAAD(contexto.getBytes(StandardCharsets.UTF_8));
         return cifra;
     }
@@ -88,7 +100,11 @@ public class CriptografiaCredenciais {
         try {
             byte[] dados = Base64.getDecoder().decode(configurada.strip());
             try {
-                return dados.length == 32 ? new SecretKeySpec(dados, "AES") : null;
+                if (dados.length == 32) {
+                    SecretKeySpec chaveConfigurada = new SecretKeySpec(dados, "AES");
+                    return chaveConfigurada;
+                }
+                return null;
             } finally {
                 Arrays.fill(dados, (byte) 0);
             }

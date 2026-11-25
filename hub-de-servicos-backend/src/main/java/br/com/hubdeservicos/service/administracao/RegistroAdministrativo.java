@@ -2,7 +2,7 @@ package br.com.hubdeservicos.service.administracao;
 
 import br.com.hubdeservicos.entity.auditoria.AuditoriaEntity;
 import br.com.hubdeservicos.repository.auditoria.AuditoriaRepository;
-import br.com.hubdeservicos.service.autenticacao.IdentidadeJwt;
+import br.com.hubdeservicos.service.autenticacao.IdentidadeJwtVO;
 
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.util.UUID;
@@ -20,28 +20,30 @@ class RegistroAdministrativo {
     }
 
     UUID idOperador() {
-        return identidade().idUsuario();
+        return identidade().getIdUsuario();
     }
 
-    private IdentidadeJwt identidade() {
-        return (IdentidadeJwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    private IdentidadeJwtVO identidade() {
+        return (IdentidadeJwtVO) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
     void registrarAlteracaoConfiguracao(UUID idConfiguracao, String chave, String anterior, String novo) {
         var antes = JsonNodeFactory.instance.objectNode().put("chave", chave).put("valor", anterior);
-        var depois = JsonNodeFactory.instance.objectNode().put("chave", chave).put("valor", novo)
-                .put("idRecurso", idConfiguracao.toString());
+        var depois = JsonNodeFactory.instance.objectNode().put("chave", chave).put("valor", novo).put("idRecurso",
+                idConfiguracao.toString());
         var operador = identidade();
-        auditoria.save(new AuditoriaEntity(operador.idUsuario(), operador.idAplicacao(),
-                "ALTERAR_PROVEDOR_SMS", "configuracao_sistema", antes, depois, null));
+        var auditoriaEntityPreparado = new AuditoriaEntity(operador.getIdUsuario(), operador.getIdAplicacao(),
+                "ALTERAR_PROVEDOR_SMS", "configuracao_sistema", antes, depois, null);
+        auditoria.save(auditoriaEntityPreparado);
     }
 
     void registrarAlteracaoServico(UUID id, String servico, String chave) {
-        var dados = JsonNodeFactory.instance.objectNode().put("idRecurso", id.toString())
-                .put("servico", servico).put("chave", chave);
+        var dados = JsonNodeFactory.instance.objectNode().put("idRecurso", id.toString()).put("servico", servico)
+                .put("chave", chave);
         var operador = identidade();
-        auditoria.save(new AuditoriaEntity(operador.idUsuario(), operador.idAplicacao(),
-                "ALTERAR_CONFIGURACAO_SERVICO", "configuracao_sistema", null, dados, null));
+        var auditoriaEntityPreparado2 = new AuditoriaEntity(operador.getIdUsuario(), operador.getIdAplicacao(),
+                "ALTERAR_CONFIGURACAO_SERVICO", "configuracao_sistema", null, dados, null);
+        auditoria.save(auditoriaEntityPreparado2);
     }
 
     void registrar(String acao, String tabela, UUID idAplicacao, UUID idRecurso) {
@@ -53,6 +55,7 @@ class RegistroAdministrativo {
         if (idRelacionado != null) {
             dados.put("idRelacionado", idRelacionado.toString());
         }
-        auditoria.save(new AuditoriaEntity(idOperador(), idAplicacao, acao, tabela, null, dados, null));
+        var auditoriaEntityPreparado3 = new AuditoriaEntity(idOperador(), idAplicacao, acao, tabela, null, dados, null);
+        auditoria.save(auditoriaEntityPreparado3);
     }
 }

@@ -38,8 +38,7 @@ public class UsuarioPermissaoPlataformaId implements Serializable {
         if (!(outro instanceof UsuarioPermissaoPlataformaId chave)) {
             return false;
         }
-        return Objects.equals(idUsuario, chave.idUsuario)
-                && Objects.equals(idPermissao, chave.idPermissao);
+        return Objects.equals(idUsuario, chave.idUsuario) && Objects.equals(idPermissao, chave.idPermissao);
     }
 
     @Override

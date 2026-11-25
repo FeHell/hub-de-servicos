@@ -25,5 +25,5 @@ public interface TokenAtualizacaoRepository extends JpaRepository<TokenAtualizac
              where t.idSessao = :idSessao and t.idFamilia = :idFamilia and t.revogado = false
             """)
     void revogarFamilia(@Param("idSessao") UUID idSessao, @Param("idFamilia") UUID idFamilia,
-                       @Param("agora") Instant agora);
+            @Param("agora") Instant agora);
 }

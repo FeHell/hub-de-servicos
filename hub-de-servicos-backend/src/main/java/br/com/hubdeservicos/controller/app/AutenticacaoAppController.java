@@ -1,15 +1,15 @@
 package br.com.hubdeservicos.controller.app;
 
-import br.com.hubdeservicos.dto.app.ContratosApp.AcessoApp;
-import br.com.hubdeservicos.dto.app.ContratosApp.CadastroEntrada;
-import br.com.hubdeservicos.dto.app.ContratosApp.ContaApp;
-import br.com.hubdeservicos.dto.app.ContratosApp.LoginAppEntrada;
-import br.com.hubdeservicos.dto.autenticacao.RenovacaoEntrada;
-import br.com.hubdeservicos.dto.autenticacao.TokensAutenticacao;
+import br.com.hubdeservicos.dto.app.ContratosApp.AcessoAppBean;
+import br.com.hubdeservicos.dto.app.ContratosApp.CadastroEntradaBean;
+import br.com.hubdeservicos.dto.app.ContratosApp.ContaAppBean;
+import br.com.hubdeservicos.dto.app.ContratosApp.LoginAppEntradaBean;
+import br.com.hubdeservicos.dto.autenticacao.RenovacaoEntradaBean;
+import br.com.hubdeservicos.dto.autenticacao.TokensAutenticacaoBean;
 import br.com.hubdeservicos.service.app.AutenticacaoAppService;
 import br.com.hubdeservicos.service.app.LimiteTentativasApp;
 import br.com.hubdeservicos.service.autenticacao.AutenticacaoService;
-import br.com.hubdeservicos.service.autenticacao.IdentidadeJwt;
+import br.com.hubdeservicos.service.autenticacao.IdentidadeJwtVO;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -34,41 +34,44 @@ public class AutenticacaoAppController {
     private final LimiteTentativasApp limite;
 
     public AutenticacaoAppController(AutenticacaoAppService app, AutenticacaoService autenticacao,
-                                     LimiteTentativasApp limite) {
+            LimiteTentativasApp limite) {
         this.app = app;
         this.autenticacao = autenticacao;
         this.limite = limite;
     }
 
     @PostMapping(path = "/cadastro", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ContaApp> cadastrar(@Valid @RequestBody CadastroEntrada dados, HttpServletRequest requisicao) {
+    public ResponseEntity<ContaAppBean> cadastrar(@Valid @RequestBody CadastroEntradaBean dados,
+            HttpServletRequest requisicao) {
         limite.cadastro(requisicao.getRemoteAddr());
         return ResponseEntity.status(HttpStatus.CREATED).cacheControl(CacheControl.noStore())
                 .body(app.cadastrar(dados, requisicao.getRemoteAddr()));
     }
 
     @PostMapping(path = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<AcessoApp> login(@Valid @RequestBody LoginAppEntrada dados, HttpServletRequest requisicao) {
-        limite.login(requisicao.getRemoteAddr(), dados.email());
+    public ResponseEntity<AcessoAppBean> login(@Valid @RequestBody LoginAppEntradaBean dados,
+            HttpServletRequest requisicao) {
+        limite.login(requisicao.getRemoteAddr(), dados.getEmail());
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(app.login(dados, requisicao.getRemoteAddr()));
     }
 
     @PostMapping(path = "/renovar", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<TokensAutenticacao> renovar(@Valid @RequestBody RenovacaoEntrada dados,
-                                                      HttpServletRequest requisicao) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(autenticacao.renovar(
-                AutenticacaoAppService.SLUG, dados.tokenAtualizacao(), null, requisicao.getRemoteAddr()));
+    public ResponseEntity<TokensAutenticacaoBean> renovar(@Valid @RequestBody RenovacaoEntradaBean dados,
+            HttpServletRequest requisicao) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(autenticacao
+                .renovar(AutenticacaoAppService.SLUG, dados.getTokenAtualizacao(), null, requisicao.getRemoteAddr()));
     }
 
     @GetMapping("/eu")
-    public ResponseEntity<ContaApp> eu(@AuthenticationPrincipal IdentidadeJwt identidade) {
+    public ResponseEntity<ContaAppBean> eu(@AuthenticationPrincipal IdentidadeJwtVO identidade) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(ContaApp.de(autenticacao.consultarUsuario(AutenticacaoAppService.SLUG, identidade)));
+                .body(ContaAppBean.de(autenticacao.consultarUsuario(AutenticacaoAppService.SLUG, identidade)));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@AuthenticationPrincipal IdentidadeJwt identidade, HttpServletRequest requisicao) {
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            HttpServletRequest requisicao) {
         autenticacao.logout(AutenticacaoAppService.SLUG, identidade, requisicao.getRemoteAddr());
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }

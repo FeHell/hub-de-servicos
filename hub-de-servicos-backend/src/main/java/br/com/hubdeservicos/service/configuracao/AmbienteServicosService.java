@@ -9,7 +9,10 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class AmbienteServicosService {
     public static final String DEV_MODE = "DEV_MODE";
-    public enum Ambiente { DEV, PROD }
+
+    public enum Ambiente {
+        DEV, PROD
+    }
 
     private final ConfiguracaoSistemaRepository configuracoes;
 
@@ -23,10 +26,10 @@ public class AmbienteServicosService {
 
     public static Ambiente interpretar(String valor) {
         return switch (valor) {
-            case "true" -> Ambiente.DEV;
-            case "false" -> Ambiente.PROD;
-            default -> throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Configure a seleção global DEV_MODE.");
+        case "true" -> Ambiente.DEV;
+        case "false" -> Ambiente.PROD;
+        default ->
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Configure a seleção global DEV_MODE.");
         };
     }
 }

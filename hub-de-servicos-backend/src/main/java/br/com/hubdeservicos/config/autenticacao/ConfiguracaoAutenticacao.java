@@ -14,16 +14,14 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ConfigurationProperties("hub.autenticacao")
-public record ConfiguracaoAutenticacao(
-        URI emissor,
-        Path chavePrivada,
-        Path chavePublica,
-        Map<UUID, String> clientesConfidenciais
-) {
+public record ConfiguracaoAutenticacao(URI emissor, Path chavePrivada, Path chavePublica,
+        Map<UUID, String> clientesConfidenciais) {
+
     public ConfiguracaoAutenticacao {
         clientesConfidenciais = clientesConfidenciais == null ? Map.of() : Map.copyOf(clientesConfidenciais);
         if (clientesConfidenciais.values().stream().anyMatch(hash -> !hash.matches("[0-9a-fA-F]{64}"))) {
-            throw new IllegalArgumentException("Configure cada cliente confidencial com o hash SHA-256 hexadecimal do segredo.");
+            throw new IllegalArgumentException(
+                    "Configure cada cliente confidencial com o hash SHA-256 hexadecimal do segredo.");
         }
     }
 
@@ -38,7 +36,8 @@ public record ConfiguracaoAutenticacao(
 
         @Bean
         PasswordEncoder codificadorSenha() {
-            return new BCryptPasswordEncoder(12);
+            var bCryptPasswordEncoderPreparado = new BCryptPasswordEncoder(12);
+            return bCryptPasswordEncoderPreparado;
         }
     }
 }

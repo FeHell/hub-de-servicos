@@ -16,9 +16,11 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Size(max = 255)
 @Constraint(validatedBy = {})
 @Retention(RUNTIME)
-@Target({FIELD, METHOD, PARAMETER, TYPE_USE, ANNOTATION_TYPE})
+@Target({ FIELD, METHOD, PARAMETER, TYPE_USE, ANNOTATION_TYPE })
 public @interface EmailUsuario {
     String message() default "E-mail inválido.";
+
     Class<?>[] groups() default {};
+
     Class<? extends Payload>[] payload() default {};
 }

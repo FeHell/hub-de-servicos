@@ -14,18 +14,17 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(assignableTypes = {AutenticacaoController.class, SessaoNavegadorController.class,
-        AutenticacaoAppController.class, PerfilAppController.class, CredenciamentoController.class})
+@RestControllerAdvice(assignableTypes = { AutenticacaoController.class, SessaoNavegadorController.class,
+        AutenticacaoAppController.class, PerfilAppController.class, CredenciamentoController.class })
 public class ErrosAutenticacaoController {
 
     @ExceptionHandler(AutenticacaoNegadaException.class)
     public ResponseEntity<ProblemDetail> autenticacaoNegada(AutenticacaoNegadaException erro) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .header(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
                 .body(ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, erro.getMessage()));
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
+    @ExceptionHandler({ MethodArgumentNotValidException.class, HttpMessageNotReadableException.class })
     public ProblemDetail entradaInvalida() {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Dados de autenticação inválidos.");
     }

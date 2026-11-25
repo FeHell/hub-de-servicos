@@ -46,8 +46,7 @@ public class PerfilPermissaoId implements Serializable {
         if (!(outro instanceof PerfilPermissaoId chave)) {
             return false;
         }
-        return Objects.equals(idAplicacao, chave.idAplicacao)
-                && Objects.equals(idPerfil, chave.idPerfil)
+        return Objects.equals(idAplicacao, chave.idAplicacao) && Objects.equals(idPerfil, chave.idPerfil)
                 && Objects.equals(idPermissao, chave.idPermissao);
     }
 

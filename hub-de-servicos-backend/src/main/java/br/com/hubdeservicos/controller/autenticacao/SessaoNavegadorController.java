@@ -1,7 +1,11 @@
 package br.com.hubdeservicos.controller.autenticacao;
 
-import br.com.hubdeservicos.dto.autenticacao.LoginEntrada;
-import br.com.hubdeservicos.dto.autenticacao.TokensAutenticacao;
+import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.util.Objects;
+
+import br.com.hubdeservicos.dto.autenticacao.LoginEntradaBean;
+import br.com.hubdeservicos.dto.autenticacao.TokensAutenticacaoBean;
 import br.com.hubdeservicos.exception.autenticacao.AutenticacaoNegadaException;
 import br.com.hubdeservicos.service.autenticacao.AutenticacaoService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,8 +29,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping(path = SessaoNavegadorController.ROTA, headers = "X-Sessao-Navegador=1",
-        produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = SessaoNavegadorController.ROTA, headers = "X-Sessao-Navegador=1", produces = MediaType.APPLICATION_JSON_VALUE)
 public class SessaoNavegadorController {
 
     public static final String ROTA = "/api/v1/aplicacoes/{slug}/autenticacao/navegador";
@@ -44,14 +47,14 @@ public class SessaoNavegadorController {
     }
 
     @PostMapping(path = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<AcessoNavegador> login(@PathVariable String slug,
-            @Valid @RequestBody LoginEntrada entrada, HttpServletRequest requisicao) {
+    public ResponseEntity<AcessoNavegadorBean> login(@PathVariable String slug,
+            @Valid @RequestBody LoginEntradaBean entrada, HttpServletRequest requisicao) {
         validarSlug(slug);
         return acesso(slug, autenticacao.login(slug, entrada, null, requisicao.getRemoteAddr()));
     }
 
     @PostMapping("/renovar")
-    public ResponseEntity<AcessoNavegador> renovar(@PathVariable String slug,
+    public ResponseEntity<AcessoNavegadorBean> renovar(@PathVariable String slug,
             @CookieValue(name = COOKIE, required = false) String token, HttpServletRequest requisicao) {
         validarSlug(slug);
         if (tokenValido(token)) {
@@ -69,15 +72,20 @@ public class SessaoNavegadorController {
     public ResponseEntity<Void> logout(@PathVariable String slug,
             @CookieValue(name = COOKIE, required = false) String token, HttpServletRequest requisicao) {
         validarSlug(slug);
-        if (tokenValido(token)) autenticacao.logoutNavegador(slug, token, requisicao.getRemoteAddr());
+        if (tokenValido(token)) {
+            autenticacao.logoutNavegador(slug, token, requisicao.getRemoteAddr());
+        }
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.SET_COOKIE, cookieExpirado(slug)).build();
     }
 
-    private ResponseEntity<AcessoNavegador> acesso(String slug, TokensAutenticacao tokens) {
+    private ResponseEntity<AcessoNavegadorBean> acesso(String slug, TokensAutenticacaoBean tokens) {
+        AcessoNavegadorBean acessoNavegadorPreparado = new AcessoNavegadorBean();
+        acessoNavegadorPreparado.setTokenAcesso(tokens.getTokenAcesso());
+        acessoNavegadorPreparado.setExpiracaoTokenAcesso(tokens.getExpiracaoTokenAcesso());
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .header(HttpHeaders.SET_COOKIE, cookie(slug, tokens.tokenAtualizacao()).build().toString())
-                .body(new AcessoNavegador(tokens.tokenAcesso(), tokens.expiracaoTokenAcesso()));
+                .header(HttpHeaders.SET_COOKIE, cookie(slug, tokens.getTokenAtualizacao()).build().toString())
+                .body(acessoNavegadorPreparado);
     }
 
     private ResponseCookie.ResponseCookieBuilder cookie(String slug, String token) {
@@ -94,10 +102,56 @@ public class SessaoNavegadorController {
     }
 
     private static void validarSlug(String slug) {
-        if (!SLUG.matcher(slug).matches()) throw new AutenticacaoNegadaException();
+        if (!SLUG.matcher(slug).matches()) {
+            throw new AutenticacaoNegadaException();
+        }
     }
 
-    public record AcessoNavegador(String tokenAcesso, Instant expiracaoTokenAcesso) {
+    @Schema(name = "AcessoNavegador")
+    public static final class AcessoNavegadorBean {
+        private String tokenAcesso;
+
+        private Instant expiracaoTokenAcesso;
+
+        public AcessoNavegadorBean() {
+        }
+
+        public String getTokenAcesso() {
+            return tokenAcesso;
+        }
+
+        public void setTokenAcesso(String tokenAcesso) {
+            this.tokenAcesso = tokenAcesso;
+        }
+
+        public Instant getExpiracaoTokenAcesso() {
+            return expiracaoTokenAcesso;
+        }
+
+        public void setExpiracaoTokenAcesso(Instant expiracaoTokenAcesso) {
+            this.expiracaoTokenAcesso = expiracaoTokenAcesso;
+        }
+
+        @Override
+        public boolean equals(Object objeto) {
+            if (this == objeto) {
+                return true;
+            }
+            if (!(objeto instanceof AcessoNavegadorBean outro)) {
+                return false;
+            }
+            return Objects.equals(tokenAcesso, outro.tokenAcesso)
+                    && Objects.equals(expiracaoTokenAcesso, outro.expiracaoTokenAcesso);
+        }
+
+        @Override
+        public int hashCode() {
+            int resultado = 0;
+            resultado = 31 * resultado + Objects.hashCode(tokenAcesso);
+            resultado = 31 * resultado + Objects.hashCode(expiracaoTokenAcesso);
+            return resultado;
+        }
+
         @Override
         public String toString() {
             return "AcessoNavegador";

@@ -25,10 +25,11 @@ public class DiagnosticoRecebedorEntity {
     @Column(name = "resposta_protegida", nullable = false, columnDefinition = "text")
     private String respostaProtegida;
 
-    protected DiagnosticoRecebedorEntity() {}
+    protected DiagnosticoRecebedorEntity() {
+    }
 
-    public DiagnosticoRecebedorEntity(UUID tentativa, UUID credenciamento, Ambiente ambiente,
-                                     Instant capturadoEm, String respostaProtegida) {
+    public DiagnosticoRecebedorEntity(UUID tentativa, UUID credenciamento, Ambiente ambiente, Instant capturadoEm,
+            String respostaProtegida) {
         this.tentativa = tentativa;
         this.credenciamento = credenciamento;
         this.ambiente = ambiente;
@@ -36,8 +37,19 @@ public class DiagnosticoRecebedorEntity {
         this.respostaProtegida = respostaProtegida;
     }
 
-    public UUID credenciamento() { return credenciamento; }
-    public Ambiente ambiente() { return ambiente; }
-    public Instant capturadoEm() { return capturadoEm; }
-    public String respostaProtegida() { return respostaProtegida; }
+    public UUID credenciamento() {
+        return credenciamento;
+    }
+
+    public Ambiente ambiente() {
+        return ambiente;
+    }
+
+    public Instant capturadoEm() {
+        return capturadoEm;
+    }
+
+    public String respostaProtegida() {
+        return respostaProtegida;
+    }
 }

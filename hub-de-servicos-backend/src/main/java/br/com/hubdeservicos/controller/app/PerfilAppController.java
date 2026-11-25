@@ -1,20 +1,20 @@
 package br.com.hubdeservicos.controller.app;
 
-import br.com.hubdeservicos.dto.app.ContratosPerfilApp.AtualizarCadastro;
-import br.com.hubdeservicos.dto.app.ContratosPerfilApp.Cadastro;
-import br.com.hubdeservicos.dto.app.ContratosPerfilApp.ConfirmarTelefone;
-import br.com.hubdeservicos.dto.app.ContratosPerfilApp.Desafio;
-import br.com.hubdeservicos.dto.app.ContratosPerfilApp.IniciarConfirmacao;
+import br.com.hubdeservicos.dto.app.ContratosPerfilApp.AtualizarCadastroBean;
+import br.com.hubdeservicos.dto.app.ContratosPerfilApp.CadastroBean;
+import br.com.hubdeservicos.dto.app.ContratosPerfilApp.ConfirmarTelefoneBean;
+import br.com.hubdeservicos.dto.app.ContratosPerfilApp.DesafioBean;
+import br.com.hubdeservicos.dto.app.ContratosPerfilApp.IniciarConfirmacaoBean;
 import br.com.hubdeservicos.service.app.AutenticacaoAppService;
 import br.com.hubdeservicos.service.app.ConfirmacaoTelefoneService;
 import br.com.hubdeservicos.service.app.PerfilAppService;
 import br.com.hubdeservicos.service.autenticacao.AutenticacaoService;
-import br.com.hubdeservicos.service.autenticacao.IdentidadeJwt;
-import br.com.hubdeservicos.dto.app.ContratosPerfilApp.IdentificarMunicipio;
-import br.com.hubdeservicos.dto.app.ContratosPerfilApp.SelecionarPapel;
+import br.com.hubdeservicos.service.autenticacao.IdentidadeJwtVO;
+import br.com.hubdeservicos.dto.app.ContratosPerfilApp.IdentificarMunicipioBean;
+import br.com.hubdeservicos.dto.app.ContratosPerfilApp.SelecionarPapelBean;
 import br.com.hubdeservicos.entity.usuario.PapelUsuario;
-import br.com.hubdeservicos.dto.app.ContratosPerfilApp.OpcaoMunicipio;
-import br.com.hubdeservicos.dto.app.ContratosPerfilApp.SelecionarMunicipio;
+import br.com.hubdeservicos.dto.app.ContratosPerfilApp.OpcaoMunicipioBean;
+import br.com.hubdeservicos.dto.app.ContratosPerfilApp.SelecionarMunicipioBean;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import java.util.List;
@@ -47,68 +47,68 @@ public class PerfilAppController {
     private final ConfirmacaoTelefoneService confirmacao;
 
     public PerfilAppController(AutenticacaoService autenticacao, PerfilAppService perfil,
-                              ConfirmacaoTelefoneService confirmacao) {
+            ConfirmacaoTelefoneService confirmacao) {
         this.autenticacao = autenticacao;
         this.perfil = perfil;
         this.confirmacao = confirmacao;
     }
 
     @GetMapping
-    public ResponseEntity<Cadastro> consultar(@AuthenticationPrincipal IdentidadeJwt identidade) {
+    public ResponseEntity<CadastroBean> consultar(@AuthenticationPrincipal IdentidadeJwtVO identidade) {
         return resposta(perfil.consultar(usuario(identidade)));
     }
 
     @PutMapping
-    public ResponseEntity<Cadastro> atualizar(@AuthenticationPrincipal IdentidadeJwt identidade,
-                                            @Valid @RequestBody AtualizarCadastro dados) {
+    public ResponseEntity<CadastroBean> atualizar(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            @Valid @RequestBody AtualizarCadastroBean dados) {
         return resposta(perfil.atualizar(usuario(identidade), dados));
     }
 
     @PutMapping(PAPEIS)
-    public ResponseEntity<Cadastro> selecionarPapel(@AuthenticationPrincipal IdentidadeJwt identidade,
-                                                  @PathVariable PapelUsuario papel,
-                                                  @Valid @RequestBody SelecionarPapel dados) {
-        return resposta(perfil.selecionarPapel(usuario(identidade), identidade.idAplicacao(), papel, dados.selecionado()));
+    public ResponseEntity<CadastroBean> selecionarPapel(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            @PathVariable PapelUsuario papel, @Valid @RequestBody SelecionarPapelBean dados) {
+        return resposta(perfil.selecionarPapel(usuario(identidade), identidade.getIdAplicacao(), papel,
+                dados.getSelecionado()));
     }
 
     @PutMapping(LOCALIZACAO)
-    public ResponseEntity<Cadastro> registrarMunicipio(@AuthenticationPrincipal IdentidadeJwt identidade,
-                                                     @Valid @RequestBody IdentificarMunicipio dados) {
+    public ResponseEntity<CadastroBean> registrarMunicipio(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            @Valid @RequestBody IdentificarMunicipioBean dados) {
         return resposta(perfil.registrarMunicipio(usuario(identidade), dados));
     }
 
     @GetMapping(MUNICIPIOS)
-    public ResponseEntity<List<OpcaoMunicipio>> pesquisarMunicipios(@AuthenticationPrincipal IdentidadeJwt identidade,
-                                                                   @RequestParam @Size(max = 120) String nome) {
+    public ResponseEntity<List<OpcaoMunicipioBean>> pesquisarMunicipios(
+            @AuthenticationPrincipal IdentidadeJwtVO identidade, @RequestParam @Size(max = 120) String nome) {
         usuario(identidade);
         return resposta(perfil.pesquisarMunicipios(nome));
     }
 
     @PutMapping(LOCALIZACAO_MANUAL)
-    public ResponseEntity<Cadastro> selecionarMunicipio(@AuthenticationPrincipal IdentidadeJwt identidade,
-                                                         @Valid @RequestBody SelecionarMunicipio dados) {
-        return resposta(perfil.selecionarMunicipio(usuario(identidade), dados.codigoIbge()));
+    public ResponseEntity<CadastroBean> selecionarMunicipio(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            @Valid @RequestBody SelecionarMunicipioBean dados) {
+        return resposta(perfil.selecionarMunicipio(usuario(identidade), dados.getCodigoIbge()));
     }
 
     @PostMapping("/telefone/confirmacao")
-    public ResponseEntity<Desafio> iniciar(@AuthenticationPrincipal IdentidadeJwt identidade,
-                                         @Valid @RequestBody IniciarConfirmacao dados) {
-        return resposta(confirmacao.enviar(usuario(identidade), dados.telefone()));
+    public ResponseEntity<DesafioBean> iniciar(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            @Valid @RequestBody IniciarConfirmacaoBean dados) {
+        return resposta(confirmacao.enviar(usuario(identidade), dados.getTelefone()));
     }
 
     @PostMapping("/telefone/confirmacao/reenviar")
-    public ResponseEntity<Desafio> reenviar(@AuthenticationPrincipal IdentidadeJwt identidade) {
+    public ResponseEntity<DesafioBean> reenviar(@AuthenticationPrincipal IdentidadeJwtVO identidade) {
         return resposta(confirmacao.enviar(usuario(identidade), null));
     }
 
     @PostMapping("/telefone/confirmacao/validar")
-    public ResponseEntity<Cadastro> confirmar(@AuthenticationPrincipal IdentidadeJwt identidade,
-                                            @Valid @RequestBody ConfirmarTelefone dados) {
+    public ResponseEntity<CadastroBean> confirmar(@AuthenticationPrincipal IdentidadeJwtVO identidade,
+            @Valid @RequestBody ConfirmarTelefoneBean dados) {
         return resposta(confirmacao.confirmar(usuario(identidade), dados));
     }
 
-    private UUID usuario(IdentidadeJwt identidade) {
-        return autenticacao.consultarUsuario(AutenticacaoAppService.SLUG, identidade).id();
+    private UUID usuario(IdentidadeJwtVO identidade) {
+        return autenticacao.consultarUsuario(AutenticacaoAppService.SLUG, identidade).getId();
     }
 
     private static <T> ResponseEntity<T> resposta(T dados) {

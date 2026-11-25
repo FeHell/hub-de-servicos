@@ -1,7 +1,11 @@
 package br.com.hubdeservicos.controller.autenticacao;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.util.Objects;
+
 import br.com.hubdeservicos.persistencia.ConexaoPostgresTeste;
-import br.com.hubdeservicos.dto.autenticacao.TokensAutenticacao;
+import br.com.hubdeservicos.dto.autenticacao.TokensAutenticacaoBean;
 import br.com.hubdeservicos.service.autenticacao.TokenJwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,10 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = {
-        "spring.liquibase.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=validate"
-})
+@SpringBootTest(properties = { "spring.liquibase.enabled=false", "spring.jpa.hibernate.ddl-auto=validate" })
 @AutoConfigureMockMvc
 @ActiveProfiles("local")
 @Import(AutenticacaoPostgresTest.ConfiguracaoOperacao.class)
@@ -91,8 +92,7 @@ class AutenticacaoPostgresTest {
 
     @BeforeEach
     void prepararDados() {
-        assertThat(jdbc.queryForObject("select current_database()", String.class))
-                .isEqualTo("hub_de_servicos");
+        assertThat(jdbc.queryForObject("select current_database()", String.class)).isEqualTo("hub_de_servicos");
         usuario = UUID.randomUUID();
         aplicacao = UUID.randomUUID();
         outraAplicacao = UUID.randomUUID();
@@ -100,8 +100,8 @@ class AutenticacaoPostgresTest {
         slug = "teste-" + aplicacao;
         outroSlug = "teste-" + outraAplicacao;
 
-        jdbc.update("insert into usuario (id, login, email, senha_hash, status) values (?, ?, ?, ?, 'ATIVO')",
-                usuario, login, login + "@example.test", senhas.encode(SENHA));
+        jdbc.update("insert into usuario (id, login, email, senha_hash, status) values (?, ?, ?, ?, 'ATIVO')", usuario,
+                login, login + "@example.test", senhas.encode(SENHA));
         jdbc.update("insert into aplicacao (id, nome, slug, tipo, status) values (?, ?, ?, 'PUBLICO', 'ATIVO')",
                 aplicacao, "Aplicação de teste", slug);
         jdbc.update("insert into aplicacao (id, nome, slug, tipo, status) values (?, ?, ?, 'PUBLICO', 'ATIVO')",
@@ -140,39 +140,39 @@ class AutenticacaoPostgresTest {
         fazerLogin(slug, "senha-incorreta").andExpect(status().isUnauthorized());
         fazerLogin(outroSlug, SENHA).andExpect(status().isUnauthorized());
 
-        TokensAutenticacao tokens = entrar();
-        mvc.perform(get(rota(slug, "eu")).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.tokenAcesso()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(usuario.toString()))
+        TokensAutenticacaoBean tokens = entrar();
+        mvc.perform(get(rota(slug, "eu")).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.getTokenAcesso()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(usuario.toString()))
                 .andExpect(jsonPath("$.senhaHash").doesNotExist());
 
         jdbc.update("insert into usuario_aplicacao (id_usuario, id_aplicacao) values (?, ?)", usuario, outraAplicacao);
-        mvc.perform(get(rota(outroSlug, "eu")).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.tokenAcesso()))
+        mvc.perform(get(rota(outroSlug, "eu")).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.getTokenAcesso()))
                 .andExpect(status().isUnauthorized());
-        renovar(outroSlug, tokens.tokenAtualizacao()).andExpect(status().isUnauthorized());
-        renovar(slug, tokens.tokenAtualizacao()).andExpect(status().isOk());
+        renovar(outroSlug, tokens.getTokenAtualizacao()).andExpect(status().isUnauthorized());
+        renovar(slug, tokens.getTokenAtualizacao()).andExpect(status().isOk());
     }
 
     @Test
     void revogaFamiliaQuandoDuasRequisicoesUsamOMesmoRefreshToken() throws Exception {
-        TokensAutenticacao inicial = entrar();
+        TokensAutenticacaoBean inicial = entrar();
         var largada = new CyclicBarrier(2);
 
         try (var executor = Executors.newFixedThreadPool(2)) {
             var primeira = executor.submit(() -> {
                 largada.await(5, TimeUnit.SECONDS);
-                return renovar(slug, inicial.tokenAtualizacao()).andReturn().getResponse();
+                return renovar(slug, inicial.getTokenAtualizacao()).andReturn().getResponse();
             });
             var segunda = executor.submit(() -> {
                 largada.await(5, TimeUnit.SECONDS);
-                return renovar(slug, inicial.tokenAtualizacao()).andReturn().getResponse();
+                return renovar(slug, inicial.getTokenAtualizacao()).andReturn().getResponse();
             });
             var respostas = List.of(primeira.get(15, TimeUnit.SECONDS), segunda.get(15, TimeUnit.SECONDS));
             assertThat(respostas).extracting(resposta -> resposta.getStatus()).containsExactlyInAnyOrder(200, 401);
-            var respostaValida = respostas.stream().filter(resposta -> resposta.getStatus() == 200)
-                    .findFirst().orElseThrow();
-            TokensAutenticacao sucessor = json.readValue(respostaValida.getContentAsByteArray(), TokensAutenticacao.class);
-            renovar(slug, sucessor.tokenAtualizacao()).andExpect(status().isUnauthorized());
+            var respostaValida = respostas.stream().filter(resposta -> resposta.getStatus() == 200).findFirst()
+                    .orElseThrow();
+            TokensAutenticacaoBean sucessor = json.readValue(respostaValida.getContentAsByteArray(),
+                    TokensAutenticacaoBean.class);
+            renovar(slug, sucessor.getTokenAtualizacao()).andExpect(status().isUnauthorized());
         }
 
         assertThat(jdbc.queryForObject("select status from sessoes where id_usuario = ?", String.class, usuario))
@@ -184,19 +184,19 @@ class AutenticacaoPostgresTest {
         assertThat(jdbc.queryForObject("""
                 select count(*) from auditoria where id_usuario = ? and acao = 'REUTILIZACAO_REFRESH_TOKEN'
                 """, Long.class, usuario)).isEqualTo(1);
-        mvc.perform(get(rota(slug, "eu")).header(HttpHeaders.AUTHORIZATION, "Bearer " + inicial.tokenAcesso()))
+        mvc.perform(get(rota(slug, "eu")).header(HttpHeaders.AUTHORIZATION, "Bearer " + inicial.getTokenAcesso()))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void logoutInvalidaAccessERefreshToken() throws Exception {
-        TokensAutenticacao tokens = entrar();
-        mvc.perform(post(rota(slug, "logout")).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.tokenAcesso()))
+        TokensAutenticacaoBean tokens = entrar();
+        mvc.perform(post(rota(slug, "logout")).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.getTokenAcesso()))
                 .andExpect(status().isNoContent());
-        mvc.perform(get(rota(slug, "eu")).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.tokenAcesso()))
+        mvc.perform(get(rota(slug, "eu")).header(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.getTokenAcesso()))
                 .andExpect(status().isUnauthorized());
-        consultarPermissoes(slug, tokens.tokenAcesso()).andExpect(status().isUnauthorized());
-        renovar(slug, tokens.tokenAtualizacao()).andExpect(status().isUnauthorized());
+        consultarPermissoes(slug, tokens.getTokenAcesso()).andExpect(status().isUnauthorized());
+        renovar(slug, tokens.getTokenAtualizacao()).andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -221,29 +221,29 @@ class AutenticacaoPostgresTest {
         habilitarPermissao(outraAplicacao, editar);
         conceder(outraAplicacao, perfilB, consultar);
 
-        String tokenA = entrar().tokenAcesso();
-        String tokenB = entrar(outroSlug).tokenAcesso();
-        consultarPermissoes(slug, tokenA).andExpect(status().isOk())
-                .andExpect(content().json(json.writeValueAsString(List.of(consultar.codigo(), editar.codigo())), true));
+        String tokenA = entrar().getTokenAcesso();
+        String tokenB = entrar(outroSlug).getTokenAcesso();
+        consultarPermissoes(slug, tokenA).andExpect(status().isOk()).andExpect(
+                content().json(json.writeValueAsString(List.of(consultar.getCodigo(), editar.getCodigo())), true));
         consultarPermissoes(outroSlug, tokenB).andExpect(status().isOk())
-                .andExpect(content().json(json.writeValueAsString(List.of(consultar.codigo())), true));
+                .andExpect(content().json(json.writeValueAsString(List.of(consultar.getCodigo())), true));
         consultarPermissoes(outroSlug, tokenA).andExpect(status().isUnauthorized());
 
         try {
             autenticarOperacao(tokenA);
-            assertThat(operacao.executar(slug, editar.codigo())).isTrue();
-            assertThatThrownBy(() -> operacao.executar(outroSlug, editar.codigo()))
+            assertThat(operacao.executar(slug, editar.getCodigo())).isTrue();
+            assertThatThrownBy(() -> operacao.executar(outroSlug, editar.getCodigo()))
                     .isInstanceOf(AccessDeniedException.class);
             autenticarOperacao(tokenB);
-            assertThatThrownBy(() -> operacao.executar(outroSlug, editar.codigo()))
+            assertThatThrownBy(() -> operacao.executar(outroSlug, editar.getCodigo()))
                     .isInstanceOf(AccessDeniedException.class);
 
-            jdbc.update("update permissao set status = 'INATIVO' where id = ?", editar.id());
+            jdbc.update("update permissao set status = 'INATIVO' where id = ?", editar.getId());
             autenticarOperacao(tokenA);
-            assertThatThrownBy(() -> operacao.executar(slug, editar.codigo()))
+            assertThatThrownBy(() -> operacao.executar(slug, editar.getCodigo()))
                     .isInstanceOf(AccessDeniedException.class);
             consultarPermissoes(slug, tokenA).andExpect(status().isOk())
-                    .andExpect(content().json(json.writeValueAsString(List.of(consultar.codigo())), true));
+                    .andExpect(content().json(json.writeValueAsString(List.of(consultar.getCodigo())), true));
         } finally {
             SecurityContextHolder.clearContext();
         }
@@ -251,11 +251,10 @@ class AutenticacaoPostgresTest {
 
     @Test
     void listaVaziaParaSessaoValidaERecusaAplicacaoDesativada() throws Exception {
-        String token = entrar().tokenAcesso();
+        String token = entrar().getTokenAcesso();
         consultarPermissoes(slug, token).andExpect(status().isOk()).andExpect(content().json("[]"));
         mvc.perform(get(rota(slug, "administracao")).header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.detail").value("Acesso negado."));
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.detail").value("Acesso negado."));
 
         jdbc.update("update aplicacao set status = 'INATIVO' where id = ?", aplicacao);
         consultarPermissoes(slug, token).andExpect(status().isUnauthorized());
@@ -263,34 +262,37 @@ class AutenticacaoPostgresTest {
 
     private UUID criarPerfil(UUID idAplicacao, String situacao) {
         UUID id = UUID.randomUUID();
-        jdbc.update("insert into perfil (id_perfil, id_aplicacao, nome, status) values (?, ?, ?, ?)",
-                id, idAplicacao, "Perfil " + id, situacao);
-        jdbc.update("insert into usuario_perfil (id_usuario, id_aplicacao, id_perfil) values (?, ?, ?)",
-                usuario, idAplicacao, id);
+        jdbc.update("insert into perfil (id_perfil, id_aplicacao, nome, status) values (?, ?, ?, ?)", id, idAplicacao,
+                "Perfil " + id, situacao);
+        jdbc.update("insert into usuario_perfil (id_usuario, id_aplicacao, id_perfil) values (?, ?, ?)", usuario,
+                idAplicacao, id);
         return id;
     }
 
-    private PermissaoTeste criarPermissao(String prefixo, String situacao) {
+    private PermissaoTesteBean criarPermissao(String prefixo, String situacao) {
         UUID id = UUID.randomUUID();
         permissoesCriadas.add(id);
         String codigo = prefixo + "_" + id;
         jdbc.update("insert into permissao (id, codigo, status) values (?, ?, ?)", id, codigo, situacao);
-        return new PermissaoTeste(id, codigo);
+        PermissaoTesteBean permissaoTestePreparado = new PermissaoTesteBean();
+        permissaoTestePreparado.setId(id);
+        permissaoTestePreparado.setCodigo(codigo);
+        return permissaoTestePreparado;
     }
 
-    private void conceder(UUID idAplicacao, UUID idPerfil, PermissaoTeste permissao) {
+    private void conceder(UUID idAplicacao, UUID idPerfil, PermissaoTesteBean permissao) {
         habilitarPermissao(idAplicacao, permissao);
         vincularPermissaoAoPerfil(idAplicacao, idPerfil, permissao);
     }
 
-    private void habilitarPermissao(UUID idAplicacao, PermissaoTeste permissao) {
-        jdbc.update("insert into aplicacao_permissao (id_aplicacao, id_permissao) values (?, ?)",
-                idAplicacao, permissao.id());
+    private void habilitarPermissao(UUID idAplicacao, PermissaoTesteBean permissao) {
+        jdbc.update("insert into aplicacao_permissao (id_aplicacao, id_permissao) values (?, ?)", idAplicacao,
+                permissao.getId());
     }
 
-    private void vincularPermissaoAoPerfil(UUID idAplicacao, UUID idPerfil, PermissaoTeste permissao) {
+    private void vincularPermissaoAoPerfil(UUID idAplicacao, UUID idPerfil, PermissaoTesteBean permissao) {
         jdbc.update("insert into perfil_permissao (id_aplicacao, id_perfil, id_permissao) values (?, ?, ?)",
-                idAplicacao, idPerfil, permissao.id());
+                idAplicacao, idPerfil, permissao.getId());
     }
 
     private void autenticarOperacao(String token) {
@@ -302,24 +304,22 @@ class AutenticacaoPostgresTest {
         return mvc.perform(get(rota(aplicacao, "permissoes")).header(HttpHeaders.AUTHORIZATION, "Bearer " + token));
     }
 
-    private TokensAutenticacao entrar() throws Exception {
+    private TokensAutenticacaoBean entrar() throws Exception {
         return entrar(slug);
     }
 
-    private TokensAutenticacao entrar(String aplicacao) throws Exception {
+    private TokensAutenticacaoBean entrar(String aplicacao) throws Exception {
         var resposta = fazerLogin(aplicacao, SENHA).andExpect(status().isOk()).andReturn().getResponse();
-        return json.readValue(resposta.getContentAsByteArray(), TokensAutenticacao.class);
+        return json.readValue(resposta.getContentAsByteArray(), TokensAutenticacaoBean.class);
     }
 
     private ResultActions fazerLogin(String aplicacao, String senha) throws Exception {
-        return mvc.perform(post(rota(aplicacao, "login"))
-                .contentType(MediaType.APPLICATION_JSON)
+        return mvc.perform(post(rota(aplicacao, "login")).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsBytes(Map.of("login", login, "senha", senha))));
     }
 
     private ResultActions renovar(String aplicacao, String token) throws Exception {
-        return mvc.perform(post(rota(aplicacao, "renovar"))
-                .contentType(MediaType.APPLICATION_JSON)
+        return mvc.perform(post(rota(aplicacao, "renovar")).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsBytes(Map.of("tokenAtualizacao", token))));
     }
 
@@ -327,7 +327,54 @@ class AutenticacaoPostgresTest {
         return "/api/v1/aplicacoes/" + aplicacao + "/autenticacao/" + acao;
     }
 
-    private record PermissaoTeste(UUID id, String codigo) {
+    @Schema(name = "PermissaoTeste")
+    private static final class PermissaoTesteBean {
+        private UUID id;
+
+        private String codigo;
+
+        public PermissaoTesteBean() {
+        }
+
+        public UUID getId() {
+            return id;
+        }
+
+        public void setId(UUID id) {
+            this.id = id;
+        }
+
+        public String getCodigo() {
+            return codigo;
+        }
+
+        public void setCodigo(String codigo) {
+            this.codigo = codigo;
+        }
+
+        @Override
+        public boolean equals(Object objeto) {
+            if (this == objeto) {
+                return true;
+            }
+            if (!(objeto instanceof PermissaoTesteBean outro)) {
+                return false;
+            }
+            return Objects.equals(id, outro.id) && Objects.equals(codigo, outro.codigo);
+        }
+
+        @Override
+        public int hashCode() {
+            int resultado = 0;
+            resultado = 31 * resultado + Objects.hashCode(id);
+            resultado = 31 * resultado + Objects.hashCode(codigo);
+            return resultado;
+        }
+
+        @Override
+        public String toString() {
+            return "PermissaoTeste[" + "id=" + id + ", codigo=" + codigo + "]";
+        }
     }
 
     @TestConfiguration(proxyBeanMethods = false)
@@ -335,7 +382,8 @@ class AutenticacaoPostgresTest {
 
         @Bean
         OperacaoProtegida operacaoProtegida() {
-            return new OperacaoProtegida();
+            var operacaoProtegidaPreparado = new OperacaoProtegida();
+            return operacaoProtegidaPreparado;
         }
     }
 

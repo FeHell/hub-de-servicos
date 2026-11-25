@@ -8,7 +8,9 @@ import java.util.UUID;
 @Entity
 @Table(name = "credenciamento_recebedor_tentativa")
 public class TentativaRecebedorEntity {
-    public enum Operacao { CRIACAO, ATUALIZACAO_CADASTRAL, ATUALIZACAO_BANCARIA }
+    public enum Operacao {
+        CRIACAO, ATUALIZACAO_CADASTRAL, ATUALIZACAO_BANCARIA
+    }
 
     @Id
     @Column(name = "tentativa_ref", updatable = false)
@@ -42,7 +44,8 @@ public class TentativaRecebedorEntity {
     @Column(name = "passou_por_analise")
     private boolean passouPorAnalise;
 
-    protected TentativaRecebedorEntity() {}
+    protected TentativaRecebedorEntity() {
+    }
 
     public TentativaRecebedorEntity(RecebedorExternoEntity registro, CredenciamentoEntity cadastro, Operacao operacao) {
         id = registro.tentativa();
@@ -62,12 +65,24 @@ public class TentativaRecebedorEntity {
         erro = registro.erro();
         camposRecusados = registro.camposRecusados();
         if (situacao == SituacaoRecebedor.CRIADO) {
-            if (confirmadoEm == null) confirmadoEm = agora;
-            if (statusProvedor == StatusPagarme.REGISTRATION || statusProvedor == StatusPagarme.AFFILIATION) passouPorAnalise = true;
+            if (confirmadoEm == null) {
+                confirmadoEm = agora;
+            }
+            if (statusProvedor == StatusPagarme.REGISTRATION || statusProvedor == StatusPagarme.AFFILIATION) {
+                passouPorAnalise = true;
+            }
         }
     }
 
-    public Operacao operacao() { return operacao; }
-    public String dadosProtegidos() { return dadosProtegidos; }
-    public boolean aprovacaoConfirmada() { return operacao == Operacao.CRIACAO || passouPorAnalise; }
+    public Operacao operacao() {
+        return operacao;
+    }
+
+    public String dadosProtegidos() {
+        return dadosProtegidos;
+    }
+
+    public boolean aprovacaoConfirmada() {
+        return operacao == Operacao.CRIACAO || passouPorAnalise;
+    }
 }

@@ -28,7 +28,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovoUsuario;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovoUsuarioBean;
 
 @Service
 @Profile("bootstrap-admin")
@@ -47,9 +47,9 @@ public class InicializacaoAdministrativa {
     private final Validator validador;
 
     public InicializacaoAdministrativa(JdbcTemplate jdbc, AplicacaoRepository aplicacoes, UsuarioRepository usuarios,
-                                       PermissaoRepository permissoes, UsuarioAplicacaoRepository vinculos,
-                                       UsuarioPermissaoPlataformaRepository atribuicoes,
-                                       AuditoriaRepository auditoria, SenhasAdministrativas senhas, Validator validador) {
+            PermissaoRepository permissoes, UsuarioAplicacaoRepository vinculos,
+            UsuarioPermissaoPlataformaRepository atribuicoes, AuditoriaRepository auditoria,
+            SenhasAdministrativas senhas, Validator validador) {
         this.jdbc = jdbc;
         this.aplicacoes = aplicacoes;
         this.usuarios = usuarios;
@@ -62,34 +62,47 @@ public class InicializacaoAdministrativa {
     }
 
     @Transactional
-    public void criarPrimeiroAdministrador(UUID idAplicacao, NovoUsuario dados) {
+    public void criarPrimeiroAdministrador(UUID idAplicacao, NovoUsuarioBean dados) {
         if (!validador.validate(dados).isEmpty()) {
             throw new IllegalArgumentException("Informe login, e-mail e senha válidos para o primeiro administrador.");
         }
         if (aplicacoes.existsById(idAplicacao) || aplicacoes.findBySlug(SLUG).isPresent()
-                || usuarios.buscarPorLogin(dados.login().strip()).isPresent()
-                || usuarios.buscarPorEmail(dados.email().strip()).isPresent()) {
+                || usuarios.buscarPorLogin(dados.getLogin().strip()).isPresent()
+                || usuarios.buscarPorEmail(dados.getEmail().strip()).isPresent()) {
             throw new IllegalStateException("A aplicação ou a conta administrativa já existe.");
         }
 
-        String hash = senhas.gerarHash(dados.senha());
+        String hash = senhas.gerarHash(dados.getSenha());
         jdbc.update("""
                 insert into aplicacao (id, nome, slug, tipo, status)
                 values (?, 'Hub de Serviços', ?, 'PUBLICO', 'ATIVO')
                 """, idAplicacao, SLUG);
-        var usuario = usuarios.saveAndFlush(new UsuarioEntity(dados.login().strip(), hash, dados.email().strip(),
-                StatusUsuario.ATIVO));
-        var permissao = permissoes.findByCodigo(AcessoAdministrativo.PLATAFORMA_ADMINISTRAR)
-                .orElseThrow(() -> new IllegalStateException("Aplique as migrações antes de criar o administrador."));
+        var usuarioEntityPreparado = new UsuarioEntity(dados.getLogin().strip(), hash, dados.getEmail().strip(),
+                StatusUsuario.ATIVO);
+        var usuario = usuarios.saveAndFlush(usuarioEntityPreparado);
+        var permissao = permissoes.findByCodigo(AcessoAdministrativo.PLATAFORMA_ADMINISTRAR).orElseThrow(() -> {
+            var illegalStateExceptionPreparado = new IllegalStateException(
+                    "Aplique as migrações antes de criar o administrador.");
+            return illegalStateExceptionPreparado;
+        });
         if (permissoes.findByCodigo(AcessoAdministrativo.APLICACAO_ADMINISTRAR).isEmpty()) {
-            permissoes.save(new PermissaoEntity(AcessoAdministrativo.APLICACAO_ADMINISTRAR,
-                    "Administrar perfis, vínculos e sessões da aplicação.", StatusCadastro.ATIVO));
+            var permissaoEntityPreparado = new PermissaoEntity(AcessoAdministrativo.APLICACAO_ADMINISTRAR,
+                    "Administrar perfis, vínculos e sessões da aplicação.", StatusCadastro.ATIVO);
+            permissoes.save(permissaoEntityPreparado);
         }
-        vinculos.saveAndFlush(new UsuarioAplicacaoEntity(new UsuarioAplicacaoId(usuario.getId(), idAplicacao)));
-        atribuicoes.save(new UsuarioPermissaoPlataformaEntity(
-                new UsuarioPermissaoPlataformaId(usuario.getId(), permissao.getId())));
+        var usuarioAplicacaoIdPreparado = new UsuarioAplicacaoId(usuario.getId(), idAplicacao);
+
+        var usuarioAplicacaoEntityPreparado = new UsuarioAplicacaoEntity(usuarioAplicacaoIdPreparado);
+        vinculos.saveAndFlush(usuarioAplicacaoEntityPreparado);
+        var usuarioPermissaoPlataformaIdPreparado = new UsuarioPermissaoPlataformaId(usuario.getId(),
+                permissao.getId());
+
+        var usuarioPermissaoPlataformaEntityPreparado = new UsuarioPermissaoPlataformaEntity(
+                usuarioPermissaoPlataformaIdPreparado);
+        atribuicoes.save(usuarioPermissaoPlataformaEntityPreparado);
         var evento = JsonNodeFactory.instance.objectNode().put("idRecurso", usuario.getId().toString());
-        auditoria.save(new AuditoriaEntity(null, idAplicacao, "CRIAR_PRIMEIRO_ADMINISTRADOR",
-                "usuario", null, evento, null));
+        var auditoriaEntityPreparado = new AuditoriaEntity(null, idAplicacao, "CRIAR_PRIMEIRO_ADMINISTRADOR", "usuario",
+                null, evento, null);
+        auditoria.save(auditoriaEntityPreparado);
     }
 }

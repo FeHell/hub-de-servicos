@@ -19,16 +19,14 @@ public class PerfilPermissaoEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumns({
-        @JoinColumn(name = "id_aplicacao", referencedColumnName = "id_aplicacao", insertable = false, updatable = false),
-        @JoinColumn(name = "id_perfil", referencedColumnName = "id_perfil", insertable = false, updatable = false)
-    })
+            @JoinColumn(name = "id_aplicacao", referencedColumnName = "id_aplicacao", insertable = false, updatable = false),
+            @JoinColumn(name = "id_perfil", referencedColumnName = "id_perfil", insertable = false, updatable = false) })
     private PerfilEntity perfil;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumns({
-        @JoinColumn(name = "id_aplicacao", referencedColumnName = "id_aplicacao", insertable = false, updatable = false),
-        @JoinColumn(name = "id_permissao", referencedColumnName = "id_permissao", insertable = false, updatable = false)
-    })
+            @JoinColumn(name = "id_aplicacao", referencedColumnName = "id_aplicacao", insertable = false, updatable = false),
+            @JoinColumn(name = "id_permissao", referencedColumnName = "id_permissao", insertable = false, updatable = false) })
     private AplicacaoPermissaoEntity aplicacaoPermissao;
 
     protected PerfilPermissaoEntity() {

@@ -33,9 +33,11 @@ public class CredenciamentoEntity {
     @Column(name = "excluido_em")
     private Instant excluidoEm;
 
-    protected CredenciamentoEntity() {}
+    protected CredenciamentoEntity() {
+    }
 
-    public CredenciamentoEntity(UUID id, UUID solicitante, ProvedorCredenciamento provedor, String dados, Instant agora) {
+    public CredenciamentoEntity(UUID id, UUID solicitante, ProvedorCredenciamento provedor, String dados,
+            Instant agora) {
         this.id = id;
         this.solicitante = solicitante;
         this.provedor = provedor;
@@ -55,12 +57,31 @@ public class CredenciamentoEntity {
         excluidoEm = agora;
     }
 
-    public boolean excluido() { return excluidoEm != null; }
+    public boolean excluido() {
+        return excluidoEm != null;
+    }
 
-    public UUID getId() { return id; }
-    public UUID getSolicitante() { return solicitante; }
-    public ProvedorCredenciamento getProvedor() { return provedor; }
-    public String getDadosProtegidos() { return dadosProtegidos; }
-    public Instant getAtualizadoEm() { return atualizadoEm; }
-    public long versao() { return versao; }
+    public UUID getId() {
+        return id;
+    }
+
+    public UUID getSolicitante() {
+        return solicitante;
+    }
+
+    public ProvedorCredenciamento getProvedor() {
+        return provedor;
+    }
+
+    public String getDadosProtegidos() {
+        return dadosProtegidos;
+    }
+
+    public Instant getAtualizadoEm() {
+        return atualizadoEm;
+    }
+
+    public long versao() {
+        return versao;
+    }
 }

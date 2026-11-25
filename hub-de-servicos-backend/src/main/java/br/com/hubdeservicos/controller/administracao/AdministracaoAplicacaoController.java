@@ -1,13 +1,13 @@
 package br.com.hubdeservicos.controller.administracao;
 
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AtualizarPerfil;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AuditoriaInfo;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovoPerfil;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.Pagina;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PerfilInfo;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PermissaoInfo;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.SessaoInfo;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.VinculoInfo;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AtualizarPerfilBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AuditoriaInfoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovoPerfilBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PaginaBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PerfilInfoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PermissaoInfoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.SessaoInfoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.VinculoInfoBean;
 import br.com.hubdeservicos.service.administracao.AdministracaoAplicacaoService;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -42,55 +42,55 @@ public class AdministracaoAplicacaoController {
     }
 
     @GetMapping("/perfis")
-    public Pagina<PerfilInfo> listarPerfis(@PathVariable String slug, @RequestParam(defaultValue = "0") int pagina,
-                                          @RequestParam(defaultValue = "20") int tamanho) {
+    public PaginaBean<PerfilInfoBean> listarPerfis(@PathVariable String slug,
+            @RequestParam(defaultValue = "0") int pagina, @RequestParam(defaultValue = "20") int tamanho) {
         return administracao.listarPerfis(slug, pagina, tamanho);
     }
 
     @GetMapping("/perfis/{idPerfil}")
-    public PerfilInfo consultarPerfil(@PathVariable String slug, @PathVariable UUID idPerfil) {
+    public PerfilInfoBean consultarPerfil(@PathVariable String slug, @PathVariable UUID idPerfil) {
         return administracao.consultarPerfil(slug, idPerfil);
     }
 
     @PostMapping("/perfis")
     @ResponseStatus(HttpStatus.CREATED)
-    public PerfilInfo criarPerfil(@PathVariable String slug, @Valid @RequestBody NovoPerfil dados) {
+    public PerfilInfoBean criarPerfil(@PathVariable String slug, @Valid @RequestBody NovoPerfilBean dados) {
         return administracao.criarPerfil(slug, dados);
     }
 
     @PutMapping("/perfis/{idPerfil}")
-    public PerfilInfo atualizarPerfil(@PathVariable String slug, @PathVariable UUID idPerfil,
-                                      @Valid @RequestBody AtualizarPerfil dados) {
+    public PerfilInfoBean atualizarPerfil(@PathVariable String slug, @PathVariable UUID idPerfil,
+            @Valid @RequestBody AtualizarPerfilBean dados) {
         return administracao.atualizarPerfil(slug, idPerfil, dados);
     }
 
     @GetMapping("/permissoes")
-    public List<PermissaoInfo> listarPermissoes(@PathVariable String slug) {
+    public List<PermissaoInfoBean> listarPermissoes(@PathVariable String slug) {
         return administracao.listarPermissoes(slug);
     }
 
     @GetMapping("/perfis/{idPerfil}/permissoes")
-    public List<PermissaoInfo> listarPermissoesDoPerfil(@PathVariable String slug, @PathVariable UUID idPerfil) {
+    public List<PermissaoInfoBean> listarPermissoesDoPerfil(@PathVariable String slug, @PathVariable UUID idPerfil) {
         return administracao.listarPermissoesDoPerfil(slug, idPerfil);
     }
 
     @PutMapping("/perfis/{idPerfil}/permissoes/{idPermissao}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void atribuirPermissao(@PathVariable String slug, @PathVariable UUID idPerfil,
-                                  @PathVariable UUID idPermissao) {
+            @PathVariable UUID idPermissao) {
         administracao.atribuirPermissaoAoPerfil(slug, idPerfil, idPermissao);
     }
 
     @DeleteMapping("/perfis/{idPerfil}/permissoes/{idPermissao}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removerPermissao(@PathVariable String slug, @PathVariable UUID idPerfil,
-                                 @PathVariable UUID idPermissao) {
+            @PathVariable UUID idPermissao) {
         administracao.removerPermissaoDoPerfil(slug, idPerfil, idPermissao);
     }
 
     @GetMapping("/usuarios")
-    public Pagina<VinculoInfo> listarVinculos(@PathVariable String slug, @RequestParam(defaultValue = "0") int pagina,
-                                              @RequestParam(defaultValue = "20") int tamanho) {
+    public PaginaBean<VinculoInfoBean> listarVinculos(@PathVariable String slug,
+            @RequestParam(defaultValue = "0") int pagina, @RequestParam(defaultValue = "20") int tamanho) {
         return administracao.listarVinculos(slug, pagina, tamanho);
     }
 
@@ -107,7 +107,7 @@ public class AdministracaoAplicacaoController {
     }
 
     @GetMapping("/usuarios/{idUsuario}/perfis")
-    public List<PerfilInfo> listarPerfisDoUsuario(@PathVariable String slug, @PathVariable UUID idUsuario) {
+    public List<PerfilInfoBean> listarPerfisDoUsuario(@PathVariable String slug, @PathVariable UUID idUsuario) {
         return administracao.listarPerfisDoUsuario(slug, idUsuario);
     }
 
@@ -124,8 +124,8 @@ public class AdministracaoAplicacaoController {
     }
 
     @GetMapping("/sessoes")
-    public Pagina<SessaoInfo> listarSessoes(@PathVariable String slug, @RequestParam(defaultValue = "0") int pagina,
-                                            @RequestParam(defaultValue = "20") int tamanho) {
+    public PaginaBean<SessaoInfoBean> listarSessoes(@PathVariable String slug,
+            @RequestParam(defaultValue = "0") int pagina, @RequestParam(defaultValue = "20") int tamanho) {
         return administracao.listarSessoes(slug, pagina, tamanho);
     }
 
@@ -136,9 +136,8 @@ public class AdministracaoAplicacaoController {
     }
 
     @GetMapping("/auditoria")
-    public Pagina<AuditoriaInfo> listarAuditoria(@PathVariable String slug,
-                                                 @RequestParam(defaultValue = "0") int pagina,
-                                                 @RequestParam(defaultValue = "20") int tamanho) {
+    public PaginaBean<AuditoriaInfoBean> listarAuditoria(@PathVariable String slug,
+            @RequestParam(defaultValue = "0") int pagina, @RequestParam(defaultValue = "20") int tamanho) {
         return administracao.listarAuditoria(slug, pagina, tamanho);
     }
 }

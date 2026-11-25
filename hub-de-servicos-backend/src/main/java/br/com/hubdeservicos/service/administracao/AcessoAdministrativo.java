@@ -1,6 +1,6 @@
 package br.com.hubdeservicos.service.administracao;
 
-import br.com.hubdeservicos.service.autenticacao.IdentidadeJwt;
+import br.com.hubdeservicos.service.autenticacao.IdentidadeJwtVO;
 import br.com.hubdeservicos.service.autorizacao.AutorizacaoService;
 
 import java.util.UUID;
@@ -28,9 +28,9 @@ public class AcessoAdministrativo {
     }
 
     public boolean plataforma(Authentication autenticacao) {
-        return autenticacao != null && autenticacao.getPrincipal() instanceof IdentidadeJwt identidade
-                && identidade.idAplicacao().equals(idAplicacaoPlataforma)
-                && autorizacao.temPermissao(autenticacao, identidade.audiencia(), PLATAFORMA_ADMINISTRAR);
+        return autenticacao != null && autenticacao.getPrincipal() instanceof IdentidadeJwtVO identidade
+                && identidade.getIdAplicacao().equals(idAplicacaoPlataforma)
+                && autorizacao.temPermissao(autenticacao, identidade.getAudiencia(), PLATAFORMA_ADMINISTRAR);
     }
 
     UUID idAplicacaoPlataforma() {
@@ -39,9 +39,9 @@ public class AcessoAdministrativo {
 
     public boolean aplicacao(Authentication autenticacao, String slug) {
         return plataforma(autenticacao)
-                || (autenticacao != null && autenticacao.getPrincipal() instanceof IdentidadeJwt identidade
-                && !identidade.idAplicacao().equals(idAplicacaoPlataforma)
-                && autorizacao.temPermissao(autenticacao, slug, APLICACAO_ADMINISTRAR));
+                || (autenticacao != null && autenticacao.getPrincipal() instanceof IdentidadeJwtVO identidade
+                        && !identidade.getIdAplicacao().equals(idAplicacaoPlataforma)
+                        && autorizacao.temPermissao(autenticacao, slug, APLICACAO_ADMINISTRAR));
     }
 
     public void verificarAplicacaoEditavel(UUID idAplicacao) {

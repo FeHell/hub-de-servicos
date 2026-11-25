@@ -3,13 +3,15 @@ package br.com.hubdeservicos.service.credenciamento;
 import java.util.Locale;
 
 final class DocumentosCredenciamento {
-    private DocumentosCredenciamento() {}
+    private DocumentosCredenciamento() {
+    }
 
     static boolean cpfValido(String valor) {
-        if (!valor.matches("[0-9]{11}|[0-9]{3}\\.[0-9]{3}\\.[0-9]{3}-[0-9]{2}")) return false;
+        if (!valor.matches("[0-9]{11}|[0-9]{3}\\.[0-9]{3}\\.[0-9]{3}-[0-9]{2}")) {
+            return false;
+        }
         String cpf = valor.replaceAll("[.-]", "");
-        return cpf.chars().distinct().count() > 1
-                && digito(cpf, 9, 10, 1) == cpf.charAt(9) - '0'
+        return cpf.chars().distinct().count() > 1 && digito(cpf, 9, 10, 1) == cpf.charAt(9) - '0'
                 && digito(cpf, 10, 11, 1) == cpf.charAt(10) - '0';
     }
 
@@ -19,8 +21,7 @@ final class DocumentosCredenciamento {
             return false;
         }
         String cnpj = entrada.replaceAll("[./-]", "");
-        return cnpj.chars().distinct().count() > 1
-                && digito(cnpj, 12, 5, 9) == cnpj.charAt(12) - '0'
+        return cnpj.chars().distinct().count() > 1 && digito(cnpj, 12, 5, 9) == cnpj.charAt(12) - '0'
                 && digito(cnpj, 13, 6, 9) == cnpj.charAt(13) - '0';
     }
 
@@ -28,7 +29,9 @@ final class DocumentosCredenciamento {
         int soma = 0;
         for (int indice = 0; indice < tamanho; indice++) {
             soma += (valor.charAt(indice) - '0') * peso--;
-            if (peso == 1) peso = reinicio;
+            if (peso == 1) {
+                peso = reinicio;
+            }
         }
         int resto = soma % 11;
         return resto < 2 ? 0 : 11 - resto;

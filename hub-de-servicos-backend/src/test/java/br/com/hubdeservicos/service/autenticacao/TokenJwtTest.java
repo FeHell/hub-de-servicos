@@ -34,8 +34,9 @@ class TokenJwtTest {
         SessaoEntity sessao = sessao();
         String token = jwt.emitir(sessao, "portal", AGORA, AGORA.plusSeconds(300));
 
-        assertThat(jwt.validar(token)).isEqualTo(new IdentidadeJwt(
-                sessao.getIdUsuario(), sessao.getIdAplicacao(), sessao.getId(), "portal"));
+        var identidadeJwtPreparado = new IdentidadeJwtVO(sessao.getIdUsuario(), sessao.getIdAplicacao(), sessao.getId(),
+                "portal");
+        assertThat(jwt.validar(token)).isEqualTo(identidadeJwtPreparado);
         var chave = JWKSet.parse(jwt.chavesPublicas()).getKeys().getFirst();
         assertThat(chave.isPrivate()).isFalse();
         assertThat(chave.getAlgorithm().getName()).isEqualTo("RS256");
@@ -61,11 +62,18 @@ class TokenJwtTest {
                 StatusCadastro.ATIVO);
         UUID id = UUID.randomUUID();
         ReflectionTestUtils.setField(confidencial, "id", id);
-        AplicacaoEntity publica = new AplicacaoEntity("Portal", "portal", TipoAplicacao.PUBLICO, null, StatusCadastro.ATIVO);
-        var semCredencial = new SegredosAutenticacao(new ConfiguracaoAutenticacao(null, null, null, Map.of()));
+        AplicacaoEntity publica = new AplicacaoEntity("Portal", "portal", TipoAplicacao.PUBLICO, null,
+                StatusCadastro.ATIVO);
+        var configuracaoAutenticacaoPreparado = new ConfiguracaoAutenticacao(null, null, null, Map.of());
+        var argumentoPreparado = configuracaoAutenticacaoPreparado;
+        var segredosAutenticacaoPreparado = new SegredosAutenticacao(argumentoPreparado);
+        var semCredencial = segredosAutenticacaoPreparado;
         String segredo = semCredencial.gerarTokenAtualizacao();
-        var credenciais = new SegredosAutenticacao(new ConfiguracaoAutenticacao(null, null, null,
-                Map.of(id, semCredencial.hash(segredo))));
+        var configuracaoAutenticacaoPreparado2 = new ConfiguracaoAutenticacao(null, null, null,
+                Map.of(id, semCredencial.hash(segredo)));
+        var argumentoPreparado2 = configuracaoAutenticacaoPreparado2;
+        var segredosAutenticacaoPreparado2 = new SegredosAutenticacao(argumentoPreparado2);
+        var credenciais = segredosAutenticacaoPreparado2;
 
         assertThat(Base64.getUrlDecoder().decode(segredo)).hasSize(32);
         assertThat(credenciais.autorizaCliente(confidencial, segredo)).isTrue();
@@ -76,9 +84,14 @@ class TokenJwtTest {
     }
 
     private static TokenJwt jwtLocal() {
-        return new TokenJwt(new ConfiguracaoAutenticacao(null, null, null, Map.of()),
-                new MockEnvironment().withProperty("spring.profiles.active", "local"),
-                Clock.fixed(AGORA, ZoneOffset.UTC));
+        var configuracaoAutenticacaoPreparado3 = new ConfiguracaoAutenticacao(null, null, null, Map.of());
+        var argumentoPreparado3 = configuracaoAutenticacaoPreparado3;
+        var mockEnvironmentPreparado = new MockEnvironment();
+        var argumentoPreparado4 = mockEnvironmentPreparado.withProperty("spring.profiles.active", "local");
+        var argumentoPreparado5 = Clock.fixed(AGORA, ZoneOffset.UTC);
+        var tokenJwtPreparado2 = new TokenJwt(argumentoPreparado3, argumentoPreparado4, argumentoPreparado5);
+        var tokenJwtPreparado = tokenJwtPreparado2;
+        return tokenJwtPreparado;
     }
 
     private static SessaoEntity sessao() {

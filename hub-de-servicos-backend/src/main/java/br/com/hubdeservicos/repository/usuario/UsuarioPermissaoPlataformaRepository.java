@@ -35,6 +35,7 @@ public interface UsuarioPermissaoPlataformaRepository
 
     interface Atribuicao {
         UUID getIdUsuario();
+
         String getCodigo();
     }
 }

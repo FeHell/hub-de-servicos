@@ -1,7 +1,11 @@
 package br.com.hubdeservicos.controller.app;
 
-import br.com.hubdeservicos.dto.sms.SmsSendRequest;
-import br.com.hubdeservicos.dto.sms.SmsSendResult;
+import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.util.Objects;
+
+import br.com.hubdeservicos.dto.sms.SmsSendRequestBean;
+import br.com.hubdeservicos.dto.sms.SmsSendResultBean;
 import br.com.hubdeservicos.persistencia.ConexaoPostgresTeste;
 import br.com.hubdeservicos.service.sms.SmsService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -46,11 +50,16 @@ class PerfilAppPostgresTest {
     private static final String SMS = ROTA + "/telefone/confirmacao";
     private static final String AUT = "/api/v1/app/autenticacao";
     private static final Instant AGORA = Instant.now();
-    @Autowired MockMvc mvc;
-    @Autowired ObjectMapper json;
-    @Autowired JdbcTemplate jdbc;
-    @MockBean SmsService sms;
-    @MockBean Clock relogio;
+    @Autowired
+    MockMvc mvc;
+    @Autowired
+    ObjectMapper json;
+    @Autowired
+    JdbcTemplate jdbc;
+    @MockBean
+    SmsService sms;
+    @MockBean
+    Clock relogio;
 
     @DynamicPropertySource
     static void configurar(DynamicPropertyRegistry propriedades) {
@@ -68,23 +77,26 @@ class PerfilAppPostgresTest {
         var outra = conta();
         String numero = telefone();
         mvc.perform(get(ROTA)).andExpect(status().isUnauthorized());
-        enviar(get(ROTA + "/" + outra.id()), conta, null).andExpect(status().isForbidden());
-        enviar(get(ROTA), conta, null).andExpect(status().isOk())
-                .andExpect(jsonPath("$.pendencias.length()").value(2));
-        enviar(put(ROTA), conta, Map.of("nome", "  Ana  ", "telefone", numero, "id", outra.id(),
-                "status", "INATIVO", "situacaoTelefone", "VERIFICADO"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(conta.id()))
+        enviar(get(ROTA + "/" + outra.getId()), conta, null).andExpect(status().isForbidden());
+        enviar(get(ROTA), conta, null).andExpect(status().isOk()).andExpect(jsonPath("$.pendencias.length()").value(2));
+        enviar(put(ROTA), conta,
+                Map.of("nome", "  Ana  ", "telefone", numero, "id", outra.getId(), "status", "INATIVO",
+                        "situacaoTelefone", "VERIFICADO"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(conta.getId()))
                 .andExpect(jsonPath("$.nome").value("Ana")).andExpect(jsonPath("$.telefone").value("+55" + numero))
                 .andExpect(jsonPath("$.situacaoTelefone").value("PENDENTE"));
         enviar(put(ROTA), outra, Map.of("telefone", "+55 " + numero)).andExpect(status().isConflict());
         var smsEnviado = iniciar(conta, numero);
-        enviar(post(SMS + "/validar"), outra, smsEnviado.resposta(smsEnviado.codigo())).andExpect(status().isConflict());
-        enviar(post(SMS + "/validar"), conta, smsEnviado.resposta(smsEnviado.incorreto())).andExpect(status().isBadRequest());
-        enviar(post(SMS + "/validar"), conta, smsEnviado.resposta(smsEnviado.codigo()))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.situacaoTelefone").value("VERIFICADO"))
+        enviar(post(SMS + "/validar"), outra, smsEnviado.resposta(smsEnviado.getCodigo()))
+                .andExpect(status().isConflict());
+        enviar(post(SMS + "/validar"), conta, smsEnviado.resposta(smsEnviado.incorreto()))
+                .andExpect(status().isBadRequest());
+        enviar(post(SMS + "/validar"), conta, smsEnviado.resposta(smsEnviado.getCodigo())).andExpect(status().isOk())
+                .andExpect(jsonPath("$.situacaoTelefone").value("VERIFICADO"))
                 .andExpect(jsonPath("$.pendencias").isEmpty());
         enviar(put(ROTA), outra, Map.of("telefone", numero)).andExpect(status().isConflict());
-        enviar(post(SMS + "/validar"), conta, smsEnviado.resposta(smsEnviado.codigo())).andExpect(status().isConflict());
+        enviar(post(SMS + "/validar"), conta, smsEnviado.resposta(smsEnviado.getCodigo()))
+                .andExpect(status().isConflict());
         enviar(put(ROTA), conta, Map.of("telefone", "+55 " + numero))
                 .andExpect(jsonPath("$.situacaoTelefone").value("VERIFICADO"));
         String novoNumero = telefone();
@@ -93,7 +105,7 @@ class PerfilAppPostgresTest {
         enviar(get(ROTA), renovar(conta), null).andExpect(jsonPath("$.situacaoTelefone").value("PENDENTE"));
         when(relogio.instant()).thenReturn(AGORA.plusSeconds(70));
         var novoEnvio = iniciar(conta, novoNumero);
-        enviar(post(SMS + "/validar"), conta, novoEnvio.resposta(novoEnvio.codigo()))
+        enviar(post(SMS + "/validar"), conta, novoEnvio.resposta(novoEnvio.getCodigo()))
                 .andExpect(jsonPath("$.situacaoTelefone").value("VERIFICADO"));
         enviar(put(ROTA), conta, Map.of("telefone", ""))
                 .andExpect(jsonPath("$.situacaoTelefone").value("NAO_INFORMADO"));
@@ -110,18 +122,19 @@ class PerfilAppPostgresTest {
             enviar(post(SMS + "/validar"), conta, primeiro.resposta(primeiro.incorreto()))
                     .andExpect(tentativa == 5 ? status().isTooManyRequests() : status().isBadRequest());
         }
-        enviar(post(SMS + "/validar"), conta, primeiro.resposta(primeiro.codigo())).andExpect(status().isTooManyRequests());
+        enviar(post(SMS + "/validar"), conta, primeiro.resposta(primeiro.getCodigo()))
+                .andExpect(status().isTooManyRequests());
         when(relogio.instant()).thenReturn(AGORA.plusSeconds(70));
         enviar(post(SMS + "/reenviar"), conta, null).andExpect(status().isOk());
         when(relogio.instant()).thenReturn(AGORA.plusSeconds(140));
         var terceiro = iniciar(conta, numero);
         enviar(put(ROTA), conta, Map.of("telefone", telefone())).andExpect(status().isOk());
-        enviar(post(SMS + "/validar"), conta, terceiro.resposta(terceiro.codigo())).andExpect(status().isConflict());
+        enviar(post(SMS + "/validar"), conta, terceiro.resposta(terceiro.getCodigo())).andExpect(status().isConflict());
         when(relogio.instant()).thenReturn(AGORA.plusSeconds(210));
         var quarto = iniciar(conta, numero);
         when(relogio.instant()).thenReturn(AGORA.plusSeconds(510));
         conta = renovar(conta);
-        enviar(post(SMS + "/validar"), conta, quarto.resposta(quarto.codigo())).andExpect(status().isGone());
+        enviar(post(SMS + "/validar"), conta, quarto.resposta(quarto.getCodigo())).andExpect(status().isGone());
         iniciar(conta, numero);
         when(relogio.instant()).thenReturn(AGORA.plusSeconds(590));
         enviar(post(SMS + "/reenviar"), renovar(conta), null).andExpect(status().isTooManyRequests());
@@ -130,7 +143,7 @@ class PerfilAppPostgresTest {
     @Test
     void falhaDoProvedorNaoConfirmaNemExpõeCodigo() throws Exception {
         var conta = conta();
-        when(sms.send(any())).thenReturn(SmsSendResult.falha("TESTE", SmsSendResult.Erro.FALHA_DE_CONEXAO));
+        when(sms.send(any())).thenReturn(SmsSendResultBean.falha("TESTE", SmsSendResultBean.Erro.FALHA_DE_CONEXAO));
         enviar(post(SMS), conta, Map.of("telefone", telefone())).andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.codigo").doesNotExist());
         enviar(get(ROTA), conta, null).andExpect(jsonPath("$.situacaoTelefone").value("PENDENTE"));
@@ -160,14 +173,14 @@ class PerfilAppPostgresTest {
         String rota = ROTA + "/papeis/";
         enviar(put(rota + "EMPRESA"), null, Map.of("selecionado", true)).andExpect(status().isUnauthorized());
         enviar(put(rota + "EMPRESA"), conta, Map.of()).andExpect(status().isBadRequest());
-        enviar(put(rota + "EMPRESA"), conta, Map.of("selecionado", true, "id", outra.id()))
+        enviar(put(rota + "EMPRESA"), conta, Map.of("selecionado", true, "id", outra.getId()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.papeis[0]").value("EMPRESA"));
         enviar(put(rota + "TRABALHADOR"), conta, Map.of("selecionado", true)).andExpect(status().isOk());
         enviar(get(ROTA), renovar(conta), null).andExpect(status().isOk())
                 .andExpect(jsonPath("$.papeis.length()").value(2));
         enviar(get(ROTA), outra, null).andExpect(jsonPath("$.papeis").isEmpty());
         assertThat(jdbc.queryForObject("select count(*) from usuario_permissao_plataforma where id_usuario = ?",
-                Long.class, java.util.UUID.fromString(conta.id()))).isEqualTo(2);
+                Long.class, java.util.UUID.fromString(conta.getId()))).isEqualTo(2);
         enviar(put(rota + "PLATAFORMA_ADMINISTRAR"), conta, Map.of("selecionado", true))
                 .andExpect(status().isBadRequest());
         enviar(put(rota + "EMPRESA"), conta, Map.of("selecionado", false)).andExpect(status().isOk())
@@ -191,7 +204,8 @@ class PerfilAppPostgresTest {
         enviar(put(ROTA), conta, Map.of("remuneracao", Map.of("valorHora", "0.00", "valorDiaria", "9999999999.99")))
                 .andExpect(status().isOk());
         for (String invalido : java.util.List.of("-0.01", "25.001", "10000000000.00", "abc")) {
-            enviar(put(ROTA), conta, Map.of("remuneracao", Map.of("valorHora", invalido))).andExpect(status().isBadRequest());
+            enviar(put(ROTA), conta, Map.of("remuneracao", Map.of("valorHora", invalido)))
+                    .andExpect(status().isBadRequest());
         }
         enviar(put(papel), conta, Map.of("selecionado", false)).andExpect(status().isOk());
         enviar(put(ROTA), conta, Map.of("nome", "Nome atualizado")).andExpect(status().isOk());
@@ -208,7 +222,7 @@ class PerfilAppPostgresTest {
         var conta = conta();
         var outra = conta();
         String rota = ROTA + "/localizacao";
-        var uberaba = Map.of("cidade", " Uberaba ", "estado", "minas gerais", "id", outra.id());
+        var uberaba = Map.of("cidade", " Uberaba ", "estado", "minas gerais", "id", outra.getId());
         enviar(put(rota), null, uberaba).andExpect(status().isUnauthorized());
         enviar(put(rota), conta, uberaba).andExpect(status().isOk())
                 .andExpect(jsonPath("$.municipio.codigoIbge").value(3170107))
@@ -227,21 +241,20 @@ class PerfilAppPostgresTest {
         String rota = ROTA + "/localizacao";
         var busca = get(ROTA + "/municipios").param("nome", "  uberlândia ");
         enviar(busca, null, null).andExpect(status().isUnauthorized());
-        enviar(get(ROTA + "/municipios").param("nome", "  uberlandia  "), conta, null)
-                .andExpect(status().isOk()).andExpect(jsonPath("$[0].codigoIbge").value(3170206));
+        enviar(get(ROTA + "/municipios").param("nome", "  uberlandia  "), conta, null).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].codigoIbge").value(3170206));
         enviar(get(ROTA + "/municipios").param("nome", "bom jesus"), conta, null)
-                .andExpect(jsonPath("$[?(@.nome == 'Bom Jesus')].uf").isArray())
-                .andExpect(jsonPath("$[?(@.nome == 'Bom Jesus')].uf").value(
-                        org.hamcrest.Matchers.hasItems("PB", "PI")));
+                .andExpect(jsonPath("$[?(@.nome == 'Bom Jesus')].uf").isArray()).andExpect(
+                        jsonPath("$[?(@.nome == 'Bom Jesus')].uf").value(org.hamcrest.Matchers.hasItems("PB", "PI")));
         enviar(get(ROTA + "/municipios").param("nome", "%%"), conta, null).andExpect(jsonPath("$").isEmpty());
-        enviar(get(ROTA + "/municipios").param("nome", "sa"), conta, null)
-                .andExpect(jsonPath("$.length()").value(25));
+        enviar(get(ROTA + "/municipios").param("nome", "sa"), conta, null).andExpect(jsonPath("$.length()").value(25));
 
-        enviar(put(rota + "/manual"), conta, Map.of("codigoIbge", 3170107))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.municipio.manual").value(true))
+        enviar(put(rota + "/manual"), conta, Map.of("codigoIbge", 3170107)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.municipio.manual").value(true))
                 .andExpect(jsonPath("$.municipio.codigoIbge").value(3170107));
         enviar(put(rota + "/manual"), conta, Map.of("codigoIbge", 9999999)).andExpect(status().isUnprocessableEntity());
-        enviar(put(rota), conta, Map.of("cidade", "Inexistente", "estado", "MG")).andExpect(status().isUnprocessableEntity());
+        enviar(put(rota), conta, Map.of("cidade", "Inexistente", "estado", "MG"))
+                .andExpect(status().isUnprocessableEntity());
         enviar(put(rota), conta, Map.of("cidade", "São Paulo", "estado", "SP")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.municipio.codigoIbge").value(3170107));
         enviar(get(ROTA), renovar(conta), null).andExpect(jsonPath("$.municipio.codigoIbge").value(3170107));
@@ -250,46 +263,61 @@ class PerfilAppPostgresTest {
                 .andExpect(jsonPath("$.municipio.manual").value(false));
     }
 
-    private int atualizarConcorrente(Conta conta, String numero, CyclicBarrier barreira) throws Exception {
+    private int atualizarConcorrente(ContaBean conta, String numero, CyclicBarrier barreira) throws Exception {
         barreira.await(5, TimeUnit.SECONDS);
         return enviar(put(ROTA), conta, Map.of("telefone", numero)).andReturn().getResponse().getStatus();
     }
 
-    private Envio iniciar(Conta conta, String numero) throws Exception {
+    private EnvioBean iniciar(ContaBean conta, String numero) throws Exception {
         reset(sms);
-        when(sms.send(any())).thenReturn(SmsSendResult.aceito("TESTE", null));
+        when(sms.send(any())).thenReturn(SmsSendResultBean.aceito("TESTE", null));
         JsonNode resposta = corpo(enviar(post(SMS), conta, Map.of("telefone", numero)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.codigo").doesNotExist())
                 .andExpect(jsonPath("$.cadastro.situacaoTelefone").value("PENDENTE")));
-        var captura = ArgumentCaptor.forClass(SmsSendRequest.class);
+        var captura = ArgumentCaptor.forClass(SmsSendRequestBean.class);
         verify(sms).send(captura.capture());
-        assertThat(captura.getValue().destinatario()).isEqualTo("+55" + numero);
-        var codigo = Pattern.compile("[0-9]{6}").matcher(captura.getValue().mensagem());
+        assertThat(captura.getValue().getDestinatario()).isEqualTo("+55" + numero);
+        var codigo = Pattern.compile("[0-9]{6}").matcher(captura.getValue().getMensagem());
         assertThat(codigo.find()).isTrue();
         assertThat(resposta.path("telefoneMascarado").asText()).doesNotContain(numero);
-        return new Envio(resposta.path("idDesafio").asText(), codigo.group());
+        EnvioBean envioPreparado = new EnvioBean();
+        envioPreparado.setId(resposta.path("idDesafio").asText());
+        envioPreparado.setCodigo(codigo.group());
+        return envioPreparado;
     }
 
-    private Conta conta() throws Exception {
+    private ContaBean conta() throws Exception {
         String email = UUID.randomUUID() + "@example.test";
         var dados = Map.of("email", email, "senha", "Senha-Perfil-App-21!");
         var criado = corpo(enviar(post(AUT + "/cadastro"), null, dados).andExpect(status().isCreated()));
         return login(criado.path("id").asText(), dados);
     }
 
-    private Conta renovar(Conta conta) throws Exception {
-        return login(conta.id(), conta.dados());
+    private ContaBean renovar(ContaBean conta) throws Exception {
+        return login(conta.getId(), conta.getDados());
     }
 
-    private Conta login(String id, Map<String, String> dados) throws Exception {
+    private ContaBean login(String id, Map<String, String> dados) throws Exception {
         var login = corpo(enviar(post(AUT + "/login"), null, dados).andExpect(status().isOk()));
-        return new Conta(id, dados, login.path("tokenAcesso").asText());
+        ContaBean contaPreparado = new ContaBean();
+        contaPreparado.setId(id);
+        contaPreparado.setDados(dados);
+        contaPreparado.setToken(login.path("tokenAcesso").asText());
+        return contaPreparado;
     }
 
-    private ResultActions enviar(MockHttpServletRequestBuilder requisicao, Conta conta, Object dados) throws Exception {
-        requisicao.with(req -> { req.setRemoteAddr("192.0.2." + ThreadLocalRandom.current().nextInt(1, 250)); return req; });
-        if (conta != null) requisicao.header("Authorization", "Bearer " + conta.token());
-        if (dados != null) requisicao.contentType("application/json").content(json.writeValueAsBytes(dados));
+    private ResultActions enviar(MockHttpServletRequestBuilder requisicao, ContaBean conta, Object dados)
+            throws Exception {
+        requisicao.with(req -> {
+            req.setRemoteAddr("192.0.2." + ThreadLocalRandom.current().nextInt(1, 250));
+            return req;
+        });
+        if (conta != null) {
+            requisicao.header("Authorization", "Bearer " + conta.getToken());
+        }
+        if (dados != null) {
+            requisicao.contentType("application/json").content(json.writeValueAsBytes(dados));
+        }
         return mvc.perform(requisicao);
     }
 
@@ -297,10 +325,127 @@ class PerfilAppPostgresTest {
         return json.readTree(resposta.andReturn().getResponse().getContentAsByteArray());
     }
 
-    private static String telefone() { return "349" + ThreadLocalRandom.current().nextInt(10_000_000, 100_000_000); }
-    private record Conta(String id, Map<String, String> dados, String token) {}
-    private record Envio(String id, String codigo) {
-        Map<String, String> resposta(String valor) { return Map.of("idDesafio", id, "codigo", valor); }
-        String incorreto() { return codigo.equals("000000") ? "000001" : "000000"; }
+    private static String telefone() {
+        return "349" + ThreadLocalRandom.current().nextInt(10_000_000, 100_000_000);
+    }
+
+    @Schema(name = "Conta")
+    private static final class ContaBean {
+        private String id;
+
+        private Map<String, String> dados;
+
+        private String token;
+
+        public ContaBean() {
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public Map<String, String> getDados() {
+            return dados;
+        }
+
+        public void setDados(Map<String, String> dados) {
+            this.dados = dados;
+        }
+
+        public String getToken() {
+            return token;
+        }
+
+        public void setToken(String token) {
+            this.token = token;
+        }
+
+        @Override
+        public boolean equals(Object objeto) {
+            if (this == objeto) {
+                return true;
+            }
+            if (!(objeto instanceof ContaBean outro)) {
+                return false;
+            }
+            return Objects.equals(id, outro.id) && Objects.equals(dados, outro.dados)
+                    && Objects.equals(token, outro.token);
+        }
+
+        @Override
+        public int hashCode() {
+            int resultado = 0;
+            resultado = 31 * resultado + Objects.hashCode(id);
+            resultado = 31 * resultado + Objects.hashCode(dados);
+            resultado = 31 * resultado + Objects.hashCode(token);
+            return resultado;
+        }
+
+        @Override
+        public String toString() {
+            return "Conta[" + "id=" + id + ", dados=" + dados + ", token=" + token + "]";
+        }
+    }
+
+    @Schema(name = "Envio")
+    private static final class EnvioBean {
+        private String id;
+
+        private String codigo;
+
+        public EnvioBean() {
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
+        public String getCodigo() {
+            return codigo;
+        }
+
+        public void setCodigo(String codigo) {
+            this.codigo = codigo;
+        }
+
+        @Override
+        public boolean equals(Object objeto) {
+            if (this == objeto) {
+                return true;
+            }
+            if (!(objeto instanceof EnvioBean outro)) {
+                return false;
+            }
+            return Objects.equals(id, outro.id) && Objects.equals(codigo, outro.codigo);
+        }
+
+        @Override
+        public int hashCode() {
+            int resultado = 0;
+            resultado = 31 * resultado + Objects.hashCode(id);
+            resultado = 31 * resultado + Objects.hashCode(codigo);
+            return resultado;
+        }
+
+        @Override
+        public String toString() {
+            return "Envio[" + "id=" + id + ", codigo=" + codigo + "]";
+        }
+
+        Map<String, String> resposta(String valor) {
+            return Map.of("idDesafio", id, "codigo", valor);
+        }
+
+        String incorreto() {
+            return codigo.equals("000000") ? "000001" : "000000";
+        }
     }
 }

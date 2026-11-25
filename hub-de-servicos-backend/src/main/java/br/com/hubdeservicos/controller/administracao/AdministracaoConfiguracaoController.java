@@ -1,13 +1,13 @@
 package br.com.hubdeservicos.controller.administracao;
 
 import br.com.hubdeservicos.service.administracao.AdministracaoConfiguracaoService;
-import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.AlterarProvedorSms;
-import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ConfiguracaoInfo;
-import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.AtualizarServico;
-import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ServicoInfo;
-import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ModoDesenvolvimento;
+import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.AlterarProvedorSmsBean;
+import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ConfiguracaoInfoBean;
+import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.AtualizarServicoBean;
+import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ServicoInfoBean;
+import br.com.hubdeservicos.dto.configuracao.ContratosConfiguracao.ModoDesenvolvimentoBean;
 import br.com.hubdeservicos.entity.configuracao.ServicoExterno;
-import br.com.hubdeservicos.service.sms.SmsProviderResolver.ProvedorSms;
+import br.com.hubdeservicos.service.sms.SmsProviderResolver.ProvedorSmsBean;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,49 +35,50 @@ public class AdministracaoConfiguracaoController {
     }
 
     @GetMapping
-    public List<ConfiguracaoInfo> listarConfiguracoes() {
+    public List<ConfiguracaoInfoBean> listarConfiguracoes() {
         return administracao.listarConfiguracoes();
     }
 
     @GetMapping("/sms/provedores")
-    public List<ProvedorSms> listarProvedoresSms() {
+    public List<ProvedorSmsBean> listarProvedoresSms() {
         return administracao.listarProvedoresSms();
     }
 
     @GetMapping("/sms/provedor-ativo")
-    public ConfiguracaoInfo consultarProvedorSms() {
+    public ConfiguracaoInfoBean consultarProvedorSms() {
         return administracao.consultarProvedorSms();
     }
 
     @PutMapping("/sms/provedor-ativo")
-    public ConfiguracaoInfo alterarProvedorSms(@Valid @RequestBody AlterarProvedorSms dados) {
-        return administracao.alterarProvedorSms(dados.codigo());
+    public ConfiguracaoInfoBean alterarProvedorSms(@Valid @RequestBody AlterarProvedorSmsBean dados) {
+        return administracao.alterarProvedorSms(dados.getCodigo());
     }
 
     @GetMapping("/dev-mode")
-    public ResponseEntity<ModoDesenvolvimento> consultarModoDesenvolvimento() {
+    public ResponseEntity<ModoDesenvolvimentoBean> consultarModoDesenvolvimento() {
         return semCache(administracao.consultarModoDesenvolvimento());
     }
 
     @PutMapping("/dev-mode")
-    public ResponseEntity<ModoDesenvolvimento> alterarModoDesenvolvimento(@Valid @RequestBody ModoDesenvolvimento dados) {
-        return semCache(administracao.alterarModoDesenvolvimento(dados.devMode()));
+    public ResponseEntity<ModoDesenvolvimentoBean> alterarModoDesenvolvimento(
+            @Valid @RequestBody ModoDesenvolvimentoBean dados) {
+        return semCache(administracao.alterarModoDesenvolvimento(dados.getDevMode()));
     }
 
     @GetMapping("/servicos")
-    public ResponseEntity<List<ServicoInfo>> listarServicos() {
+    public ResponseEntity<List<ServicoInfoBean>> listarServicos() {
         return semCache(administracao.listarServicos());
     }
 
     @GetMapping("/servicos/{servico}")
-    public ResponseEntity<ServicoInfo> consultarServico(@PathVariable ServicoExterno servico) {
+    public ResponseEntity<ServicoInfoBean> consultarServico(@PathVariable ServicoExterno servico) {
         return semCache(administracao.consultarServico(servico));
     }
 
     @PutMapping("/servicos/{servico}")
-    public ResponseEntity<ServicoInfo> atualizarServico(@PathVariable ServicoExterno servico,
-                                                        @Valid @RequestBody AtualizarServico dados) {
-        return semCache(administracao.atualizarServico(servico, dados.valores()));
+    public ResponseEntity<ServicoInfoBean> atualizarServico(@PathVariable ServicoExterno servico,
+            @Valid @RequestBody AtualizarServicoBean dados) {
+        return semCache(administracao.atualizarServico(servico, dados.getValores()));
     }
 
     private static <T> ResponseEntity<T> semCache(T dados) {

@@ -4,14 +4,14 @@ import br.com.hubdeservicos.controller.administracao.AdministracaoConfiguracaoCo
 import br.com.hubdeservicos.entity.auditoria.AuditoriaEntity;
 import br.com.hubdeservicos.repository.auditoria.AuditoriaRepository;
 import br.com.hubdeservicos.config.autenticacao.SegurancaWeb;
-import br.com.hubdeservicos.service.autenticacao.IdentidadeJwt;
+import br.com.hubdeservicos.service.autenticacao.IdentidadeJwtVO;
 import br.com.hubdeservicos.service.autenticacao.TokenJwt;
 import br.com.hubdeservicos.service.autorizacao.AutorizacaoService;
 import br.com.hubdeservicos.common.StatusCadastro;
 import br.com.hubdeservicos.entity.configuracao.ConfiguracaoSistemaEntity;
 import br.com.hubdeservicos.repository.configuracao.ConfiguracaoSistemaRepository;
-import br.com.hubdeservicos.dto.sms.SmsSendRequest;
-import br.com.hubdeservicos.dto.sms.SmsSendResult;
+import br.com.hubdeservicos.dto.sms.SmsSendRequestBean;
+import br.com.hubdeservicos.dto.sms.SmsSendResultBean;
 import br.com.hubdeservicos.provider.SmsProvider;
 import br.com.hubdeservicos.service.sms.SmsProviderResolver;
 import br.com.hubdeservicos.service.sms.SmsService;
@@ -57,13 +57,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = AdministracaoConfiguracaoController.class,
-        excludeAutoConfiguration = UserDetailsServiceAutoConfiguration.class,
-        properties = {"hub.administracao.aplicacao-id=00000000-0000-4000-8000-000000000001",
-                "INFOBIP_API_KEY=credencial-ficticia-privada"})
-@Import({SegurancaWeb.class, AcessoAdministrativo.class, AdministracaoConfiguracaoService.class,
+@WebMvcTest(controllers = AdministracaoConfiguracaoController.class, excludeAutoConfiguration = UserDetailsServiceAutoConfiguration.class, properties = {
+        "hub.administracao.aplicacao-id=00000000-0000-4000-8000-000000000001",
+        "INFOBIP_API_KEY=credencial-ficticia-privada" })
+@Import({ SegurancaWeb.class, AcessoAdministrativo.class, AdministracaoConfiguracaoService.class,
         RegistroAdministrativo.class, SmsProviderResolver.class, SmsService.class,
-        AdministracaoConfiguracaoHttpTest.Componentes.class})
+        AdministracaoConfiguracaoHttpTest.Componentes.class })
 class AdministracaoConfiguracaoHttpTest {
 
     private static final String BASE = "/api/v1/admin/configuracoes";
@@ -74,57 +73,64 @@ class AdministracaoConfiguracaoHttpTest {
     private static final String AUDIENCIA = "hub-de-servicos-admin";
     private static final Instant AGORA = Instant.parse("2026-11-13T20:00:00Z");
 
-    @Autowired private MockMvc mvc;
-    @Autowired private SmsService sms;
-    @MockBean private TokenJwt jwt;
-    @MockBean private AutorizacaoService autorizacao;
-    @MockBean private ConfiguracaoSistemaRepository configuracoes;
-    @MockBean private AuditoriaRepository auditoria;
-    @MockBean private ConfiguracoesExternasService externas;
-    @Autowired @Qualifier("infobipSmsProvider")
+    @Autowired
+    private MockMvc mvc;
+    @Autowired
+    private SmsService sms;
+    @MockBean
+    private TokenJwt jwt;
+    @MockBean
+    private AutorizacaoService autorizacao;
+    @MockBean
+    private ConfiguracaoSistemaRepository configuracoes;
+    @MockBean
+    private AuditoriaRepository auditoria;
+    @MockBean
+    private ConfiguracoesExternasService externas;
+    @Autowired
+    @Qualifier("infobipSmsProvider")
     private SmsProvider infobip;
 
     @BeforeEach
     void preparar() {
-        when(jwt.validar("admin")).thenReturn(new IdentidadeJwt(ADMIN, APLICACAO, UUID.randomUUID(), AUDIENCIA));
-        when(jwt.validar("visitante")).thenReturn(new IdentidadeJwt(VISITANTE, APLICACAO, UUID.randomUUID(), AUDIENCIA));
+        var identidadeJwtPreparado = new IdentidadeJwtVO(ADMIN, APLICACAO, UUID.randomUUID(), AUDIENCIA);
+        when(jwt.validar("admin")).thenReturn(identidadeJwtPreparado);
+        var identidadeJwtPreparado2 = new IdentidadeJwtVO(VISITANTE, APLICACAO, UUID.randomUUID(), AUDIENCIA);
+        when(jwt.validar("visitante")).thenReturn(identidadeJwtPreparado2);
         when(autorizacao.temPermissao(any(Authentication.class), eq(AUDIENCIA), eq("PLATAFORMA_ADMINISTRAR")))
                 .thenAnswer(chamada -> {
                     Authentication autenticacao = chamada.getArgument(0);
-                    return ((IdentidadeJwt) autenticacao.getPrincipal()).idUsuario().equals(ADMIN);
+                    return ((IdentidadeJwtVO) autenticacao.getPrincipal()).getIdUsuario().equals(ADMIN);
                 });
     }
 
     @Test
     void protegeLeituraEAlteracaoContraAnonimoEVisitante() throws Exception {
         mvc.perform(get(BASE)).andExpect(status().isUnauthorized());
-        mvc.perform(get(BASE).header(HttpHeaders.AUTHORIZATION, "Bearer visitante"))
-                .andExpect(status().isForbidden());
+        mvc.perform(get(BASE).header(HttpHeaders.AUTHORIZATION, "Bearer visitante")).andExpect(status().isForbidden());
         mvc.perform(put(ATIVO).header(HttpHeaders.AUTHORIZATION, "Bearer visitante")
                 .contentType(MediaType.APPLICATION_JSON).content("""
                         {"codigo":"INFOBIP"}
                         """)).andExpect(status().isForbidden());
         mvc.perform(get(BASE + "/servicos")).andExpect(status().isUnauthorized());
-        for (String servico : new String[]{"INFOBIP", "STONE"}) {
+        for (String servico : new String[] { "INFOBIP", "STONE" }) {
             String detalhe = BASE + "/servicos/" + servico;
             mvc.perform(get(detalhe)).andExpect(status().isUnauthorized());
             mvc.perform(get(detalhe).header(HttpHeaders.AUTHORIZATION, "Bearer visitante"))
                     .andExpect(status().isForbidden());
         }
         mvc.perform(put(BASE + "/servicos/INFOBIP").header(HttpHeaders.AUTHORIZATION, "Bearer visitante")
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"valores\":{}}"))
-                .andExpect(status().isForbidden());
+                .contentType(MediaType.APPLICATION_JSON).content("{\"valores\":{}}")).andExpect(status().isForbidden());
         verifyNoInteractions(externas);
         verifyNoInteractions(configuracoes, auditoria);
     }
 
     @Test
     void recusaProvedorNaoImplementado() throws Exception {
-        mvc.perform(put(ATIVO).header(HttpHeaders.AUTHORIZATION, "Bearer admin")
-                .contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(put(ATIVO).header(HttpHeaders.AUTHORIZATION, "Bearer admin").contentType(MediaType.APPLICATION_JSON)
+                .content("""
                         {"codigo":"FUTURO"}
-                        """))
-                .andExpect(status().isBadRequest())
+                        """)).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("Provedor de SMS indisponível."));
         verifyNoInteractions(configuracoes, auditoria);
     }
@@ -136,17 +142,15 @@ class AdministracaoConfiguracaoHttpTest {
         when(configuracao.getValor()).thenReturn("INFOBIP");
         when(configuracoes.findByChave(SMS_PROVEDOR_ATIVO)).thenReturn(Optional.of(configuracao));
 
-        mvc.perform(get(BASE).header(HttpHeaders.AUTHORIZATION, "Bearer admin"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].chave").value(SMS_PROVEDOR_ATIVO))
+        mvc.perform(get(BASE).header(HttpHeaders.AUTHORIZATION, "Bearer admin")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1)).andExpect(jsonPath("$[0].chave").value(SMS_PROVEDOR_ATIVO))
                 .andExpect(content().string(not(containsString("credencial-ficticia-privada"))));
         mvc.perform(get(BASE + "/sms/provedores").header(HttpHeaders.AUTHORIZATION, "Bearer admin"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].codigo").value("INFOBIP"))
-                .andExpect(jsonPath("$[0].nome").value("Infobip"))
+                .andExpect(jsonPath("$[0].codigo").value("INFOBIP")).andExpect(jsonPath("$[0].nome").value("Infobip"))
                 .andExpect(content().string(not(containsString("credencial-ficticia-privada"))));
-        mvc.perform(get(ATIVO).header(HttpHeaders.AUTHORIZATION, "Bearer admin"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.valor").value("INFOBIP"))
+        mvc.perform(get(ATIVO).header(HttpHeaders.AUTHORIZATION, "Bearer admin")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.valor").value("INFOBIP"))
                 .andExpect(content().string(not(containsString("credencial-ficticia-privada"))));
     }
 
@@ -164,15 +168,18 @@ class AdministracaoConfiguracaoHttpTest {
         when(configuracoes.findForUpdateByChave(SMS_PROVEDOR_ATIVO)).thenReturn(Optional.of(registro));
         when(configuracoes.buscarValor(SMS_PROVEDOR_ATIVO, StatusCadastro.ATIVO))
                 .thenAnswer(chamada -> Optional.of(valor.get()));
-        var mensagem = new SmsSendRequest("+12025550123", "teste");
-        when(infobip.send(mensagem)).thenReturn(SmsSendResult.aceito("INFOBIP", null));
+        SmsSendRequestBean smsSendRequestPreparado = new SmsSendRequestBean();
+        smsSendRequestPreparado.setDestinatario("+12025550123");
+        smsSendRequestPreparado.setMensagem("teste");
+        var mensagem = smsSendRequestPreparado;
+        when(infobip.send(mensagem)).thenReturn(SmsSendResultBean.aceito("INFOBIP", null));
 
-        assertThat(sms.send(mensagem).codigoProvedor()).isEqualTo("SIMULADO");
-        mvc.perform(put(ATIVO).header(HttpHeaders.AUTHORIZATION, "Bearer admin")
-                .contentType(MediaType.APPLICATION_JSON).content("""
+        assertThat(sms.send(mensagem).getCodigoProvedor()).isEqualTo("SIMULADO");
+        mvc.perform(put(ATIVO).header(HttpHeaders.AUTHORIZATION, "Bearer admin").contentType(MediaType.APPLICATION_JSON)
+                .content("""
                         {"codigo":"INFOBIP"}
                         """)).andExpect(status().isOk()).andExpect(jsonPath("$.valor").value("INFOBIP"));
-        assertThat(sms.send(mensagem).codigoProvedor()).isEqualTo("INFOBIP");
+        assertThat(sms.send(mensagem).getCodigoProvedor()).isEqualTo("INFOBIP");
 
         var evento = ArgumentCaptor.forClass(AuditoriaEntity.class);
         verify(auditoria).save(evento.capture());
@@ -187,11 +194,20 @@ class AdministracaoConfiguracaoHttpTest {
 
         @Bean
         SmsProvider provedorSimulado() {
-            return new SmsProvider() {
-                public String getProviderCode() { return "SIMULADO"; }
-                public String getDisplayName() { return "Simulado"; }
-                public SmsSendResult send(SmsSendRequest request) { return SmsSendResult.aceito("SIMULADO", null); }
+            var smsProviderPreparado = new SmsProvider() {
+                public String getProviderCode() {
+                    return "SIMULADO";
+                }
+
+                public String getDisplayName() {
+                    return "Simulado";
+                }
+
+                public SmsSendResultBean send(SmsSendRequestBean request) {
+                    return SmsSendResultBean.aceito("SIMULADO", null);
+                }
             };
+            return smsProviderPreparado;
         }
 
         @Bean

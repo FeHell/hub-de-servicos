@@ -11,14 +11,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.ErrorResponseException;
 
-@RestControllerAdvice(assignableTypes = {AdministracaoPlataformaController.class,
+@RestControllerAdvice(assignableTypes = { AdministracaoPlataformaController.class,
         AdministracaoAplicacaoController.class, AdministracaoConfiguracaoController.class,
-        AdministracaoCredenciamentoController.class})
+        AdministracaoCredenciamentoController.class })
 public class ErrosAdministracaoController {
 
     @ExceptionHandler(ErrorResponseException.class)
     public ResponseEntity<ProblemDetail> erroDeOperacao(ErrorResponseException erro) {
-        return ResponseEntity.status(erro.getStatusCode()).cacheControl(org.springframework.http.CacheControl.noStore()).body(erro.getBody());
+        return ResponseEntity.status(erro.getStatusCode()).cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(erro.getBody());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -26,9 +27,9 @@ public class ErrosAdministracaoController {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Os dados conflitam com um registro existente.");
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
+    @ExceptionHandler({ MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
             MethodArgumentTypeMismatchException.class,
-            org.springframework.web.bind.MissingServletRequestParameterException.class})
+            org.springframework.web.bind.MissingServletRequestParameterException.class })
     public ProblemDetail dadosInvalidos() {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Dados da operação inválidos.");
     }

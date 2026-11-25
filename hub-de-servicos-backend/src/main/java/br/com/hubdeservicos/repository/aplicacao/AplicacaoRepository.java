@@ -18,7 +18,8 @@ public interface AplicacaoRepository extends JpaRepository<AplicacaoEntity, UUID
     @Query("select a from AplicacaoEntity a where a.slug = :slug")
     Optional<AplicacaoEntity> buscarSlugParaLogin(@Param("slug") String slug);
 
-    // Compatível com os bloqueios de FK usados pela auditoria durante o encerramento de sessões.
+    // Compatível com os bloqueios de FK usados pela auditoria durante o
+    // encerramento de sessões.
     @Query(value = "select a.* from aplicacao a where a.slug = :slug for no key update", nativeQuery = true)
     Optional<AplicacaoEntity> bloquearPorSlug(@Param("slug") String slug);
 

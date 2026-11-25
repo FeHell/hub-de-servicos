@@ -49,11 +49,16 @@ class AutenticacaoAppPostgresTest {
     private static final String ROTA_ADMIN = "/api/v1/aplicacoes/" + SLUG_ADMIN + "/autenticacao";
     private static final String IP_TESTE = "192.0.2.20";
 
-    @Autowired private MockMvc mvc;
-    @Autowired private ObjectMapper json;
-    @Autowired private JdbcTemplate jdbc;
-    @Autowired private PasswordEncoder senhas;
-    @Autowired private TokenJwt jwt;
+    @Autowired
+    private MockMvc mvc;
+    @Autowired
+    private ObjectMapper json;
+    @Autowired
+    private JdbcTemplate jdbc;
+    @Autowired
+    private PasswordEncoder senhas;
+    @Autowired
+    private TokenJwt jwt;
 
     @DynamicPropertySource
     static void configurar(DynamicPropertyRegistry propriedades) {
@@ -64,13 +69,11 @@ class AutenticacaoAppPostgresTest {
     @Test
     void cadastraSemTelefoneSalvaHashEVinculaApenasAoAppSemPerfis() throws Exception {
         String email = emailTeste();
-        UUID usuario = id(resposta(postar(ROTA + "/cadastro", Map.of("email", email, "senha", SENHA,
-                "perfis", new String[]{"TRABALHADOR", "SOLICITANTE"},
-                "permissoesPlataforma", new String[]{"PLATAFORMA_ADMINISTRAR"}))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.email").value(email))
-                .andExpect(jsonPath("$.login").doesNotExist())
-                .andExpect(jsonPath("$.senha").doesNotExist())
+        UUID usuario = id(resposta(postar(ROTA + "/cadastro",
+                Map.of("email", email, "senha", SENHA, "perfis", new String[] { "TRABALHADOR", "SOLICITANTE" },
+                        "permissoesPlataforma", new String[] { "PLATAFORMA_ADMINISTRAR" }))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.email").value(email))
+                .andExpect(jsonPath("$.login").doesNotExist()).andExpect(jsonPath("$.senha").doesNotExist())
                 .andExpect(jsonPath("$.senhaHash").doesNotExist())));
 
         String hash = jdbc.queryForObject("select senha_hash from usuario where id = ?", String.class, usuario);
@@ -89,13 +92,13 @@ class AutenticacaoAppPostgresTest {
 
     @Test
     void rejeitaEmailInvalidoESenhaForaDaRegraAdministrativa() throws Exception {
-        postar(ROTA + "/cadastro", credenciais("sem-arroba", SENHA))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.camposInvalidos[0]").value("email"));
-        postar(ROTA + "/cadastro", credenciais(emailTeste(), "curta"))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.camposInvalidos[0]").value("senha"));
-        postar(ROTA + "/cadastro", credenciais(emailTeste(), "á".repeat(37)))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.detail").value(
-                        "A senha deve ter pelo menos 12 caracteres e no máximo 72 bytes em UTF-8."));
+        postar(ROTA + "/cadastro", credenciais("sem-arroba", SENHA)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.camposInvalidos[0]").value("email"));
+        postar(ROTA + "/cadastro", credenciais(emailTeste(), "curta")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.camposInvalidos[0]").value("senha"));
+        postar(ROTA + "/cadastro", credenciais(emailTeste(), "á".repeat(37))).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail")
+                        .value("A senha deve ter pelo menos 12 caracteres e no máximo 72 bytes em UTF-8."));
     }
 
     @Test
@@ -103,14 +106,13 @@ class AutenticacaoAppPostgresTest {
         String email = emailTeste();
         UUID existente = criarAdmin(email);
         String hash = jdbc.queryForObject("select senha_hash from usuario where id = ?", String.class, existente);
-        postar(ROTA + "/cadastro", credenciais(email.toUpperCase(Locale.ROOT), SENHA))
-                .andExpect(status().isConflict());
-        assertThat(jdbc.queryForObject("select count(*) from usuario where lower(email) = lower(?)",
-                Long.class, email)).isEqualTo(1L);
+        postar(ROTA + "/cadastro", credenciais(email.toUpperCase(Locale.ROOT), SENHA)).andExpect(status().isConflict());
+        assertThat(jdbc.queryForObject("select count(*) from usuario where lower(email) = lower(?)", Long.class, email))
+                .isEqualTo(1L);
         assertThat(jdbc.queryForObject("select senha_hash from usuario where id = ?", String.class, existente))
                 .isEqualTo(hash);
-        assertThat(jdbc.queryForObject("select count(*) from usuario_aplicacao where id_usuario = ?",
-                Long.class, existente)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject("select count(*) from usuario_aplicacao where id_usuario = ?", Long.class,
+                existente)).isEqualTo(1L);
     }
 
     @Test
@@ -124,18 +126,18 @@ class AutenticacaoAppPostgresTest {
                 .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE)));
         String token = acesso.path("tokenAcesso").asText();
         var identidade = jwt.validar(token);
-        assertThat(identidade.idUsuario()).isEqualTo(usuario);
-        assertThat(identidade.audiencia()).isEqualTo(AutenticacaoAppService.SLUG);
+        assertThat(identidade.getIdUsuario()).isEqualTo(usuario);
+        assertThat(identidade.getAudiencia()).isEqualTo(AutenticacaoAppService.SLUG);
         assertThat(Instant.parse(acesso.path("expiracaoTokenAcesso").asText())).isAfter(Instant.now());
 
-        mvc.perform(get(ROTA + "/eu").header(HttpHeaders.AUTHORIZATION, bearer(token)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(usuario.toString()));
+        mvc.perform(get(ROTA + "/eu").header(HttpHeaders.AUTHORIZATION, bearer(token))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(usuario.toString()));
         mvc.perform(get("/api/v1/admin/usuarios").header(HttpHeaders.AUTHORIZATION, bearer(token)))
                 .andExpect(status().isForbidden());
 
         String refresh = acesso.path("tokenAtualizacao").asText();
-        JsonNode renovado = resposta(postar(ROTA + "/renovar", Map.of("tokenAtualizacao", refresh))
-                .andExpect(status().isOk()));
+        JsonNode renovado = resposta(
+                postar(ROTA + "/renovar", Map.of("tokenAtualizacao", refresh)).andExpect(status().isOk()));
         assertThat(renovado.path("tokenAtualizacao").asText()).isNotEqualTo(refresh);
         String tokenRenovado = renovado.path("tokenAcesso").asText();
         mvc.perform(post(ROTA + "/logout").header(HttpHeaders.AUTHORIZATION, bearer(tokenRenovado)))
@@ -148,10 +150,10 @@ class AutenticacaoAppPostgresTest {
     void retornaMesmoErroParaSenhaIncorretaEContaInexistente() throws Exception {
         String email = emailTeste();
         cadastrar(email);
-        JsonNode senhaIncorreta = resposta(postar(ROTA + "/login", credenciais(email, "senha-incorreta"))
-                .andExpect(status().isUnauthorized()));
-        JsonNode contaInexistente = resposta(postar(ROTA + "/login", credenciais(emailTeste(), SENHA))
-                .andExpect(status().isUnauthorized()));
+        JsonNode senhaIncorreta = resposta(
+                postar(ROTA + "/login", credenciais(email, "senha-incorreta")).andExpect(status().isUnauthorized()));
+        JsonNode contaInexistente = resposta(
+                postar(ROTA + "/login", credenciais(emailTeste(), SENHA)).andExpect(status().isUnauthorized()));
         assertThat(senhaIncorreta).isEqualTo(contaInexistente);
     }
 
@@ -162,15 +164,15 @@ class AutenticacaoAppPostgresTest {
         mvc.perform(get("/api/v1/admin/usuarios")).andExpect(status().isUnauthorized());
         mvc.perform(get(ROTA + "/eu")).andExpect(status().isUnauthorized());
 
-        var navegador = mvc.perform(post(ROTA_ADMIN + "/navegador/login")
-                        .header("X-Sessao-Navegador", "1")
+        var navegador = mvc
+                .perform(post(ROTA_ADMIN + "/navegador/login").header("X-Sessao-Navegador", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsBytes(Map.of("login", LOGIN_ADMIN, "senha", SENHA))))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.tokenAtualizacao").doesNotExist())
-                .andReturn().getResponse();
+                .andExpect(status().isOk()).andExpect(jsonPath("$.tokenAtualizacao").doesNotExist()).andReturn()
+                .getResponse();
         assertThat(navegador.getHeader(HttpHeaders.SET_COOKIE)).contains("HttpOnly", "SameSite=Strict");
         String token = json.readTree(navegador.getContentAsByteArray()).path("tokenAcesso").asText();
-        assertThat(jwt.validar(token).idUsuario()).isEqualTo(admin);
+        assertThat(jwt.validar(token).getIdUsuario()).isEqualTo(admin);
         mvc.perform(get("/api/v1/admin/usuarios").header(HttpHeaders.AUTHORIZATION, bearer(token)))
                 .andExpect(status().isOk());
         mvc.perform(get(ROTA + "/eu").header(HttpHeaders.AUTHORIZATION, bearer(token)))
@@ -188,8 +190,8 @@ class AutenticacaoAppPostgresTest {
         UUID usuario = UUID.randomUUID();
         jdbc.update("insert into aplicacao (id, nome, slug, tipo, status) values (?, ?, ?, 'PUBLICO', 'ATIVO')",
                 ID_ADMIN, "Admin para teste", SLUG_ADMIN);
-        jdbc.update("insert into usuario (id, login, email, senha_hash, status) values (?, ?, ?, ?, 'ATIVO')",
-                usuario, LOGIN_ADMIN, email, senhas.encode(SENHA));
+        jdbc.update("insert into usuario (id, login, email, senha_hash, status) values (?, ?, ?, ?, 'ATIVO')", usuario,
+                LOGIN_ADMIN, email, senhas.encode(SENHA));
         jdbc.update("insert into usuario_aplicacao (id_usuario, id_aplicacao) values (?, ?)", usuario, ID_ADMIN);
         jdbc.update("""
                 insert into usuario_permissao_plataforma (id_usuario, id_permissao)
@@ -203,9 +205,10 @@ class AutenticacaoAppPostgresTest {
     }
 
     private ResultActions postar(String rota, Map<String, ?> corpo) throws Exception {
-        return mvc.perform(post(rota)
-                .with(requisicao -> { requisicao.setRemoteAddr(IP_TESTE); return requisicao; })
-                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsBytes(corpo)));
+        return mvc.perform(post(rota).with(requisicao -> {
+            requisicao.setRemoteAddr(IP_TESTE);
+            return requisicao;
+        }).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsBytes(corpo)));
     }
 
     private JsonNode resposta(ResultActions resultado) throws Exception {

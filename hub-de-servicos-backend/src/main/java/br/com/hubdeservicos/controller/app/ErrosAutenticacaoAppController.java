@@ -14,7 +14,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.ErrorResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
-@RestControllerAdvice(assignableTypes = {AutenticacaoAppController.class, PerfilAppController.class, CredenciamentoController.class})
+@RestControllerAdvice(assignableTypes = { AutenticacaoAppController.class, PerfilAppController.class,
+        CredenciamentoController.class })
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ErrosAutenticacaoAppController {
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -25,8 +26,8 @@ public class ErrosAutenticacaoAppController {
         return problema;
     }
 
-    @ExceptionHandler({org.springframework.http.converter.HttpMessageNotReadableException.class,
-            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
+    @ExceptionHandler({ org.springframework.http.converter.HttpMessageNotReadableException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class })
     public ProblemDetail formatoInvalido() {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Confira o formato dos dados informados.");
     }

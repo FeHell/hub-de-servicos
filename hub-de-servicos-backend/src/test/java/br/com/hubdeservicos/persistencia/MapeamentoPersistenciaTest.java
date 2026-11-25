@@ -35,12 +35,12 @@ class MapeamentoPersistenciaTest {
 
     @Test
     void inicializaEntidadesERepositoriosSemConectarAoBanco() {
-        new ApplicationContextRunner()
-                .withConfiguration(AutoConfigurations.of(
-                        HibernateJpaAutoConfiguration.class, JpaRepositoriesAutoConfiguration.class))
+        var applicationContextRunnerPreparado = new ApplicationContextRunner();
+        applicationContextRunnerPreparado
+                .withConfiguration(AutoConfigurations
+                        .of(HibernateJpaAutoConfiguration.class, JpaRepositoriesAutoConfiguration.class))
                 .withUserConfiguration(ConfiguracaoSemBanco.class)
-                .withPropertyValues(
-                        "spring.jpa.hibernate.ddl-auto=none",
+                .withPropertyValues("spring.jpa.hibernate.ddl-auto=none",
                         "spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect",
                         "spring.jpa.properties.hibernate.temp.use_jdbc_metadata_defaults=false")
                 .run(contexto -> {
@@ -51,8 +51,8 @@ class MapeamentoPersistenciaTest {
                             .isEqualTo(RecebedorExternoEntity.Chave.class);
                     assertThat(metamodelo.entity(MunicipioEntity.class).getIdType().getJavaType())
                             .isEqualTo(Integer.class);
-                    assertThat(metamodelo.getEntities()).allSatisfy(entidade ->
-                            assertThat(entidade.getJavaType().getSimpleName()).endsWith("Entity"));
+                    assertThat(metamodelo.getEntities()).allSatisfy(
+                            entidade -> assertThat(entidade.getJavaType().getSimpleName()).endsWith("Entity"));
                     assertThat(metamodelo.entity(UsuarioAplicacaoEntity.class).getIdType().getJavaType())
                             .isEqualTo(UsuarioAplicacaoId.class);
                     assertThat(metamodelo.entity(AplicacaoPermissaoEntity.class).getIdType().getJavaType())
@@ -72,7 +72,7 @@ class MapeamentoPersistenciaTest {
 
         @Bean
         DataSource dataSource() {
-            return new AbstractDataSource() {
+            var abstractDataSourcePreparado = new AbstractDataSource() {
                 @Override
                 public Connection getConnection() {
                     throw new AssertionError("O teste de mapeamento não deve abrir conexão.");
@@ -83,6 +83,7 @@ class MapeamentoPersistenciaTest {
                     return getConnection();
                 }
             };
+            return abstractDataSourcePreparado;
         }
     }
 }

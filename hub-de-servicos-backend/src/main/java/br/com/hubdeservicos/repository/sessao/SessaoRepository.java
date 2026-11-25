@@ -33,7 +33,7 @@ public interface SessaoRepository extends JpaRepository<SessaoEntity, UUID> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<SessaoEntity> findByIdUsuarioAndIdAplicacaoAndStatusOrderById(UUID idUsuario, UUID idAplicacao,
-                                                               StatusSessao status);
+            StatusSessao status);
 
     Page<SessaoEntity> findByIdAplicacao(UUID idAplicacao, Pageable pagina);
 }

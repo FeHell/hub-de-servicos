@@ -2,9 +2,9 @@ package br.com.hubdeservicos.service.sms;
 
 import br.com.hubdeservicos.common.StatusCadastro;
 import br.com.hubdeservicos.repository.configuracao.ConfiguracaoSistemaRepository;
-import br.com.hubdeservicos.dto.sms.SmsSendRequest;
-import br.com.hubdeservicos.dto.sms.SmsSendResult;
-import br.com.hubdeservicos.dto.sms.SmsSendResult.Erro;
+import br.com.hubdeservicos.dto.sms.SmsSendRequestBean;
+import br.com.hubdeservicos.dto.sms.SmsSendResultBean;
+import br.com.hubdeservicos.dto.sms.SmsSendResultBean.Erro;
 import br.com.hubdeservicos.provider.SmsProvider;
 
 import java.util.List;
@@ -23,13 +23,19 @@ class SmsServiceTest {
 
     private final ConfiguracaoSistemaRepository configuracoes = mock(ConfiguracaoSistemaRepository.class);
     private final SmsProvider infobip = mock(SmsProvider.class);
-    private final SmsSendRequest pedido = new SmsSendRequest("+12025550123", "Mensagem simulada");
+    private final SmsSendRequestBean pedido;
+    {
+        SmsSendRequestBean smsSendRequestPreparado = new SmsSendRequestBean();
+        smsSendRequestPreparado.setDestinatario("+12025550123");
+        smsSendRequestPreparado.setMensagem("Mensagem simulada");
+        pedido = smsSendRequestPreparado;
+    }
 
     @Test
     void delegaInfobipPeloContratoSemConhecerImplementacao() {
         when(configuracoes.buscarValor(SMS_PROVEDOR_ATIVO, StatusCadastro.ATIVO)).thenReturn(Optional.of("INFOBIP"));
         when(infobip.getProviderCode()).thenReturn("INFOBIP");
-        var esperado = SmsSendResult.aceito("INFOBIP", "lote");
+        var esperado = SmsSendResultBean.aceito("INFOBIP", "lote");
         when(infobip.send(pedido)).thenReturn(esperado);
 
         assertThat(servico(infobip).send(pedido)).isEqualTo(esperado);
@@ -39,18 +45,22 @@ class SmsServiceTest {
     @Test
     void trataAusenciaDeConfiguracaoDeImplementacaoEDeBanco() {
         var servico = servico();
+        var dataRetrievalFailureExceptionPreparado = new DataRetrievalFailureException("Detalhe interno");
         when(configuracoes.buscarValor(SMS_PROVEDOR_ATIVO, StatusCadastro.ATIVO))
                 .thenReturn(Optional.empty(), Optional.of("SEM_IMPLEMENTACAO"))
-                .thenThrow(new DataRetrievalFailureException("Detalhe interno"));
+                .thenThrow(dataRetrievalFailureExceptionPreparado);
 
-        assertThat(servico.send(pedido).erro()).isEqualTo(Erro.CONFIGURACAO_INDISPONIVEL);
-        assertThat(servico.send(pedido).erro()).isEqualTo(Erro.PROVEDOR_INDISPONIVEL);
-        assertThat(servico.send(pedido).erro()).isEqualTo(Erro.CONFIGURACAO_INDISPONIVEL);
+        assertThat(servico.send(pedido).getErro()).isEqualTo(Erro.CONFIGURACAO_INDISPONIVEL);
+        assertThat(servico.send(pedido).getErro()).isEqualTo(Erro.PROVEDOR_INDISPONIVEL);
+        assertThat(servico.send(pedido).getErro()).isEqualTo(Erro.CONFIGURACAO_INDISPONIVEL);
     }
 
     @Test
     void validaPedidoAntesDeConsultarConfiguracao() {
-        assertThat(servico().send(new SmsSendRequest("", "Mensagem")).erro()).isEqualTo(Erro.SOLICITACAO_INVALIDA);
+        SmsSendRequestBean smsSendRequestPreparado2 = new SmsSendRequestBean();
+        smsSendRequestPreparado2.setDestinatario("");
+        smsSendRequestPreparado2.setMensagem("Mensagem");
+        assertThat(servico().send(smsSendRequestPreparado2).getErro()).isEqualTo(Erro.SOLICITACAO_INVALIDA);
         verifyNoInteractions(configuracoes);
     }
 
@@ -58,13 +68,19 @@ class SmsServiceTest {
     void falhaInesperadaDoProvedorNaoVazaDetalhe() {
         when(configuracoes.buscarValor(SMS_PROVEDOR_ATIVO, StatusCadastro.ATIVO)).thenReturn(Optional.of("INFOBIP"));
         when(infobip.getProviderCode()).thenReturn("INFOBIP");
-        when(infobip.send(pedido)).thenThrow(new IllegalStateException("Detalhe interno"));
+        var illegalStateExceptionPreparado = new IllegalStateException("Detalhe interno");
+        when(infobip.send(pedido)).thenThrow(illegalStateExceptionPreparado);
 
         assertThat(servico(infobip).send(pedido))
-                .isEqualTo(SmsSendResult.falha("INFOBIP", Erro.FALHA_DO_PROVEDOR));
+                .isEqualTo(SmsSendResultBean.falha("INFOBIP", Erro.FALHA_DO_PROVEDOR));
     }
 
     private SmsService servico(SmsProvider... provedores) {
-        return new SmsService(configuracoes, new SmsProviderResolver(List.of(provedores)));
+        var argumentoPreparado = configuracoes;
+        var smsProviderResolverPreparado = new SmsProviderResolver(List.of(provedores));
+        var argumentoPreparado2 = smsProviderResolverPreparado;
+        var smsServicePreparado2 = new SmsService(argumentoPreparado, argumentoPreparado2);
+        var smsServicePreparado = smsServicePreparado2;
+        return smsServicePreparado;
     }
 }

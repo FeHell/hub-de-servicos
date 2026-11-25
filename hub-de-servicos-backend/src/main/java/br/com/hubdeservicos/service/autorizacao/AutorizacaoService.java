@@ -3,7 +3,7 @@ package br.com.hubdeservicos.service.autorizacao;
 import br.com.hubdeservicos.service.administracao.AcessoAdministrativo;
 import br.com.hubdeservicos.exception.autenticacao.AutenticacaoNegadaException;
 import br.com.hubdeservicos.service.autenticacao.AutenticacaoService;
-import br.com.hubdeservicos.service.autenticacao.IdentidadeJwt;
+import br.com.hubdeservicos.service.autenticacao.IdentidadeJwtVO;
 import br.com.hubdeservicos.repository.usuario.UsuarioPerfilRepository;
 import br.com.hubdeservicos.repository.usuario.UsuarioPermissaoPlataformaRepository;
 
@@ -26,7 +26,7 @@ public class AutorizacaoService {
     private final UUID idAplicacaoPlataforma;
 
     public AutorizacaoService(AutenticacaoService autenticacao, UsuarioPerfilRepository perfis,
-                              UsuarioPermissaoPlataformaRepository permissoesPlataforma, Environment ambiente) {
+            UsuarioPermissaoPlataformaRepository permissoesPlataforma, Environment ambiente) {
         this.autenticacao = autenticacao;
         this.perfis = perfis;
         this.permissoesPlataforma = permissoesPlataforma;
@@ -34,15 +34,15 @@ public class AutorizacaoService {
     }
 
     @Transactional(readOnly = true)
-    public List<String> listarPermissoes(String slug, IdentidadeJwt identidade) {
+    public List<String> listarPermissoes(String slug, IdentidadeJwtVO identidade) {
         return consultarPermissoes(slug, identidade);
     }
 
     @Transactional(readOnly = true)
     public boolean temPermissao(Authentication autenticacaoAtual, String slug, String codigo) {
         if (autenticacaoAtual == null || !autenticacaoAtual.isAuthenticated()
-                || !(autenticacaoAtual.getPrincipal() instanceof IdentidadeJwt identidade)
-                || codigo == null || codigo.isBlank()) {
+                || !(autenticacaoAtual.getPrincipal() instanceof IdentidadeJwtVO identidade) || codigo == null
+                || codigo.isBlank()) {
             return false;
         }
         try {
@@ -52,14 +52,15 @@ public class AutorizacaoService {
         }
     }
 
-    private List<String> consultarPermissoes(String slug, IdentidadeJwt identidade) {
+    private List<String> consultarPermissoes(String slug, IdentidadeJwtVO identidade) {
         if (slug == null || identidade == null) {
             throw new AutenticacaoNegadaException();
         }
         var usuario = autenticacao.consultarUsuario(slug, identidade);
-        if (AcessoAdministrativo.SLUG_PLATAFORMA.equals(slug) || usuario.idAplicacao().equals(idAplicacaoPlataforma)) {
-            return permissoesPlataforma.listarCodigosAtivos(usuario.id());
+        if (AcessoAdministrativo.SLUG_PLATAFORMA.equals(slug)
+                || usuario.getIdAplicacao().equals(idAplicacaoPlataforma)) {
+            return permissoesPlataforma.listarCodigosAtivos(usuario.getId());
         }
-        return perfis.buscarPermissoesEfetivas(usuario.id(), usuario.idAplicacao());
+        return perfis.buscarPermissoesEfetivas(usuario.getId(), usuario.getIdAplicacao());
     }
 }

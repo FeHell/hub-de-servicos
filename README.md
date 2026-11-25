@@ -46,3 +46,10 @@ O frontend gera `dist/`. O backend gera `target/hub-de-servicos-backend-1.0.0-SN
 ## Escopo da base
 
 A infraestrutura reaproveitável inclui autenticação, sessões, autorização por aplicação, usuários, perfis, permissões, auditoria, componentes Vue, tema e tradução de enums. As telas administrativas de usuários e o Dashboard Usuários continuam disponíveis para contas autorizadas. A exposição dessas telas, a administração de outras aplicações e o uso do catálogo de permissões globais no produto dependem da definição funcional do Hub.
+
+
+## Estilo Java e planejamento
+
+Tipos de transporte são Beans com sufixo `Bean`, getters/setters explícitos e montagem em etapas. VOs usam `VO`, preservando imutabilidade quando exigida por identidade, segurança ou hashing. Entidades, configurações Spring e injeção de dependências mantêm as convenções próprias. Não compor objetos novos no retorno ou nos argumentos de outro construtor. A organização deve preservar JSON, validações, igualdade e comportamento dos serviços.
+
+As solicitações são documentadas em `.specs/aaaa-mm-dd-hh-mm-breve-descricao/`, com um documento principal de mesmo identificador e os arquivos `spec.md`, `plan.md` e `tasks.md`. Executar somente após aprovação explícita e comprovar cada tarefa antes de marcá-la. Consulte o `AGENTS.md` da raiz e o planejamento aprovado para as exceções nominais.

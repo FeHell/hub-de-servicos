@@ -1,7 +1,7 @@
 package br.com.hubdeservicos.provider;
 
-import br.com.hubdeservicos.dto.sms.SmsSendRequest;
-import br.com.hubdeservicos.dto.sms.SmsSendResult;
+import br.com.hubdeservicos.dto.sms.SmsSendRequestBean;
+import br.com.hubdeservicos.dto.sms.SmsSendResultBean;
 
 public interface SmsProvider {
 
@@ -9,5 +9,5 @@ public interface SmsProvider {
 
     String getDisplayName();
 
-    SmsSendResult send(SmsSendRequest request);
+    SmsSendResultBean send(SmsSendRequestBean request);
 }

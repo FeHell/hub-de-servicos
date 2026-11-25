@@ -1,22 +1,22 @@
 package br.com.hubdeservicos.controller.administracao;
 
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AplicacaoInfo;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AtualizarAplicacao;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AtualizarPermissao;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AtualizarUsuario;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AuditoriaInfo;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovaAplicacao;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovaPermissao;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovaPermissaoPlataforma;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovaSenha;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovoUsuario;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.Pagina;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PermissaoInfo;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PermissaoPlataformaInfo;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.UsuarioInfo;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.UsuarioListagem;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AplicacaoInfoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AtualizarAplicacaoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AtualizarPermissaoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AtualizarUsuarioBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AuditoriaInfoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovaAplicacaoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovaPermissaoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovaPermissaoPlataformaBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovaSenhaBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovoUsuarioBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PaginaBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PermissaoInfoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PermissaoPlataformaInfoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.UsuarioInfoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.UsuarioListagemBean;
 import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.TipoAcessoUsuario;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.DashboardUsuarios;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.DashboardUsuariosBean;
 import br.com.hubdeservicos.service.administracao.AdministracaoPlataformaService;
 import br.com.hubdeservicos.entity.usuario.StatusUsuario;
 
@@ -52,29 +52,30 @@ public class AdministracaoPlataformaController {
     }
 
     @GetMapping("/aplicacoes")
-    public Pagina<AplicacaoInfo> listarAplicacoes(@RequestParam(defaultValue = "0") int pagina,
-                                                  @RequestParam(defaultValue = "20") int tamanho) {
+    public PaginaBean<AplicacaoInfoBean> listarAplicacoes(@RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamanho) {
         return administracao.listarAplicacoes(pagina, tamanho);
     }
 
     @GetMapping("/aplicacoes/{id}")
-    public AplicacaoInfo consultarAplicacao(@PathVariable UUID id) {
+    public AplicacaoInfoBean consultarAplicacao(@PathVariable UUID id) {
         return administracao.consultarAplicacao(id);
     }
 
     @PostMapping("/aplicacoes")
     @ResponseStatus(HttpStatus.CREATED)
-    public AplicacaoInfo criarAplicacao(@Valid @RequestBody NovaAplicacao dados) {
+    public AplicacaoInfoBean criarAplicacao(@Valid @RequestBody NovaAplicacaoBean dados) {
         return administracao.criarAplicacao(dados);
     }
 
     @PutMapping("/aplicacoes/{id}")
-    public AplicacaoInfo atualizarAplicacao(@PathVariable UUID id, @Valid @RequestBody AtualizarAplicacao dados) {
+    public AplicacaoInfoBean atualizarAplicacao(@PathVariable UUID id,
+            @Valid @RequestBody AtualizarAplicacaoBean dados) {
         return administracao.atualizarAplicacao(id, dados);
     }
 
     @GetMapping("/usuarios")
-    public Pagina<UsuarioListagem> listarUsuarios(@RequestParam(defaultValue = "0") int pagina,
+    public PaginaBean<UsuarioListagemBean> listarUsuarios(@RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "20") int tamanho, @RequestParam(defaultValue = "") String login,
             @RequestParam(defaultValue = "") String email, @RequestParam(required = false) StatusUsuario status,
             @RequestParam(required = false) TipoAcessoUsuario tipo) {
@@ -82,23 +83,23 @@ public class AdministracaoPlataformaController {
     }
 
     @GetMapping("/usuarios/dashboard")
-    public DashboardUsuarios dashboardUsuarios(@RequestParam(defaultValue = "0") int meses) {
+    public DashboardUsuariosBean dashboardUsuarios(@RequestParam(defaultValue = "0") int meses) {
         return administracao.dashboardUsuarios(meses);
     }
 
     @GetMapping("/usuarios/{id}")
-    public UsuarioListagem consultarUsuario(@PathVariable UUID id) {
+    public UsuarioListagemBean consultarUsuario(@PathVariable UUID id) {
         return administracao.consultarUsuario(id);
     }
 
     @PostMapping("/usuarios")
     @ResponseStatus(HttpStatus.CREATED)
-    public UsuarioInfo criarUsuario(@Valid @RequestBody NovoUsuario dados) {
+    public UsuarioInfoBean criarUsuario(@Valid @RequestBody NovoUsuarioBean dados) {
         return administracao.criarUsuario(dados);
     }
 
     @PutMapping("/usuarios/{id}")
-    public UsuarioInfo atualizarUsuario(@PathVariable UUID id, @Valid @RequestBody AtualizarUsuario dados) {
+    public UsuarioInfoBean atualizarUsuario(@PathVariable UUID id, @Valid @RequestBody AtualizarUsuarioBean dados) {
         return administracao.atualizarUsuario(id, dados);
     }
 
@@ -110,40 +111,41 @@ public class AdministracaoPlataformaController {
 
     @PutMapping("/usuarios/{id}/senha")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void alterarSenha(@PathVariable UUID id, @Valid @RequestBody NovaSenha dados) {
-        administracao.alterarSenha(id, dados.senha());
+    public void alterarSenha(@PathVariable UUID id, @Valid @RequestBody NovaSenhaBean dados) {
+        administracao.alterarSenha(id, dados.getSenha());
     }
 
     @GetMapping("/permissoes-plataforma")
-    public List<PermissaoPlataformaInfo> listarPermissoesPlataforma() {
+    public List<PermissaoPlataformaInfoBean> listarPermissoesPlataforma() {
         return administracao.listarPermissoesPlataforma();
     }
 
     @PostMapping("/permissoes-plataforma")
     @ResponseStatus(HttpStatus.CREATED)
-    public PermissaoPlataformaInfo criarPermissaoPlataforma(@Valid @RequestBody NovaPermissaoPlataforma dados) {
+    public PermissaoPlataformaInfoBean criarPermissaoPlataforma(@Valid @RequestBody NovaPermissaoPlataformaBean dados) {
         return administracao.criarPermissaoPlataforma(dados);
     }
 
     @GetMapping("/permissoes")
-    public Pagina<PermissaoInfo> listarPermissoes(@RequestParam(defaultValue = "0") int pagina,
-                                                  @RequestParam(defaultValue = "20") int tamanho) {
+    public PaginaBean<PermissaoInfoBean> listarPermissoes(@RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamanho) {
         return administracao.listarPermissoes(pagina, tamanho);
     }
 
     @GetMapping("/permissoes/{id}")
-    public PermissaoInfo consultarPermissao(@PathVariable UUID id) {
+    public PermissaoInfoBean consultarPermissao(@PathVariable UUID id) {
         return administracao.consultarPermissao(id);
     }
 
     @PostMapping("/permissoes")
     @ResponseStatus(HttpStatus.CREATED)
-    public PermissaoInfo criarPermissao(@Valid @RequestBody NovaPermissao dados) {
+    public PermissaoInfoBean criarPermissao(@Valid @RequestBody NovaPermissaoBean dados) {
         return administracao.criarPermissao(dados);
     }
 
     @PutMapping("/permissoes/{id}")
-    public PermissaoInfo atualizarPermissao(@PathVariable UUID id, @Valid @RequestBody AtualizarPermissao dados) {
+    public PermissaoInfoBean atualizarPermissao(@PathVariable UUID id,
+            @Valid @RequestBody AtualizarPermissaoBean dados) {
         return administracao.atualizarPermissao(id, dados);
     }
 
@@ -160,8 +162,8 @@ public class AdministracaoPlataformaController {
     }
 
     @GetMapping("/auditoria")
-    public Pagina<AuditoriaInfo> listarAuditoria(@RequestParam(defaultValue = "0") int pagina,
-                                                 @RequestParam(defaultValue = "20") int tamanho) {
+    public PaginaBean<AuditoriaInfoBean> listarAuditoria(@RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamanho) {
         return administracao.listarAuditoria(pagina, tamanho);
     }
 }

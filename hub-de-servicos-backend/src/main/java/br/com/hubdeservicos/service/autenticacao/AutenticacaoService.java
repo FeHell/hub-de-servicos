@@ -4,9 +4,9 @@ import br.com.hubdeservicos.entity.aplicacao.AplicacaoEntity;
 import br.com.hubdeservicos.repository.aplicacao.AplicacaoRepository;
 import br.com.hubdeservicos.entity.auditoria.AuditoriaEntity;
 import br.com.hubdeservicos.repository.auditoria.AuditoriaRepository;
-import br.com.hubdeservicos.dto.autenticacao.LoginEntrada;
-import br.com.hubdeservicos.dto.autenticacao.TokensAutenticacao;
-import br.com.hubdeservicos.dto.autenticacao.UsuarioAutenticado;
+import br.com.hubdeservicos.dto.autenticacao.LoginEntradaBean;
+import br.com.hubdeservicos.dto.autenticacao.TokensAutenticacaoBean;
+import br.com.hubdeservicos.dto.autenticacao.UsuarioAutenticadoBean;
 import br.com.hubdeservicos.exception.autenticacao.AutenticacaoNegadaException;
 import br.com.hubdeservicos.common.StatusCadastro;
 import br.com.hubdeservicos.entity.sessao.SessaoEntity;
@@ -54,10 +54,10 @@ public class AutenticacaoService {
     private final Clock relogio;
     private final String hashAusente;
 
-    AutenticacaoService(UsuarioRepository usuarios, AplicacaoRepository aplicacoes,
-                        UsuarioAplicacaoRepository vinculos, SessaoRepository sessoes, RevogacaoSessaoService revogacao,
-                        TokenAtualizacaoRepository tokens, AuditoriaRepository auditoria,
-                        PasswordEncoder senhas, SegredosAutenticacao segredos, TokenJwt jwt, Clock relogio) {
+    AutenticacaoService(UsuarioRepository usuarios, AplicacaoRepository aplicacoes, UsuarioAplicacaoRepository vinculos,
+            SessaoRepository sessoes, RevogacaoSessaoService revogacao, TokenAtualizacaoRepository tokens,
+            AuditoriaRepository auditoria, PasswordEncoder senhas, SegredosAutenticacao segredos, TokenJwt jwt,
+            Clock relogio) {
         this.usuarios = usuarios;
         this.aplicacoes = aplicacoes;
         this.vinculos = vinculos;
@@ -73,18 +73,18 @@ public class AutenticacaoService {
     }
 
     @Transactional
-    public TokensAutenticacao login(String slug, LoginEntrada entrada, String segredoCliente, String ip) {
-        return iniciarSessao(slug, usuarios.buscarLoginParaAutenticacao(entrada.login()), entrada.senha(),
-                segredoCliente, ip).tokens();
+    public TokensAutenticacaoBean login(String slug, LoginEntradaBean entrada, String segredoCliente, String ip) {
+        return iniciarSessao(slug, usuarios.buscarLoginParaAutenticacao(entrada.getLogin()), entrada.getSenha(),
+                segredoCliente, ip).getTokens();
     }
 
     @Transactional
-    public LoginComIdentidade loginPorEmail(String slug, String email, String senha, String ip) {
+    public LoginComIdentidadeVO loginPorEmail(String slug, String email, String senha, String ip) {
         return iniciarSessao(slug, usuarios.buscarEmailParaAutenticacao(email), senha, null, ip);
     }
 
-    private LoginComIdentidade iniciarSessao(String slug, Optional<UsuarioEntity> encontrado, String senha,
-                                             String segredoCliente, String ip) {
+    private LoginComIdentidadeVO iniciarSessao(String slug, Optional<UsuarioEntity> encontrado, String senha,
+            String segredoCliente, String ip) {
         if (senha.getBytes(StandardCharsets.UTF_8).length > 72
                 || !senhas.matches(senha, encontrado.map(UsuarioEntity::getSenhaHash).orElse(hashAusente))) {
             throw new AutenticacaoNegadaException();
@@ -93,26 +93,37 @@ public class AutenticacaoService {
         AplicacaoEntity aplicacao = autenticarCliente(aplicacoes.buscarSlugParaLogin(slug), segredoCliente);
         validarVinculo(usuario, aplicacao.getId());
         Instant agora = relogio.instant();
-        SessaoEntity sessao = sessoes.save(new SessaoEntity(usuario.getId(), aplicacao.getId(), UUID.randomUUID(),
-                StatusSessao.ATIVO, agora.plus(VALIDADE_ABSOLUTA), agora.plus(LIMITE_INATIVIDADE), agora));
-        TokensAutenticacao resposta = emitirTokens(sessao, slug, null, agora);
+        var sessaoEntityPreparado = new SessaoEntity(usuario.getId(), aplicacao.getId(), UUID.randomUUID(),
+                StatusSessao.ATIVO, agora.plus(VALIDADE_ABSOLUTA), agora.plus(LIMITE_INATIVIDADE), agora);
+        SessaoEntity sessao = sessoes.save(sessaoEntityPreparado);
+        TokensAutenticacaoBean resposta = emitirTokens(sessao, slug, null, agora);
         registrar("LOGIN", sessao, ip);
-        return new LoginComIdentidade(resposta, identidadeUsuario(usuario, sessao, slug));
+        var loginComIdentidadePreparado = new LoginComIdentidadeVO(resposta, identidadeUsuario(usuario, sessao, slug));
+        return loginComIdentidadePreparado;
     }
 
-    public record LoginComIdentidade(TokensAutenticacao tokens, UsuarioAutenticado usuario) {
+    public record LoginComIdentidadeVO(TokensAutenticacaoBean tokens, UsuarioAutenticadoBean usuario) {
         @Override
         public String toString() {
             return "LoginComIdentidade";
         }
+
+        public TokensAutenticacaoBean getTokens() {
+            return tokens;
+        }
+
+        public UsuarioAutenticadoBean getUsuario() {
+            return usuario;
+        }
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED, noRollbackFor = AutenticacaoNegadaException.class)
-    public TokensAutenticacao renovar(String slug, String tokenAtualizacao, String segredoCliente, String ip) {
+    public TokensAutenticacaoBean renovar(String slug, String tokenAtualizacao, String segredoCliente, String ip) {
         AplicacaoEntity aplicacao = autenticarCliente(aplicacoes.findBySlug(slug), segredoCliente);
         String hash = segredos.hash(tokenAtualizacao);
         UUID idSessao = tokens.buscarIdSessaoPorHash(hash).orElseThrow(AutenticacaoNegadaException::new);
-        // O bloqueio da sessão serializa renovação e logout. O token é carregado depois do bloqueio.
+        // O bloqueio da sessão serializa renovação e logout. O token é carregado depois
+        // do bloqueio.
         SessaoEntity sessao = sessoes.bloquearPorId(idSessao).orElseThrow(AutenticacaoNegadaException::new);
         if (!sessao.getIdAplicacao().equals(aplicacao.getId())) {
             throw new AutenticacaoNegadaException();
@@ -146,19 +157,26 @@ public class AutenticacaoService {
     }
 
     @Transactional(readOnly = true, noRollbackFor = AutenticacaoNegadaException.class)
-    public UsuarioAutenticado consultarUsuario(String slug, IdentidadeJwt identidade) {
-        SessaoEntity sessao = sessoes.findById(identidade.idSessao()).orElseThrow(AutenticacaoNegadaException::new);
+    public UsuarioAutenticadoBean consultarUsuario(String slug, IdentidadeJwtVO identidade) {
+        SessaoEntity sessao = sessoes.findById(identidade.getIdSessao()).orElseThrow(AutenticacaoNegadaException::new);
         UsuarioEntity usuario = validarSessao(slug, identidade, sessao, relogio.instant());
         return identidadeUsuario(usuario, sessao, slug);
     }
 
-    private static UsuarioAutenticado identidadeUsuario(UsuarioEntity usuario, SessaoEntity sessao, String slug) {
-        return new UsuarioAutenticado(usuario.getId(), usuario.getLogin(), usuario.getEmail(), sessao.getIdAplicacao(), slug);
+    private static UsuarioAutenticadoBean identidadeUsuario(UsuarioEntity usuario, SessaoEntity sessao, String slug) {
+        UsuarioAutenticadoBean usuarioAutenticadoPreparado = new UsuarioAutenticadoBean();
+        usuarioAutenticadoPreparado.setId(usuario.getId());
+        usuarioAutenticadoPreparado.setLogin(usuario.getLogin());
+        usuarioAutenticadoPreparado.setEmail(usuario.getEmail());
+        usuarioAutenticadoPreparado.setIdAplicacao(sessao.getIdAplicacao());
+        usuarioAutenticadoPreparado.setAplicacao(slug);
+        return usuarioAutenticadoPreparado;
     }
 
     @Transactional
-    public void logout(String slug, IdentidadeJwt identidade, String ip) {
-        SessaoEntity sessao = sessoes.bloquearPorId(identidade.idSessao()).orElseThrow(AutenticacaoNegadaException::new);
+    public void logout(String slug, IdentidadeJwtVO identidade, String ip) {
+        SessaoEntity sessao = sessoes.bloquearPorId(identidade.getIdSessao())
+                .orElseThrow(AutenticacaoNegadaException::new);
         Instant agora = relogio.instant();
         validarSessao(slug, identidade, sessao, agora);
         revogacao.revogar(sessao, agora);
@@ -168,60 +186,73 @@ public class AutenticacaoService {
     @Transactional
     public void logoutNavegador(String slug, String tokenAtualizacao, String ip) {
         var aplicacao = aplicacoes.findBySlug(slug).filter(a -> segredos.autorizaCliente(a, null));
-        if (aplicacao.isEmpty()) return;
+        if (aplicacao.isEmpty()) {
+            return;
+        }
         String hash = segredos.hash(tokenAtualizacao);
         var sessao = tokens.buscarIdSessaoPorHash(hash).flatMap(sessoes::bloquearPorId);
         Instant agora = relogio.instant();
         if (sessao.isEmpty() || !sessao.get().getIdAplicacao().equals(aplicacao.get().getId())
-                || !sessao.get().estaAtivaEm(agora)) return;
+                || !sessao.get().estaAtivaEm(agora)) {
+            return;
+        }
         var token = tokens.findByHashToken(hash);
-        if (token.isEmpty() || token.get().isRevogado() || token.get().getDataUtilizacao() != null) return;
+        if (token.isEmpty() || token.get().isRevogado() || token.get().getDataUtilizacao() != null) {
+            return;
+        }
         revogacao.revogar(sessao.get(), agora);
         registrar("LOGOUT", sessao.get(), ip);
     }
 
-    private UsuarioEntity validarSessao(String slug, IdentidadeJwt identidade, SessaoEntity sessao, Instant agora) {
-        if (!slug.equals(identidade.audiencia())
-                || !sessao.getIdAplicacao().equals(identidade.idAplicacao())
-                || !sessao.getIdUsuario().equals(identidade.idUsuario())
-                || !sessao.estaAtivaEm(agora)) {
+    private UsuarioEntity validarSessao(String slug, IdentidadeJwtVO identidade, SessaoEntity sessao, Instant agora) {
+        if (!slug.equals(identidade.getAudiencia()) || !sessao.getIdAplicacao().equals(identidade.getIdAplicacao())
+                || !sessao.getIdUsuario().equals(identidade.getIdUsuario()) || !sessao.estaAtivaEm(agora)) {
             throw new AutenticacaoNegadaException();
         }
         var aplicacao = aplicacoes.findBySlug(slug).filter(a -> a.getId().equals(sessao.getIdAplicacao()))
-                .filter(a -> a.getStatus() == StatusCadastro.ATIVO)
-                .orElseThrow(AutenticacaoNegadaException::new);
+                .filter(a -> a.getStatus() == StatusCadastro.ATIVO).orElseThrow(AutenticacaoNegadaException::new);
         var usuario = usuarios.findById(sessao.getIdUsuario()).orElseThrow(AutenticacaoNegadaException::new);
         validarVinculo(usuario, aplicacao.getId());
         return usuario;
     }
 
     private AplicacaoEntity autenticarCliente(Optional<AplicacaoEntity> aplicacao, String segredo) {
-        return aplicacao
-                .filter(a -> a.getStatus() == StatusCadastro.ATIVO && segredos.autorizaCliente(a, segredo))
+        return aplicacao.filter(a -> a.getStatus() == StatusCadastro.ATIVO && segredos.autorizaCliente(a, segredo))
                 .orElseThrow(AutenticacaoNegadaException::new);
     }
 
     private void validarVinculo(UsuarioEntity usuario, UUID idAplicacao) {
-        if (usuario.getStatus() != StatusUsuario.ATIVO
-                || !vinculos.existsByIdAndAtivoTrue(new UsuarioAplicacaoId(usuario.getId(), idAplicacao))) {
+        if (usuario.getStatus() != StatusUsuario.ATIVO) {
+            throw new AutenticacaoNegadaException();
+        }
+
+        UsuarioAplicacaoId vinculo = new UsuarioAplicacaoId(usuario.getId(), idAplicacao);
+        boolean vinculoAtivo = vinculos.existsByIdAndAtivoTrue(vinculo);
+        if (!vinculoAtivo) {
             throw new AutenticacaoNegadaException();
         }
     }
 
-    private TokensAutenticacao emitirTokens(SessaoEntity sessao, String slug, UUID idAnterior, Instant agora) {
+    private TokensAutenticacaoBean emitirTokens(SessaoEntity sessao, String slug, UUID idAnterior, Instant agora) {
         Instant expiracao = menor(agora.plus(TokenJwt.VALIDADE),
                 menor(sessao.getExpiracaoAbsoluta(), sessao.getExpiracaoInatividade())).truncatedTo(ChronoUnit.SECONDS);
         String acesso = jwt.emitir(sessao, slug, agora, expiracao);
         String atualizacao = segredos.gerarTokenAtualizacao();
-        tokens.save(new TokenAtualizacaoEntity(sessao.getId(), sessao.getIdFamilia(), segredos.hash(atualizacao),
-                idAnterior, sessao.getExpiracaoAbsoluta()));
-        return new TokensAutenticacao(acesso, atualizacao, expiracao);
+        var tokenAtualizacaoEntityPreparado = new TokenAtualizacaoEntity(sessao.getId(), sessao.getIdFamilia(),
+                segredos.hash(atualizacao), idAnterior, sessao.getExpiracaoAbsoluta());
+        tokens.save(tokenAtualizacaoEntityPreparado);
+        TokensAutenticacaoBean tokensAutenticacaoPreparado = new TokensAutenticacaoBean();
+        tokensAutenticacaoPreparado.setTokenAcesso(acesso);
+        tokensAutenticacaoPreparado.setTokenAtualizacao(atualizacao);
+        tokensAutenticacaoPreparado.setExpiracaoTokenAcesso(expiracao);
+        return tokensAutenticacaoPreparado;
     }
 
     private void registrar(String acao, SessaoEntity sessao, String ip) {
         var dados = JsonNodeFactory.instance.objectNode().put("idSessao", sessao.getId().toString());
-        auditoria.save(new AuditoriaEntity(sessao.getIdUsuario(), sessao.getIdAplicacao(), acao,
-                "sessoes", null, dados, ip != null && ip.length() <= 45 ? ip : null));
+        var auditoriaEntityPreparado = new AuditoriaEntity(sessao.getIdUsuario(), sessao.getIdAplicacao(), acao,
+                "sessoes", null, dados, ip != null && ip.length() <= 45 ? ip : null);
+        auditoria.save(auditoriaEntityPreparado);
     }
 
     private static Instant menor(Instant primeira, Instant segunda) {

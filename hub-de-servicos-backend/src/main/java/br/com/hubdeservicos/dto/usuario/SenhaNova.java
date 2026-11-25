@@ -14,9 +14,11 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Size(min = 12, max = 72)
 @Constraint(validatedBy = {})
 @Retention(RUNTIME)
-@Target({FIELD, METHOD, PARAMETER, TYPE_USE, ANNOTATION_TYPE})
+@Target({ FIELD, METHOD, PARAMETER, TYPE_USE, ANNOTATION_TYPE })
 public @interface SenhaNova {
     String message() default "Senha inválida.";
+
     Class<?>[] groups() default {};
+
     Class<? extends Payload>[] payload() default {};
 }

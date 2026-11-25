@@ -3,7 +3,7 @@ package br.com.hubdeservicos.config.autenticacao;
 import br.com.hubdeservicos.controller.autenticacao.AutenticacaoController;
 import br.com.hubdeservicos.controller.autenticacao.ChavesPublicasController;
 import br.com.hubdeservicos.controller.autenticacao.SessaoNavegadorController;
-import br.com.hubdeservicos.dto.autenticacao.TokensAutenticacao;
+import br.com.hubdeservicos.dto.autenticacao.TokensAutenticacaoBean;
 import br.com.hubdeservicos.exception.autenticacao.AutenticacaoNegadaException;
 import br.com.hubdeservicos.service.autenticacao.AutenticacaoService;
 import br.com.hubdeservicos.service.autenticacao.TokenJwt;
@@ -39,10 +39,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {AutenticacaoController.class, ChavesPublicasController.class,
-        SessaoNavegadorController.class}, excludeAutoConfiguration = UserDetailsServiceAutoConfiguration.class,
-        properties = "hub.autenticacao.cookie-seguro=true")
-@Import({SegurancaWeb.class, TokenJwt.class, ConfiguracaoAutenticacao.Componentes.class})
+@WebMvcTest(controllers = { AutenticacaoController.class, ChavesPublicasController.class,
+        SessaoNavegadorController.class }, excludeAutoConfiguration = UserDetailsServiceAutoConfiguration.class, properties = "hub.autenticacao.cookie-seguro=true")
+@Import({ SegurancaWeb.class, TokenJwt.class, ConfiguracaoAutenticacao.Componentes.class })
 @ActiveProfiles("local")
 class AutenticacaoHttpTest {
 
@@ -64,10 +63,8 @@ class AutenticacaoHttpTest {
 
     @Test
     void publicaJwksEExigeBearerNasRotasProtegidas() throws Exception {
-        mvc.perform(get("/.well-known/jwks.json"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.keys[0].alg").value("RS256"))
-                .andExpect(jsonPath("$.keys[0].d").doesNotExist());
+        mvc.perform(get("/.well-known/jwks.json")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.keys[0].alg").value("RS256")).andExpect(jsonPath("$.keys[0].d").doesNotExist());
         mvc.perform(get(BASE + "/eu").header(HttpHeaders.AUTHORIZATION, "Bearer invalido"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, "Bearer"));
@@ -77,71 +74,75 @@ class AutenticacaoHttpTest {
 
     @Test
     void retornaErroGenericoParaEntradaInvalida() throws Exception {
-        mvc.perform(post(BASE + "/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"login\":\"\",\"senha\":\"segredo-de-teste\"}"))
-                .andExpect(status().isBadRequest())
+        mvc.perform(post(BASE + "/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"login\":\"\",\"senha\":\"segredo-de-teste\"}")).andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("Dados de autenticação inválidos."));
     }
 
     @Test
     void autenticaNavegadorComCookieProtegidoSemExporRefreshNoJson() throws Exception {
-        when(autenticacao.login(eq("portal"), any(), isNull(), anyString()))
-                .thenReturn(new TokensAutenticacao("acesso", TOKEN, Instant.now().plusSeconds(300)));
+        TokensAutenticacaoBean tokensAutenticacaoPreparado = new TokensAutenticacaoBean();
+        tokensAutenticacaoPreparado.setTokenAcesso("acesso");
+        tokensAutenticacaoPreparado.setTokenAtualizacao(TOKEN);
+        tokensAutenticacaoPreparado.setExpiracaoTokenAcesso(Instant.now().plusSeconds(300));
+        when(autenticacao.login(eq("portal"), any(), isNull(), anyString())).thenReturn(tokensAutenticacaoPreparado);
         var entrada = "{\"login\":\"usuario\",\"senha\":\"segredo-de-teste\"}";
 
-        mvc.perform(post(NAVEGADOR + "/login").header(CABECALHO, "1")
-                        .contentType(MediaType.APPLICATION_JSON).content(entrada))
-                .andExpect(status().isOk())
+        mvc.perform(post(NAVEGADOR + "/login").header(CABECALHO, "1").contentType(MediaType.APPLICATION_JSON)
+                .content(entrada)).andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-store"))
-                .andExpect(header().string(HttpHeaders.SET_COOKIE, allOf(containsString(COOKIE + "=" + TOKEN),
-                        containsString("Path=" + NAVEGADOR), containsString("HttpOnly"),
-                        containsString("Secure"), containsString("SameSite=Strict"))))
+                .andExpect(header().string(HttpHeaders.SET_COOKIE,
+                        allOf(containsString(COOKIE + "=" + TOKEN), containsString("Path=" + NAVEGADOR),
+                                containsString("HttpOnly"), containsString("Secure"),
+                                containsString("SameSite=Strict"))))
                 .andExpect(jsonPath("$.tokenAcesso").value("acesso"))
                 .andExpect(jsonPath("$.tokenAtualizacao").doesNotExist());
 
         mvc.perform(post(BASE + "/login").contentType(MediaType.APPLICATION_JSON).content(entrada))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.tokenAtualizacao").value(TOKEN))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.tokenAtualizacao").value(TOKEN))
                 .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
     }
 
     @Test
     void rotacionaCookieNaRestauracaoERevogaSessaoNoLogout() throws Exception {
+        TokensAutenticacaoBean tokensAutenticacaoPreparado2 = new TokensAutenticacaoBean();
+        tokensAutenticacaoPreparado2.setTokenAcesso("novo-acesso");
+        tokensAutenticacaoPreparado2.setTokenAtualizacao(ROTACIONADO);
+        tokensAutenticacaoPreparado2.setExpiracaoTokenAcesso(Instant.now().plusSeconds(300));
         when(autenticacao.renovar(eq("portal"), eq(TOKEN), isNull(), anyString()))
-                .thenReturn(new TokensAutenticacao("novo-acesso", ROTACIONADO, Instant.now().plusSeconds(300)));
+                .thenReturn(tokensAutenticacaoPreparado2);
 
-        mvc.perform(post(NAVEGADOR + "/renovar").header(CABECALHO, "1").cookie(new Cookie(COOKIE, TOKEN)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.tokenAcesso").value("novo-acesso"))
+        var cookiePreparado = new Cookie(COOKIE, TOKEN);
+        mvc.perform(post(NAVEGADOR + "/renovar").header(CABECALHO, "1").cookie(cookiePreparado))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.tokenAcesso").value("novo-acesso"))
                 .andExpect(jsonPath("$.tokenAtualizacao").doesNotExist())
                 .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString(COOKIE + "=" + ROTACIONADO)));
 
-        mvc.perform(post(NAVEGADOR + "/logout").header(CABECALHO, "1").cookie(new Cookie(COOKIE, ROTACIONADO)))
-                .andExpect(status().isNoContent())
-                .andExpect(header().string(HttpHeaders.SET_COOKIE, allOf(containsString("Max-Age=0"),
-                        containsString("Path=" + NAVEGADOR))));
+        var cookiePreparado2 = new Cookie(COOKIE, ROTACIONADO);
+        mvc.perform(post(NAVEGADOR + "/logout").header(CABECALHO, "1").cookie(cookiePreparado2))
+                .andExpect(status().isNoContent()).andExpect(header().string(HttpHeaders.SET_COOKIE,
+                        allOf(containsString("Max-Age=0"), containsString("Path=" + NAVEGADOR))));
         verify(autenticacao).logoutNavegador(eq("portal"), eq(ROTACIONADO), anyString());
     }
 
     @Test
     void eliminaCookieQuandoSessaoNaoPodeSerRestaurada() throws Exception {
+        var autenticacaoNegadaExceptionPreparado = new AutenticacaoNegadaException();
         when(autenticacao.renovar(eq("portal"), eq(TOKEN), isNull(), anyString()))
-                .thenThrow(new AutenticacaoNegadaException());
-        mvc.perform(post(NAVEGADOR + "/renovar").header(CABECALHO, "1").cookie(new Cookie(COOKIE, TOKEN)))
+                .thenThrow(autenticacaoNegadaExceptionPreparado);
+        var cookiePreparado3 = new Cookie(COOKIE, TOKEN);
+        mvc.perform(post(NAVEGADOR + "/renovar").header(CABECALHO, "1").cookie(cookiePreparado3))
                 .andExpect(status().isUnauthorized())
                 .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")));
     }
 
     @Test
     void naoAceitaRequisicoesPorCookieSemCabecalhoNemAutorizaOutraOrigem() throws Exception {
-        mvc.perform(post(NAVEGADOR + "/logout").cookie(new Cookie(COOKIE, TOKEN)))
-                .andExpect(status().is4xxClientError());
-        mvc.perform(options(NAVEGADOR + "/renovar")
-                        .header(HttpHeaders.ORIGIN, "https://outra-origem.invalid")
-                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
-                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, CABECALHO))
-                .andExpect(status().is4xxClientError())
+        var cookiePreparado4 = new Cookie(COOKIE, TOKEN);
+        mvc.perform(post(NAVEGADOR + "/logout").cookie(cookiePreparado4)).andExpect(status().is4xxClientError());
+        mvc.perform(options(NAVEGADOR + "/renovar").header(HttpHeaders.ORIGIN, "https://outra-origem.invalid")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST")
+                .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, CABECALHO)).andExpect(status().is4xxClientError())
                 .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN));
         verifyNoInteractions(autenticacao);
     }

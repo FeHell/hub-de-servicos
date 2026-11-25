@@ -1,5 +1,9 @@
 package br.com.hubdeservicos.service.credenciamento;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.util.Objects;
+
 import br.com.hubdeservicos.dto.credenciamento.ContratosCredenciamento.*;
 import br.com.hubdeservicos.service.usuario.TelefoneUsuarioService;
 import jakarta.validation.Validator;
@@ -25,122 +29,191 @@ public class ValidacaoCredenciamento {
         this.validator = validator;
     }
 
-    public Completude avaliar(Dados dados) {
+    public CompletudeBean avaliar(DadosBean dados) {
         var resultado = new Resultado();
-        validator.validate(dados).forEach(violacao ->
-                resultado.invalido(violacao.getPropertyPath().toString(), "Confira o tamanho do campo."));
+        validator.validate(dados).forEach(
+                violacao -> resultado.invalido(violacao.getPropertyPath().toString(), "Confira o tamanho do campo."));
         String documento = null;
-        if (dados.modalidade() == Modalidade.INDIVIDUAL) {
-            documento = pessoaFisica(dados.pessoaFisica(), resultado);
-            if (dados.empresa() != null || dados.representante() != null) {
+        if (dados.getModalidade() == Modalidade.INDIVIDUAL) {
+            documento = pessoaFisica(dados.getPessoaFisica(), resultado);
+            if (dados.getEmpresa() != null || dados.getRepresentante() != null) {
                 resultado.invalido("modalidade", "Envie os dados da modalidade selecionada.");
             }
-        } else if (dados.modalidade() == Modalidade.CORPORATION) {
-            documento = empresa(dados.empresa(), resultado);
-            representante(dados.representante(), resultado);
-            if (dados.pessoaFisica() != null) resultado.invalido("modalidade", "Envie os dados da modalidade selecionada.");
         } else {
-            resultado.falta("modalidade", "Selecione Pessoa física ou Pessoa jurídica.");
+            if (dados.getModalidade() == Modalidade.CORPORATION) {
+                documento = empresa(dados.getEmpresa(), resultado);
+                representante(dados.getRepresentante(), resultado);
+                if (dados.getPessoaFisica() != null) {
+                    resultado.invalido("modalidade", "Envie os dados da modalidade selecionada.");
+                }
+            } else {
+                resultado.falta("modalidade", "Selecione Pessoa física ou Pessoa jurídica.");
+            }
         }
-        conta(dados.contaBancaria(), documento, resultado);
+        conta(dados.getContaBancaria(), documento, resultado);
         return resultado.completude();
     }
 
-    private String pessoaFisica(PessoaFisica pessoa, Resultado r) {
+    private String pessoaFisica(PessoaFisicaBean pessoa, Resultado r) {
         String p = "pessoaFisica.";
         if (pessoa == null) {
             r.falta("pessoaFisica", "Preencha os dados da pessoa física.");
             return null;
         }
-        r.texto(p + "nome", pessoa.nome());
-        cpf(p + "cpf", pessoa.cpf(), r);
-        contato(p, pessoa.email(), pessoa.telefone(), pessoa.tipoTelefone(), r);
-        site(p + "siteUrl", pessoa.siteUrl(), r);
-        nascimento(p + "nascimento", pessoa.nascimento(), r);
-        r.texto(p + "profissao", pessoa.profissao());
-        dinheiro(p + "rendaMensal", pessoa.rendaMensal(), r);
-        endereco(p, pessoa.endereco(), r);
-        return pessoa.cpf();
+        r.texto(p + "nome", pessoa.getNome());
+        cpf(p + "cpf", pessoa.getCpf(), r);
+        contato(p, pessoa.getEmail(), pessoa.getTelefone(), pessoa.getTipoTelefone(), r);
+        site(p + "siteUrl", pessoa.getSiteUrl(), r);
+        nascimento(p + "nascimento", pessoa.getNascimento(), r);
+        r.texto(p + "profissao", pessoa.getProfissao());
+        dinheiro(p + "rendaMensal", pessoa.getRendaMensal(), r);
+        endereco(p, pessoa.getEndereco(), r);
+        return pessoa.getCpf();
     }
 
-    private String empresa(Empresa empresa, Resultado r) {
+    private String empresa(EmpresaBean empresa, Resultado r) {
         String p = "empresa.";
         if (empresa == null) {
             r.falta("empresa", "Preencha os dados da empresa.");
             return null;
         }
-        r.texto(p + "razaoSocial", empresa.razaoSocial());
-        r.texto(p + "nomeFantasia", empresa.nomeFantasia());
-        if (r.texto(p + "cnpj", empresa.cnpj())) {
-            if (!DocumentosCredenciamento.cnpjValido(empresa.cnpj())) r.invalido(p + "cnpj", "Confira o CNPJ.");
-            else if (documento(empresa.cnpj()).matches(".*[A-Z].*")) {
-                r.confirmar(p + "cnpj", "Confirme com a Pagar.me a aceitação do CNPJ alfanumérico.");
+        r.texto(p + "razaoSocial", empresa.getRazaoSocial());
+        r.texto(p + "nomeFantasia", empresa.getNomeFantasia());
+        if (r.texto(p + "cnpj", empresa.getCnpj())) {
+            if (!DocumentosCredenciamento.cnpjValido(empresa.getCnpj())) {
+                r.invalido(p + "cnpj", "Confira o CNPJ.");
+            } else {
+                if (documento(empresa.getCnpj()).matches(".*[A-Z].*")) {
+                    r.confirmar(p + "cnpj", "Confirme com a Pagar.me a aceitação do CNPJ alfanumérico.");
+                }
             }
         }
-        contato(p, empresa.email(), empresa.telefone(), empresa.tipoTelefone(), r);
-        site(p + "siteUrl", empresa.siteUrl(), r);
-        if (empresa.faturamentoAnual() == null && empresa.faturamento() != null) {
-            r.confirmar(p + "faturamentoAnual", "Informe o faturamento anual. O valor anterior não tem período definido.");
-        } else dinheiro(p + "faturamentoAnual", empresa.faturamentoAnual(), r);
-        if (empresa.dataFundacao() != null && (!anoValido(empresa.dataFundacao())
-                || empresa.dataFundacao().isAfter(LocalDate.now(relogio)))) {
+        contato(p, empresa.getEmail(), empresa.getTelefone(), empresa.getTipoTelefone(), r);
+        site(p + "siteUrl", empresa.getSiteUrl(), r);
+        if (empresa.getFaturamentoAnual() == null && empresa.getFaturamento() != null) {
+            r.confirmar(p + "faturamentoAnual",
+                    "Informe o faturamento anual. O valor anterior não tem período definido.");
+        } else {
+            dinheiro(p + "faturamentoAnual", empresa.getFaturamentoAnual(), r);
+        }
+        if (empresa.getDataFundacao() != null && (!anoValido(empresa.getDataFundacao())
+                || empresa.getDataFundacao().isAfter(LocalDate.now(relogio)))) {
             r.invalido(p + "dataFundacao", "Confira a data de fundação.");
         }
-        endereco(p, empresa.endereco(), r);
-        return empresa.cnpj();
+        endereco(p, empresa.getEndereco(), r);
+        return empresa.getCnpj();
     }
 
-    private void representante(Representante pessoa, Resultado r) {
+    private void representante(RepresentanteBean pessoa, Resultado r) {
         String p = "representante.";
         if (pessoa == null) {
             r.falta("representante", "Preencha os dados do representante legal.");
             return;
         }
-        r.texto(p + "nome", pessoa.nome());
-        cpf(p + "cpf", pessoa.cpf(), r);
-        contato(p, pessoa.email(), pessoa.telefone(), pessoa.tipoTelefone(), r);
-        nascimento(p + "nascimento", pessoa.nascimento(), r);
-        r.texto(p + "profissao", pessoa.profissao());
-        if (pessoa.rendaMensal() == null && pessoa.renda() != null) {
+        r.texto(p + "nome", pessoa.getNome());
+        cpf(p + "cpf", pessoa.getCpf(), r);
+        contato(p, pessoa.getEmail(), pessoa.getTelefone(), pessoa.getTipoTelefone(), r);
+        nascimento(p + "nascimento", pessoa.getNascimento(), r);
+        r.texto(p + "profissao", pessoa.getProfissao());
+        if (pessoa.getRendaMensal() == null && pessoa.getRenda() != null) {
             r.confirmar(p + "rendaMensal", "Informe a renda mensal. O valor anterior não tem período definido.");
-        } else dinheiro(p + "rendaMensal", pessoa.rendaMensal(), r);
-        if (!Boolean.TRUE.equals(pessoa.representanteLegal())) {
+        } else {
+            dinheiro(p + "rendaMensal", pessoa.getRendaMensal(), r);
+        }
+        if (!Boolean.TRUE.equals(pessoa.getRepresentanteLegal())) {
             r.confirmar(p + "representanteLegal", "Confirme a declaração de representação legal.");
         }
-        if (!Boolean.TRUE.equals(pessoa.socioQsa())) {
+        if (!Boolean.TRUE.equals(pessoa.getSocioQsa())) {
             r.confirmar(p + "socioQsa", "Confirme que o representante é sócio qualificado no QSA.");
         }
-        endereco(p, pessoa.endereco(), r);
+        endereco(p, pessoa.getEndereco(), r);
     }
 
     private void contato(String p, String email, String telefone, TipoTelefone tipo, Resultado r) {
-        if (r.texto(p + "email", email)
-                && !validator.validate(new EmailCadastral(email.strip())).isEmpty()) {
-            r.invalido(p + "email", "Confira o e-mail.");
+        boolean emailPreenchido = r.texto(p + "email", email);
+        if (emailPreenchido) {
+            EmailCadastralBean emailCadastral = new EmailCadastralBean();
+            emailCadastral.setEmail(email.strip());
+
+            boolean emailInvalido = !validator.validate(emailCadastral).isEmpty();
+            if (emailInvalido) {
+                r.invalido(p + "email", "Confira o e-mail.");
+            }
         }
-        if (tipo == null) r.falta(p + "tipoTelefone", "Selecione o tipo de telefone.");
-        if (!r.texto(p + "telefone", telefone)) return;
+        if (tipo == null) {
+            r.falta(p + "tipoTelefone", "Selecione o tipo de telefone.");
+        }
+        if (!r.texto(p + "telefone", telefone)) {
+            return;
+        }
         try {
             boolean celular = TelefoneUsuarioService.normalizar(telefone).length() == 14;
             if (tipo != null && celular != (tipo == TipoTelefone.CELULAR)) {
                 r.invalido(p + "telefone", "O telefone não corresponde ao tipo escolhido.");
-            } else if (tipo == TipoTelefone.FIXO) {
-                r.confirmar(p + "tipoTelefone", "Confirme com a Pagar.me o código para telefone fixo.");
+            } else {
+                if (tipo == TipoTelefone.FIXO) {
+                    r.confirmar(p + "tipoTelefone", "Confirme com a Pagar.me o código para telefone fixo.");
+                }
             }
         } catch (ResponseStatusException erro) {
             r.invalido(p + "telefone", "Informe um telefone brasileiro válido com DDD.");
         }
     }
 
-    private record EmailCadastral(@Email String email) {}
+    @Schema(name = "EmailCadastral")
+    private static final class EmailCadastralBean {
+        @Email
+        private String email;
+
+        public EmailCadastralBean() {
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        @Override
+        public boolean equals(Object objeto) {
+            if (this == objeto) {
+                return true;
+            }
+            if (!(objeto instanceof EmailCadastralBean outro)) {
+                return false;
+            }
+            return Objects.equals(email, outro.email);
+        }
+
+        @Override
+        public int hashCode() {
+            int resultado = 0;
+            resultado = 31 * resultado + Objects.hashCode(email);
+            return resultado;
+        }
+
+        @Override
+        public String toString() {
+            return "EmailCadastral[" + "email=" + email + "]";
+        }
+    }
 
     private static void cpf(String campo, String cpf, Resultado r) {
-        if (r.texto(campo, cpf) && !DocumentosCredenciamento.cpfValido(cpf)) r.invalido(campo, "Confira o CPF.");
+        if (r.texto(campo, cpf) && !DocumentosCredenciamento.cpfValido(cpf)) {
+            r.invalido(campo, "Confira o CPF.");
+        }
     }
 
     private void nascimento(String campo, LocalDate data, Resultado r) {
-        if (data == null) r.falta(campo, "Informe a data de nascimento.");
-        else if (!data.isBefore(LocalDate.now(relogio)) || !anoValido(data)) r.invalido(campo, "Confira a data de nascimento.");
+        if (data == null) {
+            r.falta(campo, "Informe a data de nascimento.");
+        } else {
+            if (!data.isBefore(LocalDate.now(relogio)) || !anoValido(data)) {
+                r.invalido(campo, "Confira a data de nascimento.");
+            }
+        }
     }
 
     private static boolean anoValido(LocalDate data) {
@@ -148,11 +221,15 @@ public class ValidacaoCredenciamento {
     }
 
     private static void site(String campo, String valor, Resultado r) {
-        if (!r.texto(campo, valor)) return;
+        if (!r.texto(campo, valor)) {
+            return;
+        }
         try {
             URI uri = URI.create(valor.strip());
             if (uri.getHost() != null && uri.getUserInfo() == null
-                    && ("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))) return;
+                    && ("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))) {
+                return;
+            }
         } catch (IllegalArgumentException ignorado) {
             // A mensagem não reproduz a URL.
         }
@@ -160,71 +237,104 @@ public class ValidacaoCredenciamento {
     }
 
     private static void dinheiro(String campo, BigDecimal valor, Resultado r) {
-        if (valor == null) r.falta(campo, "Informe o valor em reais.");
-        else if (valor.signum() < 0 || valor.scale() > 2 || (long) valor.precision() - valor.scale() > 13) {
-            r.invalido(campo, "Informe um valor não negativo com até 13 dígitos inteiros e duas casas decimais.");
+        if (valor == null) {
+            r.falta(campo, "Informe o valor em reais.");
+        } else {
+            if (valor.signum() < 0 || valor.scale() > 2 || (long) valor.precision() - valor.scale() > 13) {
+                r.invalido(campo, "Informe um valor não negativo com até 13 dígitos inteiros e duas casas decimais.");
+            }
         }
     }
 
-    private static void endereco(String p, Endereco e, Resultado r) {
+    private static void endereco(String p, EnderecoBean e, Resultado r) {
         p += "endereco.";
         if (e == null) {
             r.falta(p.substring(0, p.length() - 1), "Preencha o endereço.");
             return;
         }
-        r.formato(p + "cep", e.cep(), "[0-9]{5}-?[0-9]{3}");
-        r.texto(p + "logradouro", e.logradouro());
-        r.texto(p + "numero", e.numero());
-        r.texto(p + "complemento", e.complemento());
-        r.texto(p + "bairro", e.bairro());
-        r.texto(p + "cidade", e.cidade());
-        r.formato(p + "uf", e.uf(), UF);
-        r.texto(p + "pontoReferencia", e.pontoReferencia());
+        r.formato(p + "cep", e.getCep(), "[0-9]{5}-?[0-9]{3}");
+        r.texto(p + "logradouro", e.getLogradouro());
+        r.texto(p + "numero", e.getNumero());
+        r.texto(p + "complemento", e.getComplemento());
+        r.texto(p + "bairro", e.getBairro());
+        r.texto(p + "cidade", e.getCidade());
+        r.formato(p + "uf", e.getUf(), UF);
+        r.texto(p + "pontoReferencia", e.getPontoReferencia());
     }
 
-    private static void conta(ContaBancaria conta, String documentoRecebedor, Resultado r) {
+    private static void conta(ContaBancariaBean conta, String documentoRecebedor, Resultado r) {
         String p = "contaBancaria.";
         if (conta == null) {
             r.falta("contaBancaria", "Preencha os dados bancários.");
             return;
         }
-        r.texto(p + "titular", conta.titular());
-        if (conta.tipoTitular() == null) r.falta(p + "tipoTitular", "Selecione o tipo de titular.");
-        if (conta.tipo() == null) r.falta(p + "tipo", "Selecione o tipo de conta.");
-        else if (conta.tipo() == TipoConta.POUPANCA) {
-            r.confirmar(p + "tipo", "Confirme com a Pagar.me a aceitação de conta poupança.");
+        r.texto(p + "titular", conta.getTitular());
+        if (conta.getTipoTitular() == null) {
+            r.falta(p + "tipoTitular", "Selecione o tipo de titular.");
         }
-        if (r.texto(p + "documento", conta.documento())) {
-            boolean cpf = DocumentosCredenciamento.cpfValido(conta.documento());
-            boolean cnpj = DocumentosCredenciamento.cnpjValido(conta.documento());
-            if ((!cpf && !cnpj) || (conta.tipoTitular() == TipoTitular.INDIVIDUAL && !cpf)
-                    || (conta.tipoTitular() == TipoTitular.COMPANY && !cnpj)) {
-                r.invalido(p + "documento", "Confira o documento e o tipo do titular da conta.");
-            } else if (documentoRecebedor != null && !documento(conta.documento()).equals(documento(documentoRecebedor))) {
-                r.confirmar(p + "documento", "O documento difere do recebedor. Confirme a elegibilidade dessa titularidade com a Pagar.me.");
+        if (conta.getTipo() == null) {
+            r.falta(p + "tipo", "Selecione o tipo de conta.");
+        } else {
+            if (conta.getTipo() == TipoConta.POUPANCA) {
+                r.confirmar(p + "tipo", "Confirme com a Pagar.me a aceitação de conta poupança.");
             }
         }
-        r.formato(p + "banco", conta.banco(), "[0-9]{3}");
-        r.formato(p + "agencia", conta.agencia(), "[0-9]{1,10}");
-        r.formato(p + "conta", conta.conta(), "[0-9]{1,20}");
-        if (!vazio(conta.digitoAgencia())) r.formato(p + "digitoAgencia", conta.digitoAgencia(), "[0-9Xx]{1,2}");
-        r.formato(p + "digitoConta", conta.digitoConta(), "[0-9Xx]{1,2}");
+        if (r.texto(p + "documento", conta.getDocumento())) {
+            boolean cpf = DocumentosCredenciamento.cpfValido(conta.getDocumento());
+            boolean cnpj = DocumentosCredenciamento.cnpjValido(conta.getDocumento());
+            if ((!cpf && !cnpj) || (conta.getTipoTitular() == TipoTitular.INDIVIDUAL && !cpf)
+                    || (conta.getTipoTitular() == TipoTitular.COMPANY && !cnpj)) {
+                r.invalido(p + "documento", "Confira o documento e o tipo do titular da conta.");
+            } else {
+                if (documentoRecebedor != null
+                        && !documento(conta.getDocumento()).equals(documento(documentoRecebedor))) {
+                    r.confirmar(p + "documento",
+                            "O documento difere do recebedor. Confirme a elegibilidade dessa titularidade com a Pagar.me.");
+                }
+            }
+        }
+        r.formato(p + "banco", conta.getBanco(), "[0-9]{3}");
+        r.formato(p + "agencia", conta.getAgencia(), "[0-9]{1,10}");
+        r.formato(p + "conta", conta.getConta(), "[0-9]{1,20}");
+        if (!vazio(conta.getDigitoAgencia())) {
+            r.formato(p + "digitoAgencia", conta.getDigitoAgencia(), "[0-9Xx]{1,2}");
+        }
+        r.formato(p + "digitoConta", conta.getDigitoConta(), "[0-9Xx]{1,2}");
     }
 
     static String documento(String valor) {
         return valor.replaceAll("[./-]", "").toUpperCase(Locale.ROOT);
     }
 
-    private static boolean vazio(String valor) { return valor == null || valor.isBlank(); }
+    private static boolean vazio(String valor) {
+        return valor == null || valor.isBlank();
+    }
 
     private static class Resultado {
-        private final List<Pendencia> faltantes = new ArrayList<>();
-        private final List<Pendencia> invalidos = new ArrayList<>();
-        private final List<Pendencia> confirmacoes = new ArrayList<>();
+        private final List<PendenciaBean> faltantes = new ArrayList<>();
+        private final List<PendenciaBean> invalidos = new ArrayList<>();
+        private final List<PendenciaBean> confirmacoes = new ArrayList<>();
 
-        void falta(String campo, String mensagem) { faltantes.add(new Pendencia(campo, mensagem)); }
-        void invalido(String campo, String mensagem) { invalidos.add(new Pendencia(campo, mensagem)); }
-        void confirmar(String campo, String mensagem) { confirmacoes.add(new Pendencia(campo, mensagem)); }
+        void falta(String campo, String mensagem) {
+            PendenciaBean pendenciaPreparado = new PendenciaBean();
+            pendenciaPreparado.setCampo(campo);
+            pendenciaPreparado.setMensagem(mensagem);
+            faltantes.add(pendenciaPreparado);
+        }
+
+        void invalido(String campo, String mensagem) {
+            PendenciaBean pendenciaPreparado2 = new PendenciaBean();
+            pendenciaPreparado2.setCampo(campo);
+            pendenciaPreparado2.setMensagem(mensagem);
+            invalidos.add(pendenciaPreparado2);
+        }
+
+        void confirmar(String campo, String mensagem) {
+            PendenciaBean pendenciaPreparado3 = new PendenciaBean();
+            pendenciaPreparado3.setCampo(campo);
+            pendenciaPreparado3.setMensagem(mensagem);
+            confirmacoes.add(pendenciaPreparado3);
+        }
 
         boolean texto(String campo, String valor) {
             if (vazio(valor)) {
@@ -239,12 +349,18 @@ public class ValidacaoCredenciamento {
         }
 
         void formato(String campo, String valor, String regex) {
-            if (texto(campo, valor) && !valor.matches(regex)) invalido(campo, "Confira o formato do campo.");
+            if (texto(campo, valor) && !valor.matches(regex)) {
+                invalido(campo, "Confira o formato do campo.");
+            }
         }
 
-        Completude completude() {
-            return new Completude(faltantes.isEmpty() && invalidos.isEmpty() && confirmacoes.isEmpty(),
-                    List.copyOf(faltantes), List.copyOf(invalidos), List.copyOf(confirmacoes));
+        CompletudeBean completude() {
+            CompletudeBean completudePreparado = new CompletudeBean();
+            completudePreparado.setApto(faltantes.isEmpty() && invalidos.isEmpty() && confirmacoes.isEmpty());
+            completudePreparado.setFaltantes(List.copyOf(faltantes));
+            completudePreparado.setInvalidos(List.copyOf(invalidos));
+            completudePreparado.setConfirmacoes(List.copyOf(confirmacoes));
+            return completudePreparado;
         }
     }
 }

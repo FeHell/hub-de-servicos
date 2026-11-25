@@ -59,22 +59,15 @@ public class SessaoEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumns({
-        @JoinColumn(name = "id_usuario", referencedColumnName = "id_usuario", insertable = false, updatable = false),
-        @JoinColumn(name = "id_aplicacao", referencedColumnName = "id_aplicacao", insertable = false, updatable = false)
-    })
+            @JoinColumn(name = "id_usuario", referencedColumnName = "id_usuario", insertable = false, updatable = false),
+            @JoinColumn(name = "id_aplicacao", referencedColumnName = "id_aplicacao", insertable = false, updatable = false) })
     private UsuarioAplicacaoEntity usuarioAplicacao;
 
     protected SessaoEntity() {
     }
 
-    public SessaoEntity(
-            UUID idUsuario,
-            UUID idAplicacao,
-            UUID idFamilia,
-            StatusSessao status,
-            Instant expiracaoAbsoluta,
-            Instant expiracaoInatividade,
-            Instant dataUltimaUtilizacao) {
+    public SessaoEntity(UUID idUsuario, UUID idAplicacao, UUID idFamilia, StatusSessao status,
+            Instant expiracaoAbsoluta, Instant expiracaoInatividade, Instant dataUltimaUtilizacao) {
         this.idUsuario = Objects.requireNonNull(idUsuario, "idUsuario");
         this.idAplicacao = Objects.requireNonNull(idAplicacao, "idAplicacao");
         this.idFamilia = Objects.requireNonNull(idFamilia, "idFamilia");
@@ -129,9 +122,7 @@ public class SessaoEntity {
     }
 
     public boolean estaAtivaEm(Instant agora) {
-        return status == StatusSessao.ATIVO
-                && expiracaoAbsoluta.isAfter(agora)
-                && expiracaoInatividade.isAfter(agora);
+        return status == StatusSessao.ATIVO && expiracaoAbsoluta.isAfter(agora) && expiracaoInatividade.isAfter(agora);
     }
 
     public void registrarRenovacao(Instant agora, Instant novaExpiracaoInatividade) {

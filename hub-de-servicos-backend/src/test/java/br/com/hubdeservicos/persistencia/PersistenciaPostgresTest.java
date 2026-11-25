@@ -48,10 +48,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@DataJpaTest(showSql = false, properties = {
-        "spring.liquibase.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=validate"
-})
+@DataJpaTest(showSql = false, properties = { "spring.liquibase.enabled=false",
+        "spring.jpa.hibernate.ddl-auto=validate" })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @EnabledIfEnvironmentVariable(named = "TESTE_PERSISTENCIA_POSTGRES", matches = "true")
 class PersistenciaPostgresTest {
@@ -87,43 +85,48 @@ class PersistenciaPostgresTest {
 
     @BeforeEach
     void confirmarBanco() {
-        assertThat(jdbc.queryForObject("select current_database()", String.class))
-                .isEqualTo("hub_de_servicos");
+        assertThat(jdbc.queryForObject("select current_database()", String.class)).isEqualTo("hub_de_servicos");
     }
 
     @Test
     void persisteVinculosSessaoCadeiaDeTokensEAuditoria() {
         UsuarioEntity usuario = criarUsuario();
         AplicacaoEntity aplicacao = criarAplicacao();
-        PermissaoEntity permissao = entidades.persist(new PermissaoEntity(
-                "TESTE_" + UUID.randomUUID(), null, StatusCadastro.ATIVO));
+        var permissaoEntityPreparado = new PermissaoEntity("TESTE_" + UUID.randomUUID(), null, StatusCadastro.ATIVO);
+        PermissaoEntity permissao = entidades.persist(permissaoEntityPreparado);
         PerfilEntity perfil = criarPerfil(aplicacao);
         var usuarioAplicacaoId = new UsuarioAplicacaoId(usuario.getId(), aplicacao.getId());
         var aplicacaoPermissaoId = new AplicacaoPermissaoId(aplicacao.getId(), permissao.getId());
         var perfilPermissaoId = new PerfilPermissaoId(aplicacao.getId(), perfil.getId(), permissao.getId());
         var usuarioPerfilId = new UsuarioPerfilId(usuario.getId(), aplicacao.getId(), perfil.getId());
 
-        entidades.persist(new UsuarioAplicacaoEntity(usuarioAplicacaoId));
-        entidades.persist(new AplicacaoPermissaoEntity(aplicacaoPermissaoId));
-        entidades.persist(new PerfilPermissaoEntity(perfilPermissaoId));
-        entidades.persist(new UsuarioPerfilEntity(usuarioPerfilId));
+        var usuarioAplicacaoEntityPreparado = new UsuarioAplicacaoEntity(usuarioAplicacaoId);
+        entidades.persist(usuarioAplicacaoEntityPreparado);
+        var aplicacaoPermissaoEntityPreparado = new AplicacaoPermissaoEntity(aplicacaoPermissaoId);
+        entidades.persist(aplicacaoPermissaoEntityPreparado);
+        var perfilPermissaoEntityPreparado = new PerfilPermissaoEntity(perfilPermissaoId);
+        entidades.persist(perfilPermissaoEntityPreparado);
+        var usuarioPerfilEntityPreparado = new UsuarioPerfilEntity(usuarioPerfilId);
+        entidades.persist(usuarioPerfilEntityPreparado);
         SessaoEntity sessao = criarSessao(usuario, aplicacao);
         TokenAtualizacaoEntity inicial = criarToken(sessao, null);
         TokenAtualizacaoEntity sucessor = criarToken(sessao, inicial.getId());
 
         var valor = JsonNodeFactory.instance.objectNode().put("status", "ATIVO");
-        AuditoriaEntity evento = entidades.persistAndFlush(new AuditoriaEntity(
-                null, null, "TESTE_PERSISTENCIA", "usuario", null, valor, "::1"));
+        var auditoriaEntityPreparado = new AuditoriaEntity(null, null, "TESTE_PERSISTENCIA", "usuario", null, valor,
+                "::1");
+        AuditoriaEntity evento = entidades.persistAndFlush(auditoriaEntityPreparado);
         entidades.clear();
 
         assertThat(aplicacoes.findBySlug(aplicacao.getSlug())).isPresent();
         assertThat(perfis.findByIdAndIdAplicacao(perfil.getId(), aplicacao.getId())).isPresent();
-        assertThat(perfisDosUsuarios.findById(usuarioPerfilId).orElseThrow()
-                .getUsuarioAplicacao().getUsuario().getLogin()).isEqualTo(usuario.getLogin());
-        assertThat(permissoesDosPerfis.findById(perfilPermissaoId).orElseThrow()
-                .getAplicacaoPermissao().getPermissao().getCodigo()).isEqualTo(permissao.getCodigo());
-        assertThat(permissoesDosPerfis.findById(perfilPermissaoId).orElseThrow()
-                .getPerfil().getNome()).isEqualTo(perfil.getNome());
+        assertThat(
+                perfisDosUsuarios.findById(usuarioPerfilId).orElseThrow().getUsuarioAplicacao().getUsuario().getLogin())
+                .isEqualTo(usuario.getLogin());
+        assertThat(permissoesDosPerfis.findById(perfilPermissaoId).orElseThrow().getAplicacaoPermissao().getPermissao()
+                .getCodigo()).isEqualTo(permissao.getCodigo());
+        assertThat(permissoesDosPerfis.findById(perfilPermissaoId).orElseThrow().getPerfil().getNome())
+                .isEqualTo(perfil.getNome());
         TokenAtualizacaoEntity token = tokens.findByHashToken(sucessor.getHashToken()).orElseThrow();
         assertThat(token.getSessao().getUsuarioAplicacao().getId()).isEqualTo(usuarioAplicacaoId);
         assertThat(token.getAnterior().getHashToken()).isEqualTo(inicial.getHashToken());
@@ -144,9 +147,11 @@ class PersistenciaPostgresTest {
         assertThat(usuarios.buscarPorLogin(loginMaiusculo).orElseThrow().getId()).isEqualTo(usuario.getId());
         assertThat(usuarios.buscarPorEmail(emailMaiusculo).orElseThrow().getId()).isEqualTo(usuario.getId());
 
-        verificarViolacao(() -> usuarios.saveAndFlush(new UsuarioEntity(
-                loginMaiusculo, "hash-teste", UUID.randomUUID() + "@example.test", StatusUsuario.ATIVO)),
-                "23505", "idx_usuario_login_lower");
+        verificarViolacao(() -> {
+            var usuarioEntityPreparado = new UsuarioEntity(loginMaiusculo, "hash-teste",
+                    UUID.randomUUID() + "@example.test", StatusUsuario.ATIVO);
+            usuarios.saveAndFlush(usuarioEntityPreparado);
+        }, "23505", "idx_usuario_login_lower");
     }
 
     @Test
@@ -154,13 +159,18 @@ class PersistenciaPostgresTest {
         UsuarioEntity usuario = criarUsuario();
         AplicacaoEntity aplicacao = criarAplicacao();
         PerfilEntity perfilDeOutraAplicacao = criarPerfil(criarAplicacao());
-        entidades.persist(new UsuarioAplicacaoEntity(new UsuarioAplicacaoId(usuario.getId(), aplicacao.getId())));
+        var usuarioAplicacaoIdPreparado = new UsuarioAplicacaoId(usuario.getId(), aplicacao.getId());
+        var argumentoPreparado = usuarioAplicacaoIdPreparado;
+        var usuarioAplicacaoEntityPreparado2 = new UsuarioAplicacaoEntity(argumentoPreparado);
+        entidades.persist(usuarioAplicacaoEntityPreparado2);
         entidades.flush();
 
         var vinculo = new UsuarioPerfilId(usuario.getId(), aplicacao.getId(), perfilDeOutraAplicacao.getId());
 
-        verificarViolacao(() -> perfisDosUsuarios.saveAndFlush(new UsuarioPerfilEntity(vinculo)),
-                "23503", "fk_usuario_perfil_perfil");
+        verificarViolacao(() -> {
+            var usuarioPerfilEntityPreparado2 = new UsuarioPerfilEntity(vinculo);
+            perfisDosUsuarios.saveAndFlush(usuarioPerfilEntityPreparado2);
+        }, "23503", "fk_usuario_perfil_perfil");
     }
 
     @Test
@@ -168,29 +178,36 @@ class PersistenciaPostgresTest {
         AplicacaoEntity aplicacao = criarAplicacao();
         AplicacaoEntity outraAplicacao = criarAplicacao();
         PerfilEntity perfil = criarPerfil(aplicacao);
-        PermissaoEntity permissao = entidades.persist(new PermissaoEntity(
-                "TESTE_" + UUID.randomUUID(), null, StatusCadastro.ATIVO));
-        entidades.persist(new AplicacaoPermissaoEntity(new AplicacaoPermissaoId(outraAplicacao.getId(), permissao.getId())));
+        var permissaoEntityPreparado2 = new PermissaoEntity("TESTE_" + UUID.randomUUID(), null, StatusCadastro.ATIVO);
+        PermissaoEntity permissao = entidades.persist(permissaoEntityPreparado2);
+        var aplicacaoPermissaoIdPreparado = new AplicacaoPermissaoId(outraAplicacao.getId(), permissao.getId());
+        var argumentoPreparado2 = aplicacaoPermissaoIdPreparado;
+        var aplicacaoPermissaoEntityPreparado2 = new AplicacaoPermissaoEntity(argumentoPreparado2);
+        entidades.persist(aplicacaoPermissaoEntityPreparado2);
         entidades.flush();
 
         var vinculo = new PerfilPermissaoId(aplicacao.getId(), perfil.getId(), permissao.getId());
 
-        verificarViolacao(() -> permissoesDosPerfis.saveAndFlush(new PerfilPermissaoEntity(vinculo)),
-                "23503", "fk_perfil_permissao_aplicacao_permissao");
+        verificarViolacao(() -> {
+            var perfilPermissaoEntityPreparado2 = new PerfilPermissaoEntity(vinculo);
+            permissoesDosPerfis.saveAndFlush(perfilPermissaoEntityPreparado2);
+        }, "23503", "fk_perfil_permissao_aplicacao_permissao");
     }
 
     @Test
     void rejeitaPredecessorDeOutraFamilia() {
         UsuarioEntity usuario = criarUsuario();
         AplicacaoEntity aplicacao = criarAplicacao();
-        entidades.persist(new UsuarioAplicacaoEntity(new UsuarioAplicacaoId(usuario.getId(), aplicacao.getId())));
+        var usuarioAplicacaoIdPreparado2 = new UsuarioAplicacaoId(usuario.getId(), aplicacao.getId());
+        var argumentoPreparado3 = usuarioAplicacaoIdPreparado2;
+        var usuarioAplicacaoEntityPreparado3 = new UsuarioAplicacaoEntity(argumentoPreparado3);
+        entidades.persist(usuarioAplicacaoEntityPreparado3);
         SessaoEntity sessao = criarSessao(usuario, aplicacao);
         SessaoEntity outraSessao = criarSessao(usuario, aplicacao);
         TokenAtualizacaoEntity predecessor = criarToken(outraSessao, null);
         entidades.flush();
 
-        var token = new TokenAtualizacaoEntity(
-                sessao.getId(), sessao.getIdFamilia(), UUID.randomUUID().toString(),
+        var token = new TokenAtualizacaoEntity(sessao.getId(), sessao.getIdFamilia(), UUID.randomUUID().toString(),
                 predecessor.getId(), sessao.getExpiracaoAbsoluta());
 
         verificarViolacao(() -> tokens.saveAndFlush(token), "23503", "fk_token_anterior");
@@ -200,14 +217,16 @@ class PersistenciaPostgresTest {
     void rejeitaSegundaRaizDaMesmaFamilia() {
         UsuarioEntity usuario = criarUsuario();
         AplicacaoEntity aplicacao = criarAplicacao();
-        entidades.persist(new UsuarioAplicacaoEntity(new UsuarioAplicacaoId(usuario.getId(), aplicacao.getId())));
+        var usuarioAplicacaoIdPreparado3 = new UsuarioAplicacaoId(usuario.getId(), aplicacao.getId());
+        var argumentoPreparado4 = usuarioAplicacaoIdPreparado3;
+        var usuarioAplicacaoEntityPreparado4 = new UsuarioAplicacaoEntity(argumentoPreparado4);
+        entidades.persist(usuarioAplicacaoEntityPreparado4);
         SessaoEntity sessao = criarSessao(usuario, aplicacao);
         criarToken(sessao, null);
         entidades.flush();
 
-        var segundaRaiz = new TokenAtualizacaoEntity(
-                sessao.getId(), sessao.getIdFamilia(), UUID.randomUUID().toString(),
-                null, sessao.getExpiracaoAbsoluta());
+        var segundaRaiz = new TokenAtualizacaoEntity(sessao.getId(), sessao.getIdFamilia(),
+                UUID.randomUUID().toString(), null, sessao.getExpiracaoAbsoluta());
 
         verificarViolacao(() -> tokens.saveAndFlush(segundaRaiz), "23505", "uk_token_raiz_familia");
     }
@@ -216,7 +235,10 @@ class PersistenciaPostgresTest {
     void rejeitaTokenQueReferenciaSeuProprioId() {
         UsuarioEntity usuario = criarUsuario();
         AplicacaoEntity aplicacao = criarAplicacao();
-        entidades.persist(new UsuarioAplicacaoEntity(new UsuarioAplicacaoId(usuario.getId(), aplicacao.getId())));
+        var usuarioAplicacaoIdPreparado4 = new UsuarioAplicacaoId(usuario.getId(), aplicacao.getId());
+        var argumentoPreparado5 = usuarioAplicacaoIdPreparado4;
+        var usuarioAplicacaoEntityPreparado5 = new UsuarioAplicacaoEntity(argumentoPreparado5);
+        entidades.persist(usuarioAplicacaoEntityPreparado5);
         SessaoEntity sessao = criarSessao(usuario, aplicacao);
         UUID id = UUID.randomUUID();
         entidades.flush();
@@ -225,43 +247,43 @@ class PersistenciaPostgresTest {
                 insert into tokens_atualizacao (id, id_sessao, id_familia, hash_token, id_anterior, expiracao_absoluta)
                 values (?, ?, ?, ?, ?, ?)
                 """, id, sessao.getId(), sessao.getIdFamilia(), UUID.randomUUID().toString(), id,
-                sessao.getExpiracaoAbsoluta().atOffset(ZoneOffset.UTC)),
-                "23514", "ck_token_sem_autorreferencia");
+                sessao.getExpiracaoAbsoluta().atOffset(ZoneOffset.UTC)), "23514", "ck_token_sem_autorreferencia");
     }
 
     private UsuarioEntity criarUsuario() {
         String identidade = UUID.randomUUID().toString();
-        return entidades.persist(new UsuarioEntity(identidade, "hash-teste", identidade + "@example.test",
-                StatusUsuario.ATIVO));
+        var usuarioEntityPreparado2 = new UsuarioEntity(identidade, "hash-teste", identidade + "@example.test",
+                StatusUsuario.ATIVO);
+        return entidades.persist(usuarioEntityPreparado2);
     }
 
     private AplicacaoEntity criarAplicacao() {
-        return entidades.persist(new AplicacaoEntity("Aplicação de teste", UUID.randomUUID().toString(),
-                TipoAplicacao.PUBLICO, null, StatusCadastro.ATIVO));
+        var aplicacaoEntityPreparado = new AplicacaoEntity("Aplicação de teste", UUID.randomUUID().toString(),
+                TipoAplicacao.PUBLICO, null, StatusCadastro.ATIVO);
+        return entidades.persist(aplicacaoEntityPreparado);
     }
 
     private PerfilEntity criarPerfil(AplicacaoEntity aplicacao) {
-        return entidades.persist(new PerfilEntity(aplicacao.getId(), "Perfil de teste", null, StatusCadastro.ATIVO));
+        var perfilEntityPreparado = new PerfilEntity(aplicacao.getId(), "Perfil de teste", null, StatusCadastro.ATIVO);
+        return entidades.persist(perfilEntityPreparado);
     }
 
     private SessaoEntity criarSessao(UsuarioEntity usuario, AplicacaoEntity aplicacao) {
         Instant agora = Instant.now();
-        return entidades.persist(new SessaoEntity(usuario.getId(), aplicacao.getId(), UUID.randomUUID(),
-                StatusSessao.ATIVO, agora.plusSeconds(3600), agora.plusSeconds(1800), agora));
+        var sessaoEntityPreparado = new SessaoEntity(usuario.getId(), aplicacao.getId(), UUID.randomUUID(),
+                StatusSessao.ATIVO, agora.plusSeconds(3600), agora.plusSeconds(1800), agora);
+        return entidades.persist(sessaoEntityPreparado);
     }
 
     private TokenAtualizacaoEntity criarToken(SessaoEntity sessao, UUID idAnterior) {
-        return entidades.persist(new TokenAtualizacaoEntity(
-                sessao.getId(), sessao.getIdFamilia(), UUID.randomUUID().toString(),
-                idAnterior, sessao.getExpiracaoAbsoluta()));
+        var tokenAtualizacaoEntityPreparado = new TokenAtualizacaoEntity(sessao.getId(), sessao.getIdFamilia(),
+                UUID.randomUUID().toString(), idAnterior, sessao.getExpiracaoAbsoluta());
+        return entidades.persist(tokenAtualizacaoEntityPreparado);
     }
 
     private void verificarViolacao(Runnable operacao, String codigo, String restricao) {
-        assertThatThrownBy(operacao::run)
-                .isInstanceOf(DataIntegrityViolationException.class)
-                .hasRootCauseInstanceOf(SQLException.class)
-                .rootCause()
-                .satisfies(causa -> {
+        assertThatThrownBy(operacao::run).isInstanceOf(DataIntegrityViolationException.class)
+                .hasRootCauseInstanceOf(SQLException.class).rootCause().satisfies(causa -> {
                     assertThat(((SQLException) causa).getSQLState()).isEqualTo(codigo);
                     assertThat(causa).hasMessageContaining(restricao);
                 });

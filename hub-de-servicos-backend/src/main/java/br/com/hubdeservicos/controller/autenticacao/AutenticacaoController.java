@@ -1,11 +1,11 @@
 package br.com.hubdeservicos.controller.autenticacao;
 
-import br.com.hubdeservicos.dto.autenticacao.LoginEntrada;
-import br.com.hubdeservicos.dto.autenticacao.RenovacaoEntrada;
-import br.com.hubdeservicos.dto.autenticacao.TokensAutenticacao;
-import br.com.hubdeservicos.dto.autenticacao.UsuarioAutenticado;
+import br.com.hubdeservicos.dto.autenticacao.LoginEntradaBean;
+import br.com.hubdeservicos.dto.autenticacao.RenovacaoEntradaBean;
+import br.com.hubdeservicos.dto.autenticacao.TokensAutenticacaoBean;
+import br.com.hubdeservicos.dto.autenticacao.UsuarioAutenticadoBean;
 import br.com.hubdeservicos.service.autenticacao.AutenticacaoService;
-import br.com.hubdeservicos.service.autenticacao.IdentidadeJwt;
+import br.com.hubdeservicos.service.autenticacao.IdentidadeJwtVO;
 import br.com.hubdeservicos.service.autorizacao.AutorizacaoService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,9 +44,8 @@ public class AutenticacaoController {
 
     @PostMapping(path = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Autenticar o usuário na aplicação")
-    public ResponseEntity<TokensAutenticacao> login(
-            @PathVariable String slug,
-            @Valid @RequestBody LoginEntrada entrada,
+    public ResponseEntity<TokensAutenticacaoBean> login(@PathVariable String slug,
+            @Valid @RequestBody LoginEntradaBean entrada,
             @RequestHeader(name = "X-Client-Secret", required = false) String segredoCliente,
             HttpServletRequest requisicao) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
@@ -55,20 +54,19 @@ public class AutenticacaoController {
 
     @PostMapping(path = "/renovar", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Renovar a sessão e rotacionar o token de atualização")
-    public ResponseEntity<TokensAutenticacao> renovar(
-            @PathVariable String slug,
-            @Valid @RequestBody RenovacaoEntrada entrada,
+    public ResponseEntity<TokensAutenticacaoBean> renovar(@PathVariable String slug,
+            @Valid @RequestBody RenovacaoEntradaBean entrada,
             @RequestHeader(name = "X-Client-Secret", required = false) String segredoCliente,
             HttpServletRequest requisicao) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(autenticacao.renovar(slug, entrada.tokenAtualizacao(), segredoCliente, requisicao.getRemoteAddr()));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(
+                autenticacao.renovar(slug, entrada.getTokenAtualizacao(), segredoCliente, requisicao.getRemoteAddr()));
     }
 
     @GetMapping("/eu")
     @Operation(summary = "Consultar o usuário autenticado na aplicação")
     @SecurityRequirement(name = "bearer")
-    public ResponseEntity<UsuarioAutenticado> eu(@PathVariable String slug,
-                                                  @AuthenticationPrincipal IdentidadeJwt identidade) {
+    public ResponseEntity<UsuarioAutenticadoBean> eu(@PathVariable String slug,
+            @AuthenticationPrincipal IdentidadeJwtVO identidade) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(autenticacao.consultarUsuario(slug, identidade));
     }
@@ -77,7 +75,7 @@ public class AutenticacaoController {
     @Operation(summary = "Listar os códigos de permissão efetivos na aplicação da sessão")
     @SecurityRequirement(name = "bearer")
     public ResponseEntity<List<String>> permissoes(@PathVariable String slug,
-                                                   @AuthenticationPrincipal IdentidadeJwt identidade) {
+            @AuthenticationPrincipal IdentidadeJwtVO identidade) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(autorizacao.listarPermissoes(slug, identidade));
     }
@@ -85,8 +83,8 @@ public class AutenticacaoController {
     @PostMapping("/logout")
     @Operation(summary = "Revogar a sessão e a família de tokens")
     @SecurityRequirement(name = "bearer")
-    public ResponseEntity<Void> logout(@PathVariable String slug, @AuthenticationPrincipal IdentidadeJwt identidade,
-                                       HttpServletRequest requisicao) {
+    public ResponseEntity<Void> logout(@PathVariable String slug, @AuthenticationPrincipal IdentidadeJwtVO identidade,
+            HttpServletRequest requisicao) {
         autenticacao.logout(slug, identidade, requisicao.getRemoteAddr());
         return ResponseEntity.noContent().build();
     }

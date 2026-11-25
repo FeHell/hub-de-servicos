@@ -38,8 +38,7 @@ public class AplicacaoPermissaoId implements Serializable {
         if (!(outro instanceof AplicacaoPermissaoId chave)) {
             return false;
         }
-        return Objects.equals(idAplicacao, chave.idAplicacao)
-                && Objects.equals(idPermissao, chave.idPermissao);
+        return Objects.equals(idAplicacao, chave.idAplicacao) && Objects.equals(idPermissao, chave.idPermissao);
     }
 
     @Override

@@ -10,9 +10,13 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface DesafioTelefoneRepository extends JpaRepository<DesafioTelefoneEntity, UUID> {
     Optional<DesafioTelefoneEntity> findByIdAndIdUsuario(UUID id, UUID idUsuario);
+
     boolean existsByIdUsuarioAndCriadoEmGreaterThan(UUID idUsuario, Instant desde);
+
     boolean existsByTelefoneAndCriadoEmGreaterThan(String telefone, Instant desde);
+
     long countByIdUsuarioAndCriadoEmGreaterThan(UUID idUsuario, Instant desde);
+
     long countByTelefoneAndCriadoEmGreaterThan(String telefone, Instant desde);
 
     @Modifying

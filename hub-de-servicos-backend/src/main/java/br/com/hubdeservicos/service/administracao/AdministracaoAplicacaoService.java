@@ -1,13 +1,13 @@
 package br.com.hubdeservicos.service.administracao;
 
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AtualizarPerfil;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AuditoriaInfo;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovoPerfil;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.Pagina;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PerfilInfo;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PermissaoInfo;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.SessaoInfo;
-import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.VinculoInfo;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AtualizarPerfilBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.AuditoriaInfoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.NovoPerfilBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PaginaBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PerfilInfoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.PermissaoInfoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.SessaoInfoBean;
+import br.com.hubdeservicos.dto.administracao.ContratosAdministrativos.VinculoInfoBean;
 import br.com.hubdeservicos.entity.aplicacao.AplicacaoEntity;
 import br.com.hubdeservicos.entity.aplicacao.AplicacaoPermissaoId;
 import br.com.hubdeservicos.repository.aplicacao.AplicacaoPermissaoRepository;
@@ -61,11 +61,10 @@ public class AdministracaoAplicacaoService {
     private final Clock relogio;
 
     public AdministracaoAplicacaoService(AplicacaoRepository aplicacoes, UsuarioRepository usuarios,
-                                         UsuarioAplicacaoRepository vinculos, UsuarioPerfilRepository atribuicoes,
-                                         PerfilRepository perfis, AplicacaoPermissaoRepository habilitacoes,
-                                         PerfilPermissaoRepository permissoesPerfil, SessaoRepository sessoes,
-                                         AuditoriaRepository auditoria, RevogacaoSessaoService revogacao,
-                                         RegistroAdministrativo registro, AcessoAdministrativo acesso, Clock relogio) {
+            UsuarioAplicacaoRepository vinculos, UsuarioPerfilRepository atribuicoes, PerfilRepository perfis,
+            AplicacaoPermissaoRepository habilitacoes, PerfilPermissaoRepository permissoesPerfil,
+            SessaoRepository sessoes, AuditoriaRepository auditoria, RevogacaoSessaoService revogacao,
+            RegistroAdministrativo registro, AcessoAdministrativo acesso, Clock relogio) {
         this.aplicacoes = aplicacoes;
         this.usuarios = usuarios;
         this.vinculos = vinculos;
@@ -81,60 +80,66 @@ public class AdministracaoAplicacaoService {
         this.relogio = relogio;
     }
 
-    public Pagina<PerfilInfo> listarPerfis(String slug, int pagina, int tamanho) {
+    public PaginaBean<PerfilInfoBean> listarPerfis(String slug, int pagina, int tamanho) {
         UUID aplicacao = consultarAplicacao(slug).getId();
-        return Pagina.de(perfis.findByIdAplicacao(aplicacao, Pagina.requisicao(pagina, tamanho, Sort.by("nome", "id")))
-                .map(PerfilInfo::de));
+        return PaginaBean
+                .de(perfis.findByIdAplicacao(aplicacao, PaginaBean.requisicao(pagina, tamanho, Sort.by("nome", "id")))
+                        .map(PerfilInfoBean::de));
     }
 
-    public PerfilInfo consultarPerfil(String slug, UUID idPerfil) {
-        return PerfilInfo.de(perfil(consultarAplicacao(slug).getId(), idPerfil));
+    public PerfilInfoBean consultarPerfil(String slug, UUID idPerfil) {
+        return PerfilInfoBean.de(perfil(consultarAplicacao(slug).getId(), idPerfil));
     }
 
     @Transactional
-    public PerfilInfo criarPerfil(String slug, NovoPerfil dados) {
+    public PerfilInfoBean criarPerfil(String slug, NovoPerfilBean dados) {
         UUID aplicacao = bloquearAplicacaoEditavel(slug);
-        var perfil = perfis.saveAndFlush(new PerfilEntity(aplicacao, dados.nome().strip(), dados.descricao(),
-                StatusCadastro.ATIVO));
+        var perfilEntityPreparado = new PerfilEntity(aplicacao, dados.getNome().strip(), dados.getDescricao(),
+                StatusCadastro.ATIVO);
+        var perfil = perfis.saveAndFlush(perfilEntityPreparado);
         registro.registrar("CRIAR_PERFIL", "perfil", aplicacao, perfil.getId());
-        return PerfilInfo.de(perfil);
+        return PerfilInfoBean.de(perfil);
     }
 
     @Transactional
-    public PerfilInfo atualizarPerfil(String slug, UUID idPerfil, AtualizarPerfil dados) {
+    public PerfilInfoBean atualizarPerfil(String slug, UUID idPerfil, AtualizarPerfilBean dados) {
         UUID aplicacao = bloquearAplicacaoEditavel(slug);
         PerfilEntity perfil = perfil(aplicacao, idPerfil);
-        perfil.atualizar(dados.nome().strip(), dados.descricao(), dados.status());
+        perfil.atualizar(dados.getNome().strip(), dados.getDescricao(), dados.getStatus());
         registro.registrar("ATUALIZAR_PERFIL", "perfil", aplicacao, idPerfil);
-        return PerfilInfo.de(perfil);
+        return PerfilInfoBean.de(perfil);
     }
 
-    public List<PermissaoInfo> listarPermissoes(String slug) {
-        return habilitacoes.listarPermissoes(consultarAplicacao(slug).getId())
-                .stream().map(PermissaoInfo::de).toList();
+    public List<PermissaoInfoBean> listarPermissoes(String slug) {
+        return habilitacoes.listarPermissoes(consultarAplicacao(slug).getId()).stream().map(PermissaoInfoBean::de)
+                .toList();
     }
 
-    public List<PermissaoInfo> listarPermissoesDoPerfil(String slug, UUID idPerfil) {
+    public List<PermissaoInfoBean> listarPermissoesDoPerfil(String slug, UUID idPerfil) {
         UUID aplicacao = consultarAplicacao(slug).getId();
         perfil(aplicacao, idPerfil);
-        return permissoesPerfil.findByIdIdAplicacaoAndIdIdPerfilOrderByIdIdPermissao(aplicacao, idPerfil)
-                .stream().map(v -> PermissaoInfo.de(v.getAplicacaoPermissao().getPermissao())).toList();
+        return permissoesPerfil.findByIdIdAplicacaoAndIdIdPerfilOrderByIdIdPermissao(aplicacao, idPerfil).stream()
+                .map(v -> PermissaoInfoBean.de(v.getAplicacaoPermissao().getPermissao())).toList();
     }
 
     @Transactional
     public void atribuirPermissaoAoPerfil(String slug, UUID idPerfil, UUID idPermissao) {
         UUID aplicacao = bloquearAplicacaoEditavel(slug);
         PerfilEntity perfil = perfil(aplicacao, idPerfil);
-        var habilitacao = habilitacoes.findById(new AplicacaoPermissaoId(aplicacao, idPermissao))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
-                        "A permissão precisa estar habilitada na aplicação."));
+        var aplicacaoPermissaoIdPreparado = new AplicacaoPermissaoId(aplicacao, idPermissao);
+        var habilitacao = habilitacoes.findById(aplicacaoPermissaoIdPreparado).orElseThrow(() -> {
+            var responseStatusExceptionPreparado = new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A permissão precisa estar habilitada na aplicação.");
+            return responseStatusExceptionPreparado;
+        });
         if (perfil.getStatus() != StatusCadastro.ATIVO
                 || habilitacao.getPermissao().getStatus() != StatusCadastro.ATIVO) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "O perfil e a permissão precisam estar ativos.");
         }
         var id = new PerfilPermissaoId(aplicacao, idPerfil, idPermissao);
         if (!permissoesPerfil.existsById(id)) {
-            permissoesPerfil.save(new PerfilPermissaoEntity(id));
+            var perfilPermissaoEntityPreparado = new PerfilPermissaoEntity(id);
+            permissoesPerfil.save(perfilPermissaoEntityPreparado);
             registro.registrar("ATRIBUIR_PERMISSAO_PERFIL", "perfil_permissao", aplicacao, idPerfil, idPermissao);
         }
     }
@@ -150,10 +155,11 @@ public class AdministracaoAplicacaoService {
         }
     }
 
-    public Pagina<VinculoInfo> listarVinculos(String slug, int pagina, int tamanho) {
+    public PaginaBean<VinculoInfoBean> listarVinculos(String slug, int pagina, int tamanho) {
         UUID aplicacao = consultarAplicacao(slug).getId();
-        return Pagina.de(vinculos.findByIdIdAplicacao(aplicacao, Pagina.requisicao(pagina, tamanho, Sort.by("id.idUsuario")))
-                .map(VinculoInfo::de));
+        return PaginaBean.de(
+                vinculos.findByIdIdAplicacao(aplicacao, PaginaBean.requisicao(pagina, tamanho, Sort.by("id.idUsuario")))
+                        .map(VinculoInfoBean::de));
     }
 
     @Transactional
@@ -165,11 +171,14 @@ public class AdministracaoAplicacaoService {
         var id = new UsuarioAplicacaoId(idUsuario, aplicacao);
         var vinculo = vinculos.findById(id).orElse(null);
         if (vinculo == null) {
-            vinculos.save(new UsuarioAplicacaoEntity(id));
-        } else if (!vinculo.isAtivo()) {
-            vinculo.definirAtivo(true);
+            var usuarioAplicacaoEntityPreparado = new UsuarioAplicacaoEntity(id);
+            vinculos.save(usuarioAplicacaoEntityPreparado);
         } else {
-            return;
+            if (!vinculo.isAtivo()) {
+                vinculo.definirAtivo(true);
+            } else {
+                return;
+            }
         }
         registro.registrar("VINCULAR_USUARIO", "usuario_aplicacao", aplicacao, idUsuario);
     }
@@ -177,7 +186,8 @@ public class AdministracaoAplicacaoService {
     @Transactional
     public void desvincularUsuario(String slug, UUID idUsuario) {
         UUID aplicacao = bloquearAplicacaoEditavel(slug);
-        var vinculo = vinculos.findById(new UsuarioAplicacaoId(idUsuario, aplicacao)).orElse(null);
+        var usuarioAplicacaoIdPreparado = new UsuarioAplicacaoId(idUsuario, aplicacao);
+        var vinculo = vinculos.findById(usuarioAplicacaoIdPreparado).orElse(null);
         if (vinculo != null && vinculo.isAtivo()) {
             vinculo.definirAtivo(false);
             atribuicoes.removerDaAplicacao(idUsuario, aplicacao);
@@ -186,11 +196,11 @@ public class AdministracaoAplicacaoService {
         }
     }
 
-    public List<PerfilInfo> listarPerfisDoUsuario(String slug, UUID idUsuario) {
+    public List<PerfilInfoBean> listarPerfisDoUsuario(String slug, UUID idUsuario) {
         UUID aplicacao = consultarAplicacao(slug).getId();
         verificarVinculoAtivo(idUsuario, aplicacao);
-        return atribuicoes.findByIdIdUsuarioAndIdIdAplicacaoOrderByIdIdPerfil(idUsuario, aplicacao)
-                .stream().map(v -> PerfilInfo.de(v.getPerfil())).toList();
+        return atribuicoes.findByIdIdUsuarioAndIdIdAplicacaoOrderByIdIdPerfil(idUsuario, aplicacao).stream()
+                .map(v -> PerfilInfoBean.de(v.getPerfil())).toList();
     }
 
     @Transactional
@@ -202,7 +212,8 @@ public class AdministracaoAplicacaoService {
         }
         var id = new UsuarioPerfilId(idUsuario, aplicacao, idPerfil);
         if (!atribuicoes.existsById(id)) {
-            atribuicoes.save(new UsuarioPerfilEntity(id));
+            var usuarioPerfilEntityPreparado = new UsuarioPerfilEntity(id);
+            atribuicoes.save(usuarioPerfilEntityPreparado);
             registro.registrar("ATRIBUIR_PERFIL_USUARIO", "usuario_perfil", aplicacao, idUsuario, idPerfil);
         }
     }
@@ -217,12 +228,15 @@ public class AdministracaoAplicacaoService {
         }
     }
 
-    public Pagina<SessaoInfo> listarSessoes(String slug, int pagina, int tamanho) {
+    public PaginaBean<SessaoInfoBean> listarSessoes(String slug, int pagina, int tamanho) {
         UUID aplicacao = consultarAplicacao(slug).getId();
         var agora = relogio.instant();
-        return Pagina.de(sessoes.findByIdAplicacao(aplicacao,
-                Pagina.requisicao(pagina, tamanho, Sort.by(Sort.Direction.DESC, "dataCriacao", "id")))
-                .map(sessao -> SessaoInfo.de(sessao, agora)));
+        return PaginaBean
+                .de(sessoes
+                        .findByIdAplicacao(aplicacao,
+                                PaginaBean.requisicao(pagina, tamanho,
+                                        Sort.by(Sort.Direction.DESC, "dataCriacao", "id")))
+                        .map(sessao -> SessaoInfoBean.de(sessao, agora)));
     }
 
     @Transactional
@@ -235,10 +249,12 @@ public class AdministracaoAplicacaoService {
         }
     }
 
-    public Pagina<AuditoriaInfo> listarAuditoria(String slug, int pagina, int tamanho) {
+    public PaginaBean<AuditoriaInfoBean> listarAuditoria(String slug, int pagina, int tamanho) {
         UUID aplicacao = consultarAplicacao(slug).getId();
-        return Pagina.de(auditoria.findByIdAplicacao(aplicacao,
-                Pagina.requisicao(pagina, tamanho, Sort.by(Sort.Direction.DESC, "id"))).map(AuditoriaInfo::de));
+        return PaginaBean.de(auditoria
+                .findByIdAplicacao(aplicacao,
+                        PaginaBean.requisicao(pagina, tamanho, Sort.by(Sort.Direction.DESC, "id")))
+                .map(AuditoriaInfoBean::de));
     }
 
     private AplicacaoEntity consultarAplicacao(String slug) {
@@ -256,12 +272,15 @@ public class AdministracaoAplicacaoService {
     }
 
     private void verificarVinculoAtivo(UUID idUsuario, UUID aplicacao) {
-        if (!vinculos.existsByIdAndAtivoTrue(new UsuarioAplicacaoId(idUsuario, aplicacao))) {
+        var usuarioAplicacaoIdPreparado2 = new UsuarioAplicacaoId(idUsuario, aplicacao);
+        if (!vinculos.existsByIdAndAtivoTrue(usuarioAplicacaoIdPreparado2)) {
             throw naoEncontrado("Vínculo ativo");
         }
     }
 
     private static ResponseStatusException naoEncontrado(String recurso) {
-        return new ResponseStatusException(HttpStatus.NOT_FOUND, recurso + " não encontrado.");
+        var responseStatusExceptionPreparado2 = new ResponseStatusException(HttpStatus.NOT_FOUND,
+                recurso + " não encontrado.");
+        return responseStatusExceptionPreparado2;
     }
 }

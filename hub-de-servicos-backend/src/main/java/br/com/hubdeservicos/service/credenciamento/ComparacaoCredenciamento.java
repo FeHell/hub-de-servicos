@@ -12,7 +12,9 @@ import org.springframework.web.server.ResponseStatusException;
 class ComparacaoCredenciamento {
     private final ObjectMapper json;
 
-    ComparacaoCredenciamento(ObjectMapper json) { this.json = json; }
+    ComparacaoCredenciamento(ObjectMapper json) {
+        this.json = json;
+    }
 
     boolean iguais(Object anterior, Object proposto) {
         return normalizar("", json.valueToTree(anterior)).equals(normalizar("", json.valueToTree(proposto)));
@@ -23,7 +25,9 @@ class ComparacaoCredenciamento {
             var resultado = json.createObjectNode();
             valor.fields().forEachRemaining(item -> {
                 var filho = normalizar(item.getKey(), item.getValue());
-                if (!filho.isNull() && !(filho.isObject() && filho.isEmpty())) resultado.set(item.getKey(), filho);
+                if (!filho.isNull() && !(filho.isObject() && filho.isEmpty())) {
+                    resultado.set(item.getKey(), filho);
+                }
             });
             return resultado;
         }
@@ -32,17 +36,22 @@ class ComparacaoCredenciamento {
             valor.forEach(item -> resultado.add(normalizar(campo, item)));
             return resultado;
         }
-        if (!valor.isTextual()) return valor;
+        if (!valor.isTextual()) {
+            return valor;
+        }
         String texto = valor.asText().strip().replaceAll("\\p{Zs}+", " ");
-        if (texto.isEmpty()) return json.nullNode();
+        if (texto.isEmpty()) {
+            return json.nullNode();
+        }
         texto = switch (campo) {
-            case "cpf", "cnpj", "documento", "document", "holder_document" -> ValidacaoCredenciamento.documento(texto);
-            case "telefone" -> telefone(texto);
-            case "cep", "zip_code" -> texto.replace("-", "");
-            case "uf", "state", "digitoAgencia", "digitoConta", "branch_check_digit", "account_check_digit" -> texto.toUpperCase(Locale.ROOT);
-            case "renda", "rendaMensal", "faturamento", "faturamentoAnual" ->
-                    new BigDecimal(texto).stripTrailingZeros().toString();
-            default -> texto;
+        case "cpf", "cnpj", "documento", "document", "holder_document" -> ValidacaoCredenciamento.documento(texto);
+        case "telefone" -> telefone(texto);
+        case "cep", "zip_code" -> texto.replace("-", "");
+        case "uf", "state", "digitoAgencia", "digitoConta", "branch_check_digit", "account_check_digit" ->
+            texto.toUpperCase(Locale.ROOT);
+        case "renda", "rendaMensal", "faturamento", "faturamentoAnual" ->
+            new BigDecimal(texto).stripTrailingZeros().toString();
+        default -> texto;
         };
         return json.getNodeFactory().textNode(texto);
     }

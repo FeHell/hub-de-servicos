@@ -23,40 +23,58 @@ public class TelefoneUsuarioService {
 
     public void atualizar(UsuarioEntity usuario, String entrada) {
         String telefone = normalizar(entrada);
-        if (Objects.equals(usuario.getTelefone(), telefone)) return;
+        if (Objects.equals(usuario.getTelefone(), telefone)) {
+            return;
+        }
         verificarDisponibilidade(usuario.getId(), telefone);
         usuario.atualizarTelefone(telefone);
         try {
             usuarios.flush();
         } catch (DataIntegrityViolationException erro) {
             if (erro.getCause() instanceof ConstraintViolationException violacao
-                    && "uk_usuario_telefone".equals(violacao.getConstraintName())) throw duplicado();
+                    && "uk_usuario_telefone".equals(violacao.getConstraintName())) {
+                throw duplicado();
+            }
             throw erro;
         }
         desafios.invalidar(usuario.getId());
     }
 
     public void verificarDisponibilidade(UUID id, String telefone) {
-        if (telefone != null && usuarios.existsByTelefoneAndIdNot(telefone, id)) throw duplicado();
+        if (telefone != null && usuarios.existsByTelefoneAndIdNot(telefone, id)) {
+            throw duplicado();
+        }
     }
 
     public static String normalizar(String entrada) {
-        if (entrada == null || entrada.isBlank()) return null;
-        if (!entrada.strip().matches("[+]?[0-9(). -]+")) throw invalido();
+        if (entrada == null || entrada.isBlank()) {
+            return null;
+        }
+        if (!entrada.strip().matches("[+]?[0-9(). -]+")) {
+            throw invalido();
+        }
         String numero = entrada.replaceAll("[^0-9]", "");
         if (entrada.strip().startsWith("+") || numero.length() >= 12) {
-            if (!numero.startsWith("55")) throw invalido();
+            if (!numero.startsWith("55")) {
+                throw invalido();
+            }
             numero = numero.substring(2);
         }
-        if (!numero.matches("[1-9][0-9]([2-5][0-9]{7}|9[0-9]{8})")) throw invalido();
+        if (!numero.matches("[1-9][0-9]([2-5][0-9]{7}|9[0-9]{8})")) {
+            throw invalido();
+        }
         return "+55" + numero;
     }
 
     private static ResponseStatusException invalido() {
-        return new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um telefone brasileiro válido com DDD.");
+        var responseStatusExceptionPreparado = new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Informe um telefone brasileiro válido com DDD.");
+        return responseStatusExceptionPreparado;
     }
 
     private static ResponseStatusException duplicado() {
-        return new ResponseStatusException(HttpStatus.CONFLICT, "Este telefone já está em uso por outra conta.");
+        var responseStatusExceptionPreparado2 = new ResponseStatusException(HttpStatus.CONFLICT,
+                "Este telefone já está em uso por outra conta.");
+        return responseStatusExceptionPreparado2;
     }
 }

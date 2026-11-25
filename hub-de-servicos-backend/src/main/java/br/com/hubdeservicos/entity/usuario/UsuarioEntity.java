@@ -116,12 +116,25 @@ public class UsuarioEntity {
         return telefoneVerificadoEm;
     }
 
-    public BigDecimal getValorHora() { return valorHora; }
-    public BigDecimal getValorDiaria() { return valorDiaria; }
-    public MunicipioEntity getMunicipioAtual() { return municipioAtual; }
-    public Instant getMunicipioObservadoEm() { return municipioObservadoEm; }
+    public BigDecimal getValorHora() {
+        return valorHora;
+    }
 
-    public boolean isMunicipioManual() { return municipioManual; }
+    public BigDecimal getValorDiaria() {
+        return valorDiaria;
+    }
+
+    public MunicipioEntity getMunicipioAtual() {
+        return municipioAtual;
+    }
+
+    public Instant getMunicipioObservadoEm() {
+        return municipioObservadoEm;
+    }
+
+    public boolean isMunicipioManual() {
+        return municipioManual;
+    }
 
     public void atualizarRemuneracao(BigDecimal hora, BigDecimal diaria) {
         this.valorHora = hora;

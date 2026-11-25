@@ -31,7 +31,7 @@ public class PermissoesPlataformaService {
     private final RegistroAdministrativo registro;
 
     PermissoesPlataformaService(PermissaoRepository catalogo, UsuarioPermissaoPlataformaRepository atribuicoes,
-                               UsuarioAplicacaoRepository vinculos, RegistroAdministrativo registro) {
+            UsuarioAplicacaoRepository vinculos, RegistroAdministrativo registro) {
         this.catalogo = catalogo;
         this.atribuicoes = atribuicoes;
         this.vinculos = vinculos;
@@ -48,11 +48,15 @@ public class PermissoesPlataformaService {
         return Arrays.stream(PapelUsuario.values()).filter(papel -> codigos.contains(papel.codigoPermissao())).toList();
     }
 
-    // O chamador bloqueia a conta. O app só pode alterar o código mapeado pelo enum.
+    // O chamador bloqueia a conta. O app só pode alterar o código mapeado pelo
+    // enum.
     public void selecionarPapel(UUID idUsuario, UUID idAplicacao, PapelUsuario papel, boolean selecionado) {
-        var permissao = catalogo.findByCodigo(papel.codigoPermissao())
-                .filter(item -> item.getNomePlataforma() != null)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Perfil indisponível."));
+        var permissao = catalogo.findByCodigo(papel.codigoPermissao()).filter(item -> item.getNomePlataforma() != null)
+                .orElseThrow(() -> {
+                    var responseStatusExceptionPreparado = new ResponseStatusException(HttpStatus.CONFLICT,
+                            "Perfil indisponível.");
+                    return responseStatusExceptionPreparado;
+                });
         var chave = new UsuarioPermissaoPlataformaId(idUsuario, permissao.getId());
         var atual = atribuicoes.findById(chave);
         if (selecionado && atual.isEmpty()) {
@@ -60,14 +64,19 @@ public class PermissoesPlataformaService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Perfil indisponível.");
             }
             atribuir(chave, idAplicacao);
-        } else if (!selecionado && atual.isPresent()) {
-            remover(atual.get(), idAplicacao);
+        } else {
+            if (!selecionado && atual.isPresent()) {
+                remover(atual.get(), idAplicacao);
+            }
         }
     }
 
-    // Preserva alterações externas em permissões que não foram editadas no formulário.
+    // Preserva alterações externas em permissões que não foram editadas no
+    // formulário.
     List<String> conciliar(List<String> atuais, List<String> desejadas, List<String> originais) {
-        if (desejadas == null || originais == null) return desejadas;
+        if (desejadas == null || originais == null) {
+            return desejadas;
+        }
         Set<String> resultado = new HashSet<>(atuais);
         resultado.removeIf(codigo -> originais.contains(codigo) && !desejadas.contains(codigo));
         desejadas.stream().filter(codigo -> !originais.contains(codigo)).forEach(resultado::add);
@@ -80,14 +89,18 @@ public class PermissoesPlataformaService {
         List<String> solicitados = codigos.stream().distinct().sorted().toList();
         List<PermissaoEntity> desejadas = solicitados.isEmpty() ? List.of()
                 : catalogo.findByNomePlataformaIsNotNullAndCodigoIn(solicitados);
-        if (desejadas.size() != solicitados.size() || desejadas.stream().anyMatch(p ->
-                p.getStatus() != StatusCadastro.ATIVO && !idsAtuais.contains(p.getId()))) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Há permissões da plataforma inválidas ou inativas.");
+        if (desejadas.size() != solicitados.size() || desejadas.stream()
+                .anyMatch(p -> p.getStatus() != StatusCadastro.ATIVO && !idsAtuais.contains(p.getId()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Há permissões da plataforma inválidas ou inativas.");
         }
 
         if (desejadas.stream().anyMatch(p -> p.getStatus() == StatusCadastro.ATIVO)) {
             var chave = new UsuarioAplicacaoId(idUsuario, idAplicacao);
-            var vinculo = vinculos.findById(chave).orElseGet(() -> vinculos.save(new UsuarioAplicacaoEntity(chave)));
+            var vinculo = vinculos.findById(chave).orElseGet(() -> {
+                var usuarioAplicacaoEntityPreparado = new UsuarioAplicacaoEntity(chave);
+                return vinculos.save(usuarioAplicacaoEntityPreparado);
+            });
             vinculo.definirAtivo(true);
         }
 
@@ -96,7 +109,8 @@ public class PermissoesPlataformaService {
             UUID idPermissao = permissao.getId();
             idsDesejados.add(idPermissao);
             if (!idsAtuais.contains(idPermissao)) {
-                atribuir(new UsuarioPermissaoPlataformaId(idUsuario, idPermissao), idAplicacao);
+                var usuarioPermissaoPlataformaIdPreparado = new UsuarioPermissaoPlataformaId(idUsuario, idPermissao);
+                atribuir(usuarioPermissaoPlataformaIdPreparado, idAplicacao);
             }
         }
         for (var atribuicao : atuais) {
@@ -109,15 +123,16 @@ public class PermissoesPlataformaService {
     }
 
     private void atribuir(UsuarioPermissaoPlataformaId chave, UUID idAplicacao) {
-        atribuicoes.save(new UsuarioPermissaoPlataformaEntity(chave));
-        registro.registrar("ATRIBUIR_PERMISSAO_PLATAFORMA", "usuario_permissao_plataforma",
-                idAplicacao, chave.getIdUsuario(), chave.getIdPermissao());
+        var usuarioPermissaoPlataformaEntityPreparado = new UsuarioPermissaoPlataformaEntity(chave);
+        atribuicoes.save(usuarioPermissaoPlataformaEntityPreparado);
+        registro.registrar("ATRIBUIR_PERMISSAO_PLATAFORMA", "usuario_permissao_plataforma", idAplicacao,
+                chave.getIdUsuario(), chave.getIdPermissao());
     }
 
     private void remover(UsuarioPermissaoPlataformaEntity atribuicao, UUID idAplicacao) {
         var chave = atribuicao.getId();
         atribuicoes.delete(atribuicao);
-        registro.registrar("REMOVER_PERMISSAO_PLATAFORMA", "usuario_permissao_plataforma",
-                idAplicacao, chave.getIdUsuario(), chave.getIdPermissao());
+        registro.registrar("REMOVER_PERMISSAO_PLATAFORMA", "usuario_permissao_plataforma", idAplicacao,
+                chave.getIdUsuario(), chave.getIdPermissao());
     }
 }

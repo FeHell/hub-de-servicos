@@ -55,27 +55,20 @@ public class TokenAtualizacaoEntity {
     private boolean revogado;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumns({
-        @JoinColumn(name = "id_sessao", referencedColumnName = "id", insertable = false, updatable = false),
-        @JoinColumn(name = "id_familia", referencedColumnName = "id_familia", insertable = false, updatable = false)
-    })
+    @JoinColumns({ @JoinColumn(name = "id_sessao", referencedColumnName = "id", insertable = false, updatable = false),
+            @JoinColumn(name = "id_familia", referencedColumnName = "id_familia", insertable = false, updatable = false) })
     private SessaoEntity sessao;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumns({
-        @JoinColumn(name = "id_anterior", referencedColumnName = "id", insertable = false, updatable = false),
-        @JoinColumn(name = "id_familia", referencedColumnName = "id_familia", insertable = false, updatable = false)
-    })
+            @JoinColumn(name = "id_anterior", referencedColumnName = "id", insertable = false, updatable = false),
+            @JoinColumn(name = "id_familia", referencedColumnName = "id_familia", insertable = false, updatable = false) })
     private TokenAtualizacaoEntity anterior;
 
     protected TokenAtualizacaoEntity() {
     }
 
-    public TokenAtualizacaoEntity(
-            UUID idSessao,
-            UUID idFamilia,
-            String hashToken,
-            UUID idAnterior,
+    public TokenAtualizacaoEntity(UUID idSessao, UUID idFamilia, String hashToken, UUID idAnterior,
             Instant expiracaoAbsoluta) {
         this.idSessao = Objects.requireNonNull(idSessao, "idSessao");
         this.idFamilia = Objects.requireNonNull(idFamilia, "idFamilia");

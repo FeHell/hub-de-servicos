@@ -28,7 +28,8 @@ public interface UsuarioRepository extends JpaRepository<UsuarioEntity, UUID> {
 
     boolean existsByTelefoneAndIdNot(String telefone, UUID id);
 
-    // Compatível com os bloqueios de FK usados pela auditoria durante o encerramento de sessões.
+    // Compatível com os bloqueios de FK usados pela auditoria durante o
+    // encerramento de sessões.
     @Query(value = "select u.* from usuario u where u.id = :id for no key update", nativeQuery = true)
     Optional<UsuarioEntity> bloquearPorId(@Param("id") UUID id);
 }

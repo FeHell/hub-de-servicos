@@ -40,45 +40,52 @@ public class SegurancaWeb {
     @Bean
     SecurityFilterChain api(HttpSecurity http, TokenJwt jwt, ObjectMapper json, Environment ambiente) throws Exception {
         boolean local = ambiente.matchesProfiles("local & !homologacao & !producao");
-        var autenticado = AuthenticatedAuthorizationManager
-                .<org.springframework.security.web.access.intercept.RequestAuthorizationContext>authenticated();
+        var autenticado = AuthenticatedAuthorizationManager.<org.springframework.security.web.access.intercept.RequestAuthorizationContext>authenticated();
+        var filtroJwtPreparado = new FiltroJwt(jwt);
         return http
                 // Só as rotas de sessão do navegador leem cookie. Elas exigem um cabeçalho
-                // não permitido em requisições simples de outra origem; não habilitar CORS nelas.
-                .csrf(AbstractHttpConfigurer::disable)
-                .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .logout(AbstractHttpConfigurer::disable)
+                // não permitido em requisições simples de outra origem; não habilitar CORS
+                // nelas.
+                .csrf(AbstractHttpConfigurer::disable).formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable).logout(AbstractHttpConfigurer::disable)
                 .requestCache(AbstractHttpConfigurer::disable)
                 .sessionManagement(sessao -> sessao.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(regras -> regras
-                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                        .requestMatchers(HttpMethod.GET, "/.well-known/jwks.json",
-                                "/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
-                        .requestMatchers("/api/v1/aplicacoes/" + AutenticacaoAppService.SLUG + "/autenticacao/**").denyAll()
+                .authorizeHttpRequests(regras -> regras.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/.well-known/jwks.json", "/v3/api-docs", "/v3/api-docs/**",
+                                "/swagger-ui.html", "/swagger-ui/**")
+                        .permitAll()
+                        .requestMatchers("/api/v1/aplicacoes/" + AutenticacaoAppService.SLUG + "/autenticacao/**")
+                        .denyAll()
                         .requestMatchers(HttpMethod.POST, AutenticacaoAppController.ROTA + "/cadastro",
-                                AutenticacaoAppController.ROTA + "/login", AutenticacaoAppController.ROTA + "/renovar").permitAll()
+                                AutenticacaoAppController.ROTA + "/login", AutenticacaoAppController.ROTA + "/renovar")
+                        .permitAll()
                         .requestMatchers(HttpMethod.PUT, PerfilAppController.ROTA + PerfilAppController.PAPEIS,
                                 PerfilAppController.ROTA + PerfilAppController.LOCALIZACAO,
-                                PerfilAppController.ROTA + PerfilAppController.LOCALIZACAO_MANUAL).authenticated()
-                        .requestMatchers(HttpMethod.GET, PerfilAppController.ROTA + PerfilAppController.MUNICIPIOS).authenticated()
+                                PerfilAppController.ROTA + PerfilAppController.LOCALIZACAO_MANUAL)
+                        .authenticated()
+                        .requestMatchers(HttpMethod.GET, PerfilAppController.ROTA + PerfilAppController.MUNICIPIOS)
+                        .authenticated()
                         .requestMatchers(PerfilAppController.ROTA, PerfilAppController.ROTA + "/telefone/confirmacao",
                                 PerfilAppController.ROTA + "/telefone/confirmacao/reenviar",
-                                PerfilAppController.ROTA + "/telefone/confirmacao/validar").authenticated()
+                                PerfilAppController.ROTA + "/telefone/confirmacao/validar")
+                        .authenticated()
                         .requestMatchers(CredenciamentoController.ROTA + "/{provedor}",
                                 CredenciamentoController.ROTA + "/{provedor}/completude",
                                 CredenciamentoController.ROTA + "/{provedor}/validacao",
                                 CredenciamentoController.ROTA + "/{provedor}/recebedor",
-                                CredenciamentoController.ROTA + "/{provedor}/recebedor/consulta").authenticated()
-                        .requestMatchers(HttpMethod.POST, CredenciamentoController.ROTA + "/{provedor}/recebedor/reenvio").authenticated()
-                        .requestMatchers(HttpMethod.GET, AutenticacaoAppController.ROTA + "/eu").authenticated()
-                        .requestMatchers(HttpMethod.POST, AutenticacaoAppController.ROTA + "/logout").authenticated()
-                        .requestMatchers(HttpMethod.POST, AUTENTICACAO + "/login", AUTENTICACAO + "/renovar").permitAll()
+                                CredenciamentoController.ROTA + "/{provedor}/recebedor/consulta")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.POST,
+                                CredenciamentoController.ROTA + "/{provedor}/recebedor/reenvio")
+                        .authenticated().requestMatchers(HttpMethod.GET, AutenticacaoAppController.ROTA + "/eu")
+                        .authenticated().requestMatchers(HttpMethod.POST, AutenticacaoAppController.ROTA + "/logout")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.POST, AUTENTICACAO + "/login", AUTENTICACAO + "/renovar")
+                        .permitAll()
                         .requestMatchers(HttpMethod.POST, AUTENTICACAO + "/navegador/login",
-                                AUTENTICACAO + "/navegador/renovar", AUTENTICACAO + "/navegador/logout").permitAll()
-                        .requestMatchers(HttpMethod.GET, AUTENTICACAO + "/eu",
-                                AUTENTICACAO + "/permissoes").authenticated()
-                        .requestMatchers(HttpMethod.POST, AUTENTICACAO + "/logout").authenticated()
+                                AUTENTICACAO + "/navegador/renovar", AUTENTICACAO + "/navegador/logout")
+                        .permitAll().requestMatchers(HttpMethod.GET, AUTENTICACAO + "/eu", AUTENTICACAO + "/permissoes")
+                        .authenticated().requestMatchers(HttpMethod.POST, AUTENTICACAO + "/logout").authenticated()
                         .requestMatchers("/api/v1/admin/configuracoes/servicos/{servico}",
                                 "/api/v1/admin/credenciamentos/{id}/payload",
                                 "/api/v1/admin/credenciamentos/tentativas/{tentativa}/diagnostico")
@@ -87,24 +94,21 @@ public class SegurancaWeb {
                             var requisicao = contexto.getRequest();
                             boolean localSeguro = local && java.util.Set.of("127.0.0.1", "::1", "0:0:0:0:0:0:0:1")
                                     .contains(requisicao.getRemoteAddr());
-                            return new AuthorizationDecision(acesso != null && acesso.isGranted()
-                                    && (localSeguro || requisicao.isSecure()));
-                        })
-                        .requestMatchers("/api/v1/admin/**", "/api/v1/aplicacoes/*/admin/**").authenticated()
+                            var authorizationDecisionPreparado = new AuthorizationDecision(
+                                    acesso != null && acesso.isGranted() && (localSeguro || requisicao.isSecure()));
+                            return authorizationDecisionPreparado;
+                        }).requestMatchers("/api/v1/admin/**", "/api/v1/aplicacoes/*/admin/**").authenticated()
                         .anyRequest().denyAll())
-                .exceptionHandling(erros -> erros
-                        .authenticationEntryPoint((requisicao, resposta, erro) -> {
-                            resposta.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
-                            responderErro(json, resposta, HttpStatus.UNAUTHORIZED, "Autenticação necessária.");
-                        })
-                        .accessDeniedHandler((requisicao, resposta, erro) ->
-                                responderErro(json, resposta, HttpStatus.FORBIDDEN, "Acesso negado.")))
-                .addFilterBefore(new FiltroJwt(jwt), AnonymousAuthenticationFilter.class)
-                .build();
+                .exceptionHandling(erros -> erros.authenticationEntryPoint((requisicao, resposta, erro) -> {
+                    resposta.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
+                    responderErro(json, resposta, HttpStatus.UNAUTHORIZED, "Autenticação necessária.");
+                }).accessDeniedHandler((requisicao, resposta, erro) -> responderErro(json, resposta,
+                        HttpStatus.FORBIDDEN, "Acesso negado.")))
+                .addFilterBefore(filtroJwtPreparado, AnonymousAuthenticationFilter.class).build();
     }
 
     private static void responderErro(ObjectMapper json, HttpServletResponse resposta, HttpStatus status,
-                                      String detalhe) throws IOException {
+            String detalhe) throws IOException {
         resposta.setStatus(status.value());
         resposta.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         json.writeValue(resposta.getOutputStream(), ProblemDetail.forStatusAndDetail(status, detalhe));

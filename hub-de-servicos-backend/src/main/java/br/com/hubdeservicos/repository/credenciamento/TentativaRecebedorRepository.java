@@ -9,5 +9,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TentativaRecebedorRepository extends JpaRepository<TentativaRecebedorEntity, UUID> {
     Optional<TentativaRecebedorEntity> findFirstByRecebedorAndSituacaoOrderByTentativaEmDesc(Chave recebedor,
-                                                                                         SituacaoRecebedor situacao);
+            SituacaoRecebedor situacao);
 }
